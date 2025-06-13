@@ -162,21 +162,6 @@ const GameSelector = ({ onGameSelect }) => {
               />
 
               {/* Structured Data for each game */}
-              <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{
-                  __html: JSON.stringify({
-                    "@context": "https://schema.org",
-                    "@type": "VideoGame",
-                    name: game.name,
-                    description: `Pokémon ${game.name} - Generation ${game.generation} games set in the ${game.region} region`,
-                    genre: "Role-playing game",
-                    gamePlatform: "Nintendo",
-                    publisher: "Nintendo",
-                    developer: "Game Freak",
-                  }),
-                }}
-              />
             </article>
           ))}
         </main>

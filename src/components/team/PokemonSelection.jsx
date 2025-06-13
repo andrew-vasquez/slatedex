@@ -29,12 +29,7 @@ const PokemonSelection = ({
           </h2>
           {currentTeamLength < 6 && (
             <p className="text-xs text-gray-400">
-              <span className="sm:hidden">
-                Tap any Pokémon to add to your team
-              </span>
-              <span className="hidden sm:inline">
-                Click any Pokémon or drag to add to your team
-              </span>
+              Tap any Pokémon to add to your team
             </p>
           )}
         </div>
