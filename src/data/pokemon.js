@@ -151,9 +151,6 @@ export const POKEMON_DATA = [
 ];
 
 /**
- * Get Pokemon available up to a specific generation
- * @param {number} generation - Maximum generation to include
- * @returns {Array} Filtered array of Pokemon
  */
 export const getPokemonByGeneration = (generation) => {
   return POKEMON_DATA.filter(pokemon => pokemon.generation <= generation);
