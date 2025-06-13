@@ -27,28 +27,6 @@ export const TYPE_EFFECTIVENESS = {
   fairy: ['poison', 'steel']
 };
 
-// Type effectiveness for offensive coverage - what each type is strong against
-export const OFFENSIVE_TYPE_EFFECTIVENESS = {
-  normal: [],
-  fire: ['grass', 'ice', 'bug', 'steel'],
-  water: ['fire', 'ground', 'rock'],
-  electric: ['water', 'flying'],
-  grass: ['water', 'ground', 'rock'],
-  ice: ['grass', 'ground', 'flying', 'dragon'],
-  fighting: ['normal', 'ice', 'rock', 'dark', 'steel'],
-  poison: ['grass', 'fairy'],
-  ground: ['fire', 'electric', 'poison', 'rock', 'steel'],
-  flying: ['grass', 'fighting', 'bug'],
-  psychic: ['fighting', 'poison'],
-  bug: ['grass', 'psychic', 'dark'],
-  rock: ['fire', 'ice', 'flying', 'bug'],
-  ghost: ['psychic', 'ghost'],
-  dragon: ['dragon'],
-  dark: ['psychic', 'ghost'],
-  steel: ['ice', 'rock', 'fairy'],
-  fairy: ['fighting', 'dragon', 'dark']
-};
-
 // Type resistances - what each type resists
 export const TYPE_RESISTANCES = {
   normal: [],
@@ -98,26 +76,4 @@ export const TYPE_COLORS = {
   dark: 'bg-gray-700',
   steel: 'bg-slate-500',
   fairy: 'bg-rose-400'
-};
-
-// Type colors for Pokemon cards (gradient classes)
-export const POKEMON_TYPE_COLORS = {
-  normal: 'from-stone-400 to-stone-500',
-  fire: 'from-red-500 to-orange-500',
-  water: 'from-blue-500 to-cyan-500',
-  electric: 'from-yellow-400 to-yellow-500',
-  grass: 'from-green-500 to-emerald-500',
-  ice: 'from-cyan-300 to-blue-300',
-  fighting: 'from-red-600 to-red-700',
-  poison: 'from-purple-500 to-violet-500',
-  ground: 'from-yellow-600 to-amber-600',
-  flying: 'from-blue-400 to-sky-400',
-  psychic: 'from-pink-500 to-purple-500',
-  bug: 'from-green-400 to-lime-500',
-  rock: 'from-yellow-700 to-amber-700',
-  ghost: 'from-purple-600 to-indigo-600',
-  dragon: 'from-purple-600 to-blue-600',
-  dark: 'from-gray-700 to-gray-800',
-  steel: 'from-gray-400 to-slate-500',
-  fairy: 'from-pink-300 to-rose-400'
 }; 

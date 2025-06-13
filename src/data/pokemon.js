@@ -38,46 +38,6 @@ export const MAINLINE_GAMES = [
     region: 'Sinnoh',
     starters: ['turtwig', 'chimchar', 'piplup'],
     legendaries: ['arceus']
-  },
-  { 
-    id: 5, 
-    name: 'Black/White/Black 2/White 2', 
-    generation: 5, 
-    region: 'Unova',
-    starters: ['snivy', 'tepig', 'oshawott'],
-    legendaries: ['reshiram']
-  },
-  { 
-    id: 6, 
-    name: 'X/Y', 
-    generation: 6, 
-    region: 'Kalos',
-    starters: ['chespin', 'fennekin', 'froakie'],
-    legendaries: ['yveltal']
-  },
-  { 
-    id: 7, 
-    name: 'Sun/Moon/Ultra Sun/Ultra Moon', 
-    generation: 7, 
-    region: 'Alola',
-    starters: ['rowlet', 'litten', 'popplio'],
-    legendaries: ['cosmog']
-  },
-  { 
-    id: 8, 
-    name: 'Sword/Shield', 
-    generation: 8, 
-    region: 'Galar',
-    starters: ['grookey', 'scorbunny', 'sobble'],
-    legendaries: ['eternatus']
-  },
-  { 
-    id: 9, 
-    name: 'Scarlet/Violet', 
-    generation: 9, 
-    region: 'Paldea',
-    starters: ['sprigatito', 'fuecoco', 'quaxly'],
-    legendaries: ['koraidon', 'miraidon']
   }
 ];
 
@@ -116,45 +76,17 @@ export const POKEMON_DATA = [
   { id: 387, name: 'Turtwig', types: ['grass'], generation: 4, hp: 55, attack: 68, defense: 64, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/387.png' },
   { id: 390, name: 'Chimchar', types: ['fire'], generation: 4, hp: 44, attack: 58, defense: 44, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/390.png' },
   { id: 393, name: 'Piplup', types: ['water'], generation: 4, hp: 53, attack: 51, defense: 53, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/393.png' },
-  { id: 493, name: 'Arceus', types: ['normal'], generation: 4, hp: 120, attack: 120, defense: 120, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/493.png' },
-  
-  // Generation 5
-  { id: 495, name: 'Snivy', types: ['grass'], generation: 5, hp: 45, attack: 45, defense: 55, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/495.png' },
-  { id: 498, name: 'Tepig', types: ['fire'], generation: 5, hp: 65, attack: 63, defense: 45, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/498.png' },
-  { id: 501, name: 'Oshawott', types: ['water'], generation: 5, hp: 55, attack: 55, defense: 45, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/501.png' },
-  { id: 643, name: 'Reshiram', types: ['dragon', 'fire'], generation: 5, hp: 100, attack: 120, defense: 100, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/643.png' },
-  
-  // Generation 6
-  { id: 650, name: 'Chespin', types: ['grass'], generation: 6, hp: 56, attack: 61, defense: 65, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/650.png' },
-  { id: 653, name: 'Fennekin', types: ['fire'], generation: 6, hp: 40, attack: 45, defense: 40, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/653.png' },
-  { id: 656, name: 'Froakie', types: ['water'], generation: 6, hp: 41, attack: 56, defense: 40, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/656.png' },
-  { id: 717, name: 'Yveltal', types: ['dark', 'flying'], generation: 6, hp: 126, attack: 131, defense: 95, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/717.png' },
-  
-  // Generation 7
-  { id: 722, name: 'Rowlet', types: ['grass', 'flying'], generation: 7, hp: 68, attack: 55, defense: 55, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/722.png' },
-  { id: 725, name: 'Litten', types: ['fire'], generation: 7, hp: 45, attack: 65, defense: 40, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/725.png' },
-  { id: 728, name: 'Popplio', types: ['water'], generation: 7, hp: 50, attack: 54, defense: 54, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/728.png' },
-  { id: 789, name: 'Cosmog', types: ['psychic'], generation: 7, hp: 43, attack: 29, defense: 31, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/789.png' },
-  
-  // Generation 8
-  { id: 810, name: 'Grookey', types: ['grass'], generation: 8, hp: 50, attack: 65, defense: 50, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/810.png' },
-  { id: 813, name: 'Scorbunny', types: ['fire'], generation: 8, hp: 50, attack: 71, defense: 40, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/813.png' },
-  { id: 816, name: 'Sobble', types: ['water'], generation: 8, hp: 50, attack: 40, defense: 40, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/816.png' },
-  { id: 890, name: 'Eternatus', types: ['poison', 'dragon'], generation: 8, hp: 140, attack: 85, defense: 95, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/890.png' },
-  
-  // Generation 9
-  { id: 906, name: 'Sprigatito', types: ['grass'], generation: 9, hp: 40, attack: 61, defense: 54, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/906.png' },
-  { id: 909, name: 'Fuecoco', types: ['fire'], generation: 9, hp: 67, attack: 45, defense: 59, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/909.png' },
-  { id: 912, name: 'Quaxly', types: ['water'], generation: 9, hp: 55, attack: 65, defense: 45, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/912.png' },
-  { id: 1007, name: 'Koraidon', types: ['fighting', 'dragon'], generation: 9, hp: 100, attack: 135, defense: 115, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1007.png' },
-  { id: 1008, name: 'Miraidon', types: ['electric', 'dragon'], generation: 9, hp: 100, attack: 85, defense: 100, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1008.png' }
+  { id: 493, name: 'Arceus', types: ['normal'], generation: 4, hp: 120, attack: 120, defense: 120, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/493.png' }
 ];
 
 /**
+ * Get Pokemon available up to and including a specific generation
+ * @param {number} generation - The generation number
+ * @returns {Array} Array of Pokemon available in that generation
  */
 export const getPokemonByGeneration = (generation) => {
   return POKEMON_DATA.filter(pokemon => pokemon.generation <= generation);
 };
 
-// Re-export team analysis functions for backward compatibility
-export { getTeamDefensiveCoverage, getTeamWeaknesses, calculateTeamStats } from '../utils/teamAnalysis.js';
+// Re-export the defensive coverage function for backward compatibility
+export { getTeamDefensiveCoverage } from '../utils/teamAnalysis.js';
