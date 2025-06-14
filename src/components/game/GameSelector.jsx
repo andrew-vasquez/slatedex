@@ -104,7 +104,7 @@ const GameSelector = ({ onGameSelect }) => {
               </div>
 
               {/* Generation badge */}
-              <div className="absolute top-4 right-4 z-10">
+              <div className="absolute top-4 left-4 z-10">
                 <div className="bg-gradient-to-r from-red-600 to-red-500 text-white text-sm font-bold px-3 py-1.5 rounded-full shadow-lg">
                   <span className="sr-only">Generation</span>
                   Gen {game.generation}
@@ -116,12 +116,11 @@ const GameSelector = ({ onGameSelect }) => {
                 <div className="flex-1">
                   <h3
                     className="text-xl sm:text-2xl lg:text-3xl font-bold text-white group-hover:text-red-100 
-                                 transition-colors duration-300 leading-tight mb-3"
+                                 transition-colors duration-300 leading-tight mb-3 pt-6 "
                   >
                     {game.name}
                   </h3>
                   <p className="text-base sm:text-lg text-gray-300 group-hover:text-gray-200 transition-colors duration-300">
-                    <span className="sr-only">Set in the</span>
                     {game.region} Region
                   </p>
                 </div>

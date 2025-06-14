@@ -9,7 +9,7 @@
 export const MAINLINE_GAMES = [
   { 
     id: 1, 
-    name: 'Red/Blue/Yellow', 
+    name: 'R/B/Y', 
     generation: 1, 
     region: 'Kanto',
     starters: ['bulbasaur', 'charmander', 'squirtle'],
@@ -38,7 +38,17 @@ export const MAINLINE_GAMES = [
     region: 'Sinnoh',
     starters: ['turtwig', 'chimchar', 'piplup'],
     legendaries: ['arceus']
-  }
+  },
+  {
+    id:5,
+    name: 'Black/White',
+    generation: 5,
+    region: 'Unova',
+    starters: ['snivy', 'tepig', 'oshawott'],
+    legendaries: ['zekrom']
+  },
+  
+ 
 ];
 
 // Pokemon species data with stats and sprites
@@ -76,7 +86,15 @@ export const POKEMON_DATA = [
   { id: 387, name: 'Turtwig', types: ['grass'], generation: 4, hp: 55, attack: 68, defense: 64, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/387.png' },
   { id: 390, name: 'Chimchar', types: ['fire'], generation: 4, hp: 44, attack: 58, defense: 44, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/390.png' },
   { id: 393, name: 'Piplup', types: ['water'], generation: 4, hp: 53, attack: 51, defense: 53, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/393.png' },
-  { id: 493, name: 'Arceus', types: ['normal'], generation: 4, hp: 120, attack: 120, defense: 120, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/493.png' }
+  { id: 493, name: 'Arceus', types: ['normal'], generation: 4, hp: 120, attack: 120, defense: 120, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/493.png' },
+
+  // Generation 5
+  { id: 494, name: 'Snivy', types: ['grass'], generation: 5, hp: 50, attack: 45, defense: 45, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/495.png' },
+  { id: 497, name: 'Tepig', types: ['fire'], generation: 5, hp: 52, attack: 44, defense: 45, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/498.png' },
+  { id: 499, name: 'Oshawott', types: ['water'], generation: 5, hp: 55, attack: 55, defense: 45, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/501.png' },
+  { id: 502, name: 'Zekrom', types: ['dragon', 'electric'], generation: 5, hp: 100, attack: 120, defense: 100, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/644.png' },
+
+  
 ];
 
 /**
