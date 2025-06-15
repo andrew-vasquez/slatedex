@@ -114,7 +114,7 @@ const DefensiveCoverage = ({ coverage }) => {
         })}
       </div>
 
-      {/* Desktop: Enhanced Grid Layout */}
+      {/* Desktop  */}
       <div className="hidden sm:block">
         <div className="overflow-x-auto">
           <div className="min-w-[800px]">
@@ -141,10 +141,10 @@ const DefensiveCoverage = ({ coverage }) => {
                 return (
                   <div
                     key={type}
-                    className="grid grid-cols-3 gap-4 items-start bg-gray-700/30 rounded-lg p-3"
+                    className="grid grid-cols-3 gap-4 items-stretch bg-gray-700/30 rounded-lg p-3"
                   >
                     <div
-                      className={`${TYPE_COLORS[type]} text-white text-sm font-bold px-4 py-2 rounded text-center uppercase`}
+                      className={`${TYPE_COLORS[type]} text-white text-sm font-bold rounded text-center uppercase flex items-center justify-center min-h-[60px]`}
                     >
                       {type}
                     </div>

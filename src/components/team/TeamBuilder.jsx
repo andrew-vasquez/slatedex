@@ -9,6 +9,7 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import PokemonCard from "../ui/PokemonCard";
+import PokemonDragPreview from "../ui/PokemonDragPreview";
 import TeamBuilderHeader from "./TeamBuilderHeader";
 import PokemonSelection from "./PokemonSelection";
 import TeamPanel from "./TeamPanel";
@@ -19,11 +20,14 @@ import {
 } from "../../data/pokemon";
 
 const TeamBuilder = ({ selectedGame, onBack }) => {
+
+
   const [availablePokemon, setAvailablePokemon] = useState([]);
   const [team, setTeam] = useState(Array(6).fill(null));
   const [searchTerm, setSearchTerm] = useState("");
   const [draggedPokemon, setDraggedPokemon] = useState(null);
   const [activeDropId, setActiveDropId] = useState(null);
+  const [isTeamLoaded, setIsTeamLoaded] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -34,24 +38,36 @@ const TeamBuilder = ({ selectedGame, onBack }) => {
     const pokemon = getPokemonByGeneration(selectedGame.generation);
     setAvailablePokemon(pokemon);
 
+    // Reset team state when switching games
+    setTeam(Array(6).fill(null));
+    setIsTeamLoaded(false);
+
     const savedTeam = localStorage.getItem(
-      `team_gen_${selectedGame.generation}`
+      `team_game_${selectedGame.id}`
     );
     if (savedTeam) {
       try {
-        setTeam(JSON.parse(savedTeam));
+        const parsedTeam = JSON.parse(savedTeam);
+        setTeam(parsedTeam);
       } catch (error) {
         console.error("Error loading saved team:", error);
       }
     }
-  }, [selectedGame.generation]);
+    setIsTeamLoaded(true);
+  }, [selectedGame.generation, selectedGame.id]);
 
   useEffect(() => {
-    localStorage.setItem(
-      `team_gen_${selectedGame.generation}`,
-      JSON.stringify(team)
-    );
-  }, [team, selectedGame.generation]);
+    // Only save after the team has been loaded to prevent overwriting saved data
+    if (!isTeamLoaded) return;
+    
+    const teamKey = `team_game_${selectedGame.id}`;
+    
+    try {
+      localStorage.setItem(teamKey, JSON.stringify(team));
+    } catch (error) {
+      console.error('Error saving team to localStorage:', error);
+    }
+  }, [team, selectedGame.id, isTeamLoaded]);
 
   // Filter out Pokémon that are already in the team
   const teamPokemonIds = team.filter((p) => p !== null).map((p) => p.id);
@@ -168,11 +184,7 @@ const TeamBuilder = ({ selectedGame, onBack }) => {
         </main>
       </div>
       <DragOverlay>
-        {draggedPokemon && (
-          <div className="transform rotate-6 scale-110">
-            <PokemonCard pokemon={draggedPokemon} />
-          </div>
-        )}
+        {draggedPokemon && <PokemonDragPreview pokemon={draggedPokemon} />}
       </DragOverlay>
     </DndContext>
   );

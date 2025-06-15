@@ -58,16 +58,24 @@ const PokemonCard = ({
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   useEffect(() => {
-    // Simple and reliable touch detection
+    // Comprehensive touch device detection
     const checkTouchDevice = () => {
       const hasTouch =
         "ontouchstart" in window ||
         navigator.maxTouchPoints > 0 ||
-        navigator.msMaxTouchPoints > 0;
+        navigator.msMaxTouchPoints > 0 ||
+        // Additional checks for mobile devices
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        // Check for small screen sizes (likely mobile)
+        window.innerWidth <= 768;
       setIsTouchDevice(hasTouch);
     };
 
     checkTouchDevice();
+    
+    // Re-check on window resize (for device rotation or window resizing)
+    window.addEventListener('resize', checkTouchDevice);
+    return () => window.removeEventListener('resize', checkTouchDevice);
   }, []);
 
   const uniqueId =
@@ -87,7 +95,7 @@ const PokemonCard = ({
     transform: transform
       ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
       : undefined,
-    opacity: isDragging ? 0.7 : 1,
+    opacity: isDragging ? 0 : 1,
     zIndex: isDragging ? 1000 : "auto",
   };
 
@@ -124,7 +132,8 @@ const PokemonCard = ({
     }
     ${isDragging ? "rotate-2 shadow-2xl border-red-500" : ""}
     ${onTap && canAddToTeam ? "cursor-pointer" : ""}
-    ${isTouchDevice && onTap && canAddToTeam ? " active:scale-95" : ""}
+    ${isTouchDevice && onTap && canAddToTeam ? " active:scale-95 transition-transform" : ""}
+    ${isTouchDevice ? "select-none" : ""}
   `;
 
   if (isCompact) {
