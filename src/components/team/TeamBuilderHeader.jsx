@@ -1,6 +1,7 @@
 import { FiArrowLeft, FiTrash2, FiShuffle } from "react-icons/fi";
 
 const TeamBuilderHeader = ({ onBack, onShuffle, onClear, teamLength }) => {
+
   return (
     <header
       className="bg-gray-800/50 backdrop-blur-sm border-b-2 border-gray-700 sticky top-0 z-40"

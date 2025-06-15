@@ -23,7 +23,6 @@ const TeamSlot = ({ children, id, isEmpty, isOver, pokemon, onRemove }) => {
           ? `Empty team slot ${id + 1}`
           : `Team slot ${id + 1} - ${pokemon?.name}`
       }
-      aria-dropeffect={isEmpty ? "move" : "none"}
     >
       {children || (
         <div className="text-center text-gray-500 transition-all duration-300">
@@ -40,7 +39,7 @@ const TeamSlot = ({ children, id, isEmpty, isOver, pokemon, onRemove }) => {
       {pokemon && onRemove && (
         <button
           onClick={onRemove}
-          className="absolute -top-2 -right-2 sm:-top-3 sm:-right-3 bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-110 z-10"
+          className="absolute -top-2 -left-2 sm:-top-3 sm:-right-3 bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 sm:h-7 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-110 z-10 hover:cursor-pointer "
           aria-label={`Remove ${pokemon.name} from team`}
           title={`Remove ${pokemon.name} from team`}
         >

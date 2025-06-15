@@ -1,4 +1,5 @@
 import { useDraggable } from "@dnd-kit/core";
+import { useState, useEffect } from "react";
 import { TYPE_COLORS } from "../../constants/pokemon";
 
 const TYPE_BORDER_COLORS = {
@@ -43,18 +44,7 @@ const TYPE_ICONS = {
   fairy: "✨",
 };
 
-const StatBar = ({ label, value, maxValue = 255, color }) => (
-  <div className="flex items-center justify-between text-xs">
-    <span className="text-gray-600 font-medium w-8">{label}</span>
-    <span className="text-gray-800 font-bold w-8 text-right">{value}</span>
-    <div className="flex-1 mx-2 bg-gray-200 rounded-full h-2">
-      <div
-        className={`h-2 rounded-full bg-gradient-to-r ${color}`}
-        style={{ width: `${(value / maxValue) * 100}%` }}
-      />
-    </div>
-  </div>
-);
+
 
 const PokemonCard = ({
   pokemon,
@@ -64,21 +54,48 @@ const PokemonCard = ({
   onTap = null,
   canAddToTeam = false,
 }) => {
+  // Detect if device supports touch (mobile/tablet)
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  useEffect(() => {
+    // Comprehensive touch device detection
+    const checkTouchDevice = () => {
+      const hasTouch =
+        "ontouchstart" in window ||
+        navigator.maxTouchPoints > 0 ||
+        navigator.msMaxTouchPoints > 0 ||
+        // Additional checks for mobile devices
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        // Check for small screen sizes (likely mobile)
+        window.innerWidth <= 768;
+      setIsTouchDevice(hasTouch);
+    };
+
+    checkTouchDevice();
+    
+    // Re-check on window resize (for device rotation or window resizing)
+    window.addEventListener('resize', checkTouchDevice);
+    return () => window.removeEventListener('resize', checkTouchDevice);
+  }, []);
+
   const uniqueId =
     dragId || `pokemon-${isDraggable ? "available" : "team"}-${pokemon.id}`;
+
+  // Disable dragging on touch devices completely
+  const shouldEnableDrag = isDraggable && !isTouchDevice;
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: uniqueId,
       data: { pokemon },
-      disabled: !isDraggable,
+      disabled: !shouldEnableDrag,
     });
 
   const style = {
     transform: transform
       ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
       : undefined,
-    opacity: isDragging ? 0.7 : 1,
+    opacity: isDragging ? 0 : 1,
     zIndex: isDragging ? 1000 : "auto",
   };
 
@@ -93,14 +110,30 @@ const PokemonCard = ({
     }
   };
 
+  // Prevent drag on touch devices
+  const handleTouchStart = (e) => {
+    if (isTouchDevice && isDraggable) {
+      e.preventDefault();
+    }
+  };
+
+  const handleDragStart = (e) => {
+    if (isTouchDevice) {
+      e.preventDefault();
+      return false;
+    }
+  };
+
   const draggableClasses = `
     ${
-      isDraggable && !isDragging
+      shouldEnableDrag && !isDragging
         ? " hover:shadow-2xl hover:border-red-500 cursor-grab active:cursor-grabbing"
         : ""
     }
     ${isDragging ? "rotate-2 shadow-2xl border-red-500" : ""}
     ${onTap && canAddToTeam ? "cursor-pointer" : ""}
+    ${isTouchDevice && onTap && canAddToTeam ? " active:scale-95 transition-transform" : ""}
+    ${isTouchDevice ? "select-none" : ""}
   `;
 
   if (isCompact) {
@@ -108,9 +141,12 @@ const PokemonCard = ({
       <div
         ref={setNodeRef}
         style={style}
-        {...(isDraggable ? listeners : {})}
-        {...(isDraggable ? attributes : {})}
+        {...(shouldEnableDrag ? listeners : {})}
+        {...(shouldEnableDrag ? attributes : {})}
         onClick={handleTap}
+        onTouchStart={handleTouchStart}
+        onDragStart={handleDragStart}
+        draggable={shouldEnableDrag}
         className={`${cardBaseClasses} ${draggableClasses} w-full h-full`}
       >
         <div className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 bg-gray-900/50 text-white text-xs px-1.5 py-0.5 sm:px-2 rounded-full font-mono z-10">
@@ -151,9 +187,12 @@ const PokemonCard = ({
     <div
       ref={setNodeRef}
       style={style}
-      {...(isDraggable ? listeners : {})}
-      {...(isDraggable ? attributes : {})}
+      {...(shouldEnableDrag ? listeners : {})}
+      {...(shouldEnableDrag ? attributes : {})}
       onClick={handleTap}
+      onTouchStart={handleTouchStart}
+      onDragStart={handleDragStart}
+      draggable={shouldEnableDrag}
       className={`${cardBaseClasses} ${draggableClasses}`}
     >
       <div

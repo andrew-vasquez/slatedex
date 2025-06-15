@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import GameSelector from "./components/game/GameSelector";
 import TeamBuilder from "./components/team/TeamBuilder";
 import "./index.css";
