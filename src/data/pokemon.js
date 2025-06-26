@@ -17,7 +17,7 @@ export const MAINLINE_GAMES = [
   },
   { 
     id: 2, 
-    name: 'Gold/Silver/Crystal', 
+    name: 'G/S/C', 
     generation: 2, 
     region: 'Johto',
     starters: ['chikorita', 'cyndaquil', 'totodile'],
@@ -25,7 +25,7 @@ export const MAINLINE_GAMES = [
   },
   { 
     id: 3, 
-    name: 'Ruby/Sapphire/Emerald', 
+    name: 'R/S/E', 
     generation: 3, 
     region: 'Hoenn',
     starters: ['treecko', 'torchic', 'mudkip'],
@@ -33,7 +33,7 @@ export const MAINLINE_GAMES = [
   },
   { 
     id: 4, 
-    name: 'Diamond/Pearl/Platinum', 
+    name: 'D/P/PT', 
     generation: 4, 
     region: 'Sinnoh',
     starters: ['turtwig', 'chimchar', 'piplup'],
@@ -41,7 +41,7 @@ export const MAINLINE_GAMES = [
   },
   {
     id:5,
-    name: 'Black/White',
+    name: 'B/W',
     generation: 5,
     region: 'Unova',
     starters: ['snivy', 'tepig', 'oshawott'],
