@@ -1,6 +1,8 @@
+import { useNavigate } from "react-router";
 import { FiArrowLeft, FiTrash2, FiShuffle } from "react-icons/fi";
 
-const TeamBuilderHeader = ({ onBack, onShuffle, onClear, teamLength }) => {
+const TeamBuilderHeader = ({ onShuffle, onClear, teamLength }) => {
+  const navigate = useNavigate();
 
   return (
     <header
@@ -14,7 +16,7 @@ const TeamBuilderHeader = ({ onBack, onShuffle, onClear, teamLength }) => {
             aria-label="Team builder navigation"
           >
             <button
-              onClick={onBack}
+              onClick={() => navigate("/")}
               className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors md:hover:cursor-pointer"
               aria-label="Go back to game selection"
             >

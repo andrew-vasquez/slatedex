@@ -1,27 +1,16 @@
-import { useState } from "react";
-import GameSelector from "./components/game/GameSelector";
-import TeamBuilder from "./components/team/TeamBuilder";
+import { BrowserRouter, Routes, Route } from "react-router";
+import HomePage from "./pages/HomePage";
+import GamePage from "./pages/GamePage";
 import "./index.css";
 
 function App() {
-  const [selectedGame, setSelectedGame] = useState(null);
-
-  const handleGameSelect = (game) => {
-    setSelectedGame(game);
-  };
-
-  const handleBackToGames = () => {
-    setSelectedGame(null);
-  };
-
   return (
-    <>
-      {!selectedGame ? (
-        <GameSelector onGameSelect={handleGameSelect} />
-      ) : (
-        <TeamBuilder selectedGame={selectedGame} onBack={handleBackToGames} />
-      )}
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/game/:gameId" element={<GamePage />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

@@ -19,7 +19,7 @@ import {
   getTeamDefensiveCoverage,
 } from "../../data/pokemon";
 
-const TeamBuilder = ({ selectedGame, onBack }) => {
+const TeamBuilder = ({ selectedGame }) => {
 
 
   const [availablePokemon, setAvailablePokemon] = useState([]);
@@ -146,7 +146,6 @@ const TeamBuilder = ({ selectedGame, onBack }) => {
     >
       <div className="min-h-screen bg-gray-900 text-white font-sans">
         <TeamBuilderHeader
-          onBack={onBack}
           onShuffle={shuffleTeam}
           onClear={clearTeam}
           teamLength={currentTeam.length}

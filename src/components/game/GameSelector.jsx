@@ -1,6 +1,8 @@
+import { useNavigate } from "react-router";
 import { MAINLINE_GAMES, POKEMON_DATA } from "../../data/pokemon";
 
-const GameSelector = ({ onGameSelect }) => {
+const GameSelector = () => {
+  const navigate = useNavigate();
   const getPokemonSprite = (name) => {
     const pokemon = POKEMON_DATA.find(
       (p) => p.name.toLowerCase() === name.toLowerCase()
@@ -53,7 +55,7 @@ const GameSelector = ({ onGameSelect }) => {
           {MAINLINE_GAMES.map((game) => (
             <article
               key={game.id}
-              onClick={() => onGameSelect(game)}
+              onClick={() => navigate(`/game/${game.id}`)}
               className="group relative bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm 
                          border-2 border-gray-600 rounded-2xl overflow-hidden cursor-pointer
                          transition-all duration-500 hover:border-red-500 hover:scale-105 
@@ -65,7 +67,7 @@ const GameSelector = ({ onGameSelect }) => {
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  onGameSelect(game);
+                  navigate(`/game/${game.id}`);
                 }
               }}
             >
