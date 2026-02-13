@@ -1,17 +1,26 @@
 import type { Metadata } from "next";
-import { DM_Sans, JetBrains_Mono } from "next/font/google";
+import { Chakra_Petch, IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
 import "@/app/globals.css";
 
-const sans = DM_Sans({
+const display = Chakra_Petch({
   subsets: ["latin"],
-  variable: "--font-sans",
+  variable: "--font-display",
   display: "swap",
+  weight: ["500", "600", "700"],
+});
+
+const body = IBM_Plex_Sans({
+  subsets: ["latin"],
+  variable: "--font-body",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
 });
 
 const mono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
   display: "swap",
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -35,8 +44,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
+    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`} style={{ colorScheme: "light" }}>
       <head>
+        <meta name="theme-color" content="#f3ecde" />
+        <link rel="preconnect" href="https://raw.githubusercontent.com" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -56,7 +67,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className="font-[family-name:var(--font-sans)] antialiased">{children}</body>
+      <body className="font-body antialiased">
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

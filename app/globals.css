@@ -1,171 +1,300 @@
 @import "tailwindcss";
 
-/* ─── Design tokens ────────────────────────────────────────── */
 :root {
-  --surface-0: #0c0e14;
-  --surface-1: #141722;
-  --surface-2: #1c2030;
-  --surface-3: #252a3a;
-  --border: rgba(255, 255, 255, 0.06);
-  --border-hover: rgba(255, 255, 255, 0.12);
-  --accent: #e53e3e;
-  --accent-glow: rgba(229, 62, 62, 0.35);
-  --text-primary: #f0f0f5;
-  --text-secondary: #8b8fa3;
-  --text-muted: #555972;
-  --glass: rgba(20, 23, 34, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.08);
+  --surface-0: #f3ecde;
+  --surface-1: #fffaf1;
+  --surface-2: #f3ead8;
+  --surface-3: #e6dac4;
+  --surface-4: #d8c6a8;
+  --border: rgba(69, 51, 34, 0.18);
+  --border-hover: rgba(69, 51, 34, 0.3);
+  --border-active: rgba(69, 51, 34, 0.5);
+  --accent: #da2c43;
+  --accent-soft: rgba(218, 44, 67, 0.12);
+  --accent-glow: rgba(218, 44, 67, 0.28);
+  --accent-blue: #176bc1;
+  --accent-blue-soft: rgba(23, 107, 193, 0.12);
+  --text-primary: #1f1a14;
+  --text-secondary: #3f3529;
+  --text-muted: #756a5d;
+  --glass: rgba(255, 248, 236, 0.84);
+  --glass-border: rgba(69, 51, 34, 0.2);
+  --shadow-soft: 0 14px 40px rgba(64, 40, 20, 0.14);
+  --radius: 16px;
 }
 
-/* ─── Base ─────────────────────────────────────────────────── */
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+}
 
 body {
   margin: 0;
+  overflow-x: hidden;
+  color: var(--text-primary);
+  background:
+    radial-gradient(circle at 12% 14%, rgba(218, 44, 67, 0.12), transparent 30%),
+    radial-gradient(circle at 88% 20%, rgba(23, 107, 193, 0.1), transparent 32%),
+    linear-gradient(160deg, #f5eee0 0%, #f3ecde 48%, #ece2cf 100%);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-  background-color: var(--surface-0);
-  color: var(--text-primary);
 }
 
-/* ─── Scrollbars ───────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
+main {
+  position: relative;
+}
+
+::selection {
+  color: #ffffff;
+  background: var(--accent);
+}
+
+.skip-link {
+  position: absolute;
+  top: -48px;
+  left: 16px;
+  z-index: 100;
+  border-radius: 999px;
+  padding: 0.5rem 0.85rem;
+  color: #fff;
+  background: #1f1a14;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus-visible {
+  top: 16px;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(69, 51, 34, 0.06);
+}
+
 ::-webkit-scrollbar-thumb {
-  background: var(--surface-3);
   border-radius: 999px;
+  background: rgba(69, 51, 34, 0.3);
 }
-::-webkit-scrollbar-thumb:hover { background: #3a3f54; }
 
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(69, 51, 34, 0.45);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
+  background: rgba(69, 51, 34, 0.24);
 }
 
-/* ─── Glassmorphism utility ────────────────────────────────── */
 .glass {
   background: var(--glass);
-  backdrop-filter: blur(16px) saturate(1.4);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
   border: 1px solid var(--glass-border);
 }
 
-/* ─── Focus & accessibility ────────────────────────────────── */
+.panel {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-soft);
+}
+
+.panel-soft {
+  border-radius: calc(var(--radius) - 4px);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.font-display {
+  font-family: var(--font-display), sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.font-body {
+  font-family: var(--font-body), sans-serif;
+}
+
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* ─── Buttons ──────────────────────────────────────────────── */
 .btn-secondary {
-  @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
-         transition-all duration-200 cursor-pointer;
-  background: var(--surface-3);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
+  @apply inline-flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold cursor-pointer;
+  color: var(--text-secondary);
+  background: rgba(69, 51, 34, 0.08);
+  border: 1px solid rgba(69, 51, 34, 0.18);
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
+
 .btn-secondary:hover {
-  background: #2f3548;
-  border-color: var(--border-hover);
   transform: translateY(-1px);
+  background: rgba(69, 51, 34, 0.14);
+  border-color: var(--border-hover);
 }
 
 .btn-danger {
-  @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
-         transition-all duration-200 cursor-pointer;
-  background: rgba(229, 62, 62, 0.15);
-  color: #f87171;
-  border: 1px solid rgba(229, 62, 62, 0.2);
-}
-.btn-danger:hover {
-  background: rgba(229, 62, 62, 0.25);
-  border-color: rgba(229, 62, 62, 0.4);
-  transform: translateY(-1px);
+  @apply inline-flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold cursor-pointer;
+  color: #a5132d;
+  background: var(--accent-soft);
+  border: 1px solid rgba(218, 44, 67, 0.24);
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
 
-/* ─── Stat bar fill ────────────────────────────────────────── */
+.btn-danger:hover {
+  transform: translateY(-1px);
+  background: rgba(218, 44, 67, 0.2);
+  border-color: rgba(218, 44, 67, 0.36);
+}
+
+.card {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+}
+
 .stat-bar {
   height: 4px;
   border-radius: 999px;
-  background: var(--surface-3);
+  background: rgba(69, 51, 34, 0.14);
   overflow: hidden;
 }
+
 .stat-bar-fill {
   height: 100%;
   border-radius: 999px;
-  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* ─── Shimmer skeleton ─────────────────────────────────────── */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -220% 0;
+  }
+
+  100% {
+    background-position: 220% 0;
+  }
 }
+
 .skeleton {
+  border-radius: 6px;
   background: linear-gradient(
     90deg,
-    var(--surface-2) 0%,
-    var(--surface-3) 40%,
-    var(--surface-2) 80%
+    rgba(69, 51, 34, 0.07) 0%,
+    rgba(69, 51, 34, 0.16) 42%,
+    rgba(69, 51, 34, 0.07) 80%
   );
-  background-size: 200% 100%;
-  animation: shimmer 1.8s ease-in-out infinite;
-  border-radius: 8px;
+  background-size: 220% 100%;
+  animation: shimmer 1.9s ease-in-out infinite;
 }
 
-/* ─── Staggered fade-in for card grids ─────────────────────── */
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(16px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
+
 .animate-fade-in-up {
-  animation: fadeInUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* ─── Pokeball pulse for empty slots ───────────────────────── */
 @keyframes pokepulse {
-  0%, 100% { opacity: 0.15; transform: scale(1); }
-  50% { opacity: 0.25; transform: scale(1.06); }
-}
-.pokeball-pulse {
-  animation: pokepulse 3s ease-in-out infinite;
+  0%,
+  100% {
+    opacity: 0.16;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.36;
+    transform: scale(1.05);
+  }
 }
 
-/* ─── Glow ring for active drop zones ──────────────────────── */
-@keyframes glowRing {
-  0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
-  50% { box-shadow: 0 0 0 6px transparent; }
+.pokeball-pulse {
+  animation: pokepulse 2.8s ease-in-out infinite;
 }
+
+@keyframes glowRing {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--accent-glow);
+  }
+
+  50% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+}
+
 .drop-glow {
   animation: glowRing 1.2s ease-in-out infinite;
 }
 
-/* ─── Drag ghost ───────────────────────────────────────────── */
 .sortable-ghost {
-  opacity: 0.4;
-  transform: rotate(3deg);
+  opacity: 0.35;
+  transform: rotate(2deg);
 }
 
-/* ─── Mobile ───────────────────────────────────────────────── */
+.heatmap-cell {
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+.heatmap-cell:hover {
+  transform: translateY(-1px) scale(1.06);
+  z-index: 10;
+  box-shadow: 0 0 0 2px rgba(31, 26, 20, 0.16);
+}
+
+.pokemon-list-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 70px;
+}
+
 @media (max-width: 768px) {
-  button { min-height: 44px; }
-  .custom-scrollbar { -webkit-overflow-scrolling: touch; }
-  input[type="text"], input[type="search"] { font-size: 16px; }
+  button {
+    min-height: 42px;
+  }
+
+  .custom-scrollbar {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  input[type="text"],
+  input[type="search"] {
+    font-size: 16px;
+  }
 }
 
-/* ─── Reduced motion ───────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }

@@ -7,7 +7,7 @@ import type { Game } from "@/lib/types";
 export const MAINLINE_GAMES: Game[] = [
   {
     id: 1,
-    name: "R/B/Y",
+    name: "Red/Blue/Yellow",
     generation: 1,
     region: "Kanto",
     starters: ["bulbasaur", "charmander", "squirtle"],
@@ -15,7 +15,7 @@ export const MAINLINE_GAMES: Game[] = [
   },
   {
     id: 2,
-    name: "G/S/C",
+    name: "Gold/Silver/Crystal",
     generation: 2,
     region: "Johto",
     starters: ["chikorita", "cyndaquil", "totodile"],
@@ -23,7 +23,7 @@ export const MAINLINE_GAMES: Game[] = [
   },
   {
     id: 3,
-    name: "R/S/E",
+    name: "Ruby/Sapphire/Emerald",
     generation: 3,
     region: "Hoenn",
     starters: ["treecko", "torchic", "mudkip"],
@@ -31,7 +31,7 @@ export const MAINLINE_GAMES: Game[] = [
   },
   {
     id: 4,
-    name: "D/P/PT",
+    name: "Diamond/Pearl/Platinum",
     generation: 4,
     region: "Sinnoh",
     starters: ["turtwig", "chimchar", "piplup"],
@@ -39,7 +39,7 @@ export const MAINLINE_GAMES: Game[] = [
   },
   {
     id: 5,
-    name: "B/W",
+    name: "Black/White",
     generation: 5,
     region: "Unova",
     starters: ["snivy", "tepig", "oshawott"],

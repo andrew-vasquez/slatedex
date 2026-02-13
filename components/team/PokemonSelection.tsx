@@ -1,6 +1,6 @@
 "use client";
 
-import { FiSearch } from "react-icons/fi";
+import { FiSearch, FiX } from "react-icons/fi";
 import PokemonCard from "@/components/ui/PokemonCard";
 import type { Pokemon } from "@/lib/types";
 
@@ -20,75 +20,85 @@ const PokemonSelection = ({
   currentTeamLength,
 }: PokemonSelectionProps) => {
   return (
-    <section
-      className="rounded-2xl p-5 sm:p-6"
-      style={{ background: "var(--surface-1)", border: "1px solid var(--border)" }}
-      aria-labelledby="available-pokemon-heading"
-    >
-      {/* Header row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+    <section className="panel p-4 sm:p-5" aria-labelledby="available-pokemon-heading">
+      <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
-          <h2
-            id="available-pokemon-heading"
-            className="text-base sm:text-lg font-semibold"
-            style={{ color: "var(--text-primary)" }}
-          >
-            Available Pokémon
+          <h2 id="available-pokemon-heading" className="font-display text-lg" style={{ color: "var(--text-primary)" }}>
+            Step 1: Pick Pokémon
           </h2>
           <span
-            className="text-[0.65rem] font-medium tabular-nums px-2 py-0.5 rounded-md"
-            style={{ background: "var(--surface-3)", color: "var(--text-muted)" }}
+            className="rounded-md px-2 py-0.5 text-[0.65rem] font-semibold tabular-nums"
+            style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
             aria-label={`${filteredPokemon.length} Pokémon available`}
           >
             {filteredPokemon.length}
           </span>
         </div>
 
-        {/* Search */}
-        <div className="relative w-full sm:w-56">
-          <label htmlFor="pokemon-search" className="sr-only">Search Pokémon</label>
+        <div className="relative w-full sm:w-72">
+          <label htmlFor="pokemon-search" className="sr-only">
+            Search Pokémon
+          </label>
           <FiSearch
-            className="absolute left-3 top-1/2 -translate-y-1/2"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
             size={14}
             style={{ color: "var(--text-muted)" }}
             aria-hidden="true"
           />
+
           <input
             id="pokemon-search"
-            type="text"
-            placeholder="Search…"
+            name="pokemon-search"
+            type="search"
+            placeholder="Search by name"
             value={searchTerm}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
-            className="pl-8 pr-3 py-2 w-full rounded-lg text-sm transition-all duration-200
-                       focus:ring-2 focus:ring-red-500/40 focus:border-transparent"
+            autoComplete="off"
+            spellCheck={false}
+            className="w-full rounded-xl py-2 pl-8 pr-8 text-sm"
             style={{
               background: "var(--surface-2)",
               border: "1px solid var(--border)",
               color: "var(--text-primary)",
             }}
           />
+
+          {searchTerm.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onSearchChange("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1"
+              style={{ color: "var(--text-muted)" }}
+              aria-label="Clear search"
+            >
+              <FiX size={14} aria-hidden="true" />
+            </button>
+          )}
         </div>
       </div>
 
-      {currentTeamLength < 6 && (
-        <p className="text-[0.7rem] mb-4" style={{ color: "var(--text-muted)" }}>
-          Tap or drag a Pokémon to add it to your team
-        </p>
-      )}
+      <p className="mb-3 text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
+        {currentTeamLength < 6
+          ? "Tap or drag a card to place it into your team slots."
+          : "Your team is full. Remove a member to add another Pokémon."}
+      </p>
 
-      {/* Pokemon grid */}
       <div
-        className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[50vh] sm:max-h-[calc(100vh-280px)] overflow-y-auto pr-1 custom-scrollbar"
+        className="grid max-h-[50vh] grid-cols-1 gap-2.5 overflow-y-auto pr-1 custom-scrollbar sm:max-h-[calc(100vh-360px)] sm:grid-cols-2"
         role="list"
         aria-label="Available Pokémon"
       >
-        {filteredPokemon.map((pokemon: Pokemon, i: number) => (
+        {filteredPokemon.length === 0 && (
           <div
-            key={pokemon.id}
-            role="listitem"
-            className="animate-fade-in-up"
-            style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
+            className="rounded-xl px-4 py-6 text-center text-sm sm:col-span-2"
+            style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
           >
+            No matching Pokémon found. Try a different name.
+          </div>
+        )}
+
+        {filteredPokemon.map((pokemon: Pokemon, i: number) => (
+          <div key={pokemon.id} role="listitem" className="animate-fade-in-up pokemon-list-item" style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
             <PokemonCard
               pokemon={pokemon}
               dragId={`available-${pokemon.id}`}
