@@ -85,7 +85,7 @@ const PokemonCard = ({
       >
         <span
           className="absolute right-1.5 top-1.5 rounded px-1 py-0.5 font-mono text-[0.55rem] font-medium"
-          style={{ background: "rgba(69, 51, 34, 0.1)", color: "var(--text-muted)" }}
+          style={{ background: "rgba(148, 163, 184, 0.14)", color: "var(--text-muted)" }}
         >
           #{pokemon.id.toString().padStart(3, "0")}
         </span>

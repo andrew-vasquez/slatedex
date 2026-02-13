@@ -14,8 +14,8 @@ interface TeamRecommendationsProps {
   recommendations: Recommendation[];
   exposedTypes: string[];
   teamFull: boolean;
-  finalEvolutionOnly: boolean;
-  onToggleFinalEvolutionOnly: (enabled: boolean) => void;
+  recommendationsEnabled: boolean;
+  onToggleRecommendations: (enabled: boolean) => void;
   onAddPokemon: (pokemon: Pokemon) => void;
 }
 
@@ -23,8 +23,8 @@ const TeamRecommendations = ({
   recommendations,
   exposedTypes,
   teamFull,
-  finalEvolutionOnly,
-  onToggleFinalEvolutionOnly,
+  recommendationsEnabled,
+  onToggleRecommendations,
   onAddPokemon,
 }: TeamRecommendationsProps) => {
   return (
@@ -35,7 +35,7 @@ const TeamRecommendations = ({
             Smart Picks
           </h2>
           <p className="mt-0.5 text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
-            Ranked by how well each Pokémon patches your current exposed matchups.
+            Ranked by how well each final-evolution or single-stage Pokémon patches your exposed matchups.
           </p>
         </div>
 
@@ -43,25 +43,25 @@ const TeamRecommendations = ({
           <button
             type="button"
             role="switch"
-            aria-checked={finalEvolutionOnly}
-            onClick={() => onToggleFinalEvolutionOnly(!finalEvolutionOnly)}
-            className="relative inline-flex h-6 w-11 items-center rounded-full p-1"
+            aria-checked={recommendationsEnabled}
+            onClick={() => onToggleRecommendations(!recommendationsEnabled)}
+            className="relative inline-flex h-6 w-11 items-center rounded-full p-1 md:hover:cursor-pointer"
             style={{
-              background: finalEvolutionOnly ? "rgba(19, 111, 58, 0.25)" : "rgba(69, 51, 34, 0.2)",
-              border: `1px solid ${finalEvolutionOnly ? "rgba(19, 111, 58, 0.4)" : "rgba(69, 51, 34, 0.3)"}`,
+              background: recommendationsEnabled ? "rgba(19, 111, 58, 0.25)" : "rgba(148, 163, 184, 0.14)",
+              border: `1px solid ${recommendationsEnabled ? "rgba(19, 111, 58, 0.4)" : "rgba(148, 163, 184, 0.3)"}`,
               transition: "background 0.2s ease, border-color 0.2s ease",
             }}
           >
             <span
-              className="h-4 w-4 rounded-full"
+              className="h-4 w-4 rounded-full md:hover:cursor-pointer"
               style={{
-                background: finalEvolutionOnly ? "#136f3a" : "#6f6558",
-                transform: finalEvolutionOnly ? "translateX(20px)" : "translateX(0)",
+                background: recommendationsEnabled ? "#136f3a" : "#94a3b8",
+                transform: recommendationsEnabled ? "translateX(20px)" : "translateX(0)",
                 transition: "transform 0.2s ease, background 0.2s ease",
               }}
             />
           </button>
-          Final evolutions only
+          Smart picks on
         </label>
       </div>
 
@@ -83,9 +83,13 @@ const TeamRecommendations = ({
         </div>
       )}
 
-      {recommendations.length === 0 ? (
+      {!recommendationsEnabled ? (
         <div className="panel-soft mt-3 p-3 text-sm" style={{ color: "var(--text-secondary)" }}>
-          No recommendation found with the current filter. Try turning off final-evolution-only.
+          Smart picks are currently turned off.
+        </div>
+      ) : recommendations.length === 0 ? (
+        <div className="panel-soft mt-3 p-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+          No final-evolution recommendations fit your current team right now.
         </div>
       ) : (
         <div className="mt-3 grid grid-cols-1 gap-2.5 lg:grid-cols-3">

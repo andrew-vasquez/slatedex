@@ -42,12 +42,40 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
 };
 
+const themeInitScript = `
+  (function () {
+    try {
+      var savedTheme = localStorage.getItem("theme");
+      var systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      var resolvedTheme = savedTheme === "light" || savedTheme === "dark"
+        ? savedTheme
+        : (systemPrefersDark ? "dark" : "light");
+
+      var root = document.documentElement;
+      root.dataset.theme = resolvedTheme;
+      root.style.colorScheme = resolvedTheme;
+
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", resolvedTheme === "dark" ? "#060914" : "#f3ecde");
+    } catch (e) {
+      document.documentElement.dataset.theme = "dark";
+      document.documentElement.style.colorScheme = "dark";
+    }
+  })();
+`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`} style={{ colorScheme: "dark" }}>
+    <html
+      lang="en"
+      className={`${display.variable} ${body.variable} ${mono.variable}`}
+      style={{ colorScheme: "dark" }}
+      suppressHydrationWarning
+    >
       <head>
         <meta name="theme-color" content="#060914" />
         <link rel="preconnect" href="https://raw.githubusercontent.com" />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

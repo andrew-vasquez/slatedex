@@ -20,7 +20,7 @@ const TeamSlot = ({ children, id, isEmpty, isOver, pokemon, onRemove }: TeamSlot
   if (isOver) {
     border = "2px solid rgba(218, 44, 67, 0.4)";
   } else if (isEmpty) {
-    border = "2px dashed rgba(69, 51, 34, 0.28)";
+    border = "2px dashed rgba(148, 163, 184, 0.32)";
   }
 
   return (

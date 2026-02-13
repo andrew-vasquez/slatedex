@@ -2,7 +2,7 @@
 
 import { FiSearch, FiX } from "react-icons/fi";
 import PokemonCard from "@/components/ui/PokemonCard";
-import type { Pokemon } from "@/lib/types";
+import type { DexMode, Pokemon } from "@/lib/types";
 
 interface PokemonSelectionProps {
   filteredPokemon: Pokemon[];
@@ -10,6 +10,11 @@ interface PokemonSelectionProps {
   onSearchChange: (value: string) => void;
   onAddPokemon: (pokemon: Pokemon) => void;
   currentTeamLength: number;
+  dexMode: DexMode;
+  onDexModeChange: (mode: DexMode) => void;
+  regionalAvailable: boolean;
+  dexNotice: string | null;
+  generation: number;
 }
 
 const PokemonSelection = ({
@@ -18,6 +23,11 @@ const PokemonSelection = ({
   onSearchChange,
   onAddPokemon,
   currentTeamLength,
+  dexMode,
+  onDexModeChange,
+  regionalAvailable,
+  dexNotice,
+  generation,
 }: PokemonSelectionProps) => {
   return (
     <section className="panel p-4 sm:p-5" aria-labelledby="available-pokemon-heading">
@@ -35,47 +45,91 @@ const PokemonSelection = ({
           </span>
         </div>
 
-        <div className="relative w-full sm:w-72">
-          <label htmlFor="pokemon-search" className="sr-only">
-            Search Pokémon
-          </label>
-          <FiSearch
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
-            size={14}
-            style={{ color: "var(--text-muted)" }}
-            aria-hidden="true"
-          />
-
-          <input
-            id="pokemon-search"
-            name="pokemon-search"
-            type="search"
-            placeholder="Search by name"
-            value={searchTerm}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
-            autoComplete="off"
-            spellCheck={false}
-            className="w-full rounded-xl py-2 pl-8 pr-8 text-sm"
-            style={{
-              background: "var(--surface-2)",
-              border: "1px solid var(--border)",
-              color: "var(--text-primary)",
-            }}
-          />
-
-          {searchTerm.length > 0 && (
+        <div className="w-full sm:w-72">
+          <div className="mb-2 inline-flex w-full rounded-xl border p-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
             <button
               type="button"
-              onClick={() => onSearchChange("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1"
-              style={{ color: "var(--text-muted)" }}
-              aria-label="Clear search"
+              onClick={() => onDexModeChange("regional")}
+              disabled={!regionalAvailable}
+              aria-pressed={dexMode === "regional"}
+              className="flex-1 rounded-lg px-2 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em] disabled:pointer-events-none disabled:opacity-45"
+              style={{
+                background: dexMode === "regional" ? "var(--accent-soft)" : "transparent",
+                color: dexMode === "regional" ? "var(--text-primary)" : "var(--text-muted)",
+                border: dexMode === "regional" ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
+              }}
             >
-              <FiX size={14} aria-hidden="true" />
+              Regional
             </button>
-          )}
+            <button
+              type="button"
+              onClick={() => onDexModeChange("national")}
+              aria-pressed={dexMode === "national"}
+              className="flex-1 rounded-lg px-2 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em]"
+              style={{
+                background: dexMode === "national" ? "var(--accent-soft)" : "transparent",
+                color: dexMode === "national" ? "var(--text-primary)" : "var(--text-muted)",
+                border: dexMode === "national" ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
+              }}
+            >
+              National
+            </button>
+          </div>
+
+          <div className="relative">
+            <label htmlFor="pokemon-search" className="sr-only">
+              Search Pokémon
+            </label>
+            <FiSearch
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+              size={14}
+              style={{ color: "var(--text-muted)" }}
+              aria-hidden="true"
+            />
+
+            <input
+              id="pokemon-search"
+              name="pokemon-search"
+              type="search"
+              placeholder="Search by name"
+              value={searchTerm}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+              className="w-full rounded-xl py-2 pl-8 pr-8 text-sm"
+              style={{
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                color: "var(--text-primary)",
+              }}
+            />
+
+            {searchTerm.length > 0 && (
+              <button
+                type="button"
+                onClick={() => onSearchChange("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1"
+                style={{ color: "var(--text-muted)" }}
+                aria-label="Clear search"
+              >
+                <FiX size={14} aria-hidden="true" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
+
+      <p className="mb-2 text-[0.68rem]" style={{ color: "var(--text-muted)" }}>
+        {dexMode === "regional"
+          ? "Showing Regional Pokédex entries for this game."
+          : `Showing National Pokédex up to Generation ${generation}.`}
+      </p>
+
+      {dexNotice && (
+        <p className="mb-2 text-[0.68rem]" style={{ color: "#fca5a5" }}>
+          {dexNotice}
+        </p>
+      )}
 
       <p className="mb-3 text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
         {currentTeamLength < 6

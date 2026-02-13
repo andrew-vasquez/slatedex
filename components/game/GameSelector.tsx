@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { MAINLINE_GAMES } from "@/lib/pokemon";
 import type { Game } from "@/lib/types";
+import ThemeMenu from "@/components/ui/ThemeMenu";
 
 const getSpriteUrl = (name: string): string => {
   const SPRITE_IDS: Record<string, number> = {
@@ -59,7 +60,11 @@ const GameSelector = () => {
           <div className="absolute top-12 right-0 h-60 w-60 rounded-full border border-[var(--border)] bg-[var(--accent-blue-soft)]" />
         </div>
 
-        <div className="relative mx-auto max-w-6xl px-4 pt-16 sm:px-8 sm:pt-20">
+        <div className="relative mx-auto flex max-w-6xl justify-end px-4 pt-7 sm:px-8 sm:pt-8">
+          <ThemeMenu className="theme-menu-home-sticky" />
+        </div>
+
+        <div className="relative mx-auto max-w-6xl px-4 pt-3 sm:px-8 sm:pt-4">
           <div className="panel overflow-hidden p-6 sm:p-9">
             <p className="font-display text-xs font-semibold uppercase tracking-[0.22em]" style={{ color: "var(--text-muted)" }}>
               Pokédex Planning Lab

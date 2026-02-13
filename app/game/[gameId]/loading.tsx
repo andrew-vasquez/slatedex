@@ -89,7 +89,7 @@ export default function Loading() {
             </div>
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex aspect-square items-center justify-center rounded-xl border-2" style={{ borderStyle: "dashed", borderColor: "rgba(69, 51, 34, 0.28)", background: "var(--surface-2)" }}>
+                <div key={i} className="flex aspect-square items-center justify-center rounded-xl border-2" style={{ borderStyle: "dashed", borderColor: "rgba(148, 163, 184, 0.32)", background: "var(--surface-2)" }}>
                   <div className="skeleton h-8 w-8 rounded-full" />
                 </div>
               ))}

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { Game } from "@/lib/types";
 import { notFound } from "next/navigation";
 import { MAINLINE_GAMES } from "@/lib/pokemon";
-import { getPokemonByGeneration } from "@/lib/pokeapi";
+import { getPokemonPoolsForGame } from "@/lib/pokeapi";
 import TeamBuilder from "@/components/team/TeamBuilder";
 
 export async function generateStaticParams() {
@@ -31,11 +31,11 @@ export default async function GamePage({ params }: { params: Promise<{ gameId: s
   }
 
   // Server-side data fetching — no waterfalls (§1.4)
-  const pokemonData = await getPokemonByGeneration(game.generation);
+  const pokemonPools = await getPokemonPoolsForGame(game);
 
   return (
     <div className="min-h-screen" style={{ background: "var(--surface-0)" }}>
-      <TeamBuilder selectedGame={game} pokemonData={pokemonData} />
+      <TeamBuilder selectedGame={game} pokemonPools={pokemonPools} />
     </div>
   );
 }

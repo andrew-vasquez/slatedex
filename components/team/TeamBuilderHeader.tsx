@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FiArrowLeft, FiTrash2, FiShuffle } from "react-icons/fi";
 import type { Game } from "@/lib/types";
+import ThemeMenu from "@/components/ui/ThemeMenu";
 
 interface TeamBuilderHeaderProps {
   game: Game;
@@ -48,7 +49,7 @@ const TeamBuilderHeader = ({ game, onShuffle, onClear, teamLength }: TeamBuilder
             </div>
 
             <div className="mt-2 flex items-center gap-2.5">
-              <div className="h-1.5 w-36 overflow-hidden rounded-full" style={{ background: "rgba(69, 51, 34, 0.14)" }}>
+              <div className="h-1.5 w-36 overflow-hidden rounded-full" style={{ background: "rgba(148, 163, 184, 0.24)" }}>
                 <div
                   className="h-full rounded-full"
                   style={{
@@ -83,6 +84,7 @@ const TeamBuilderHeader = ({ game, onShuffle, onClear, teamLength }: TeamBuilder
               <FiTrash2 size={14} aria-hidden="true" />
               Clear Team
             </button>
+            <ThemeMenu />
           </div>
         </div>
       </div>

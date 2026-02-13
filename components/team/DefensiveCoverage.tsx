@@ -32,7 +32,7 @@ const TYPE_HEX: Record<string, string> = {
 
 const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
   const [hoveredType, setHoveredType] = useState<string | null>(null);
-  const [pinnedType, setPinnedType] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
 
   const typeSummaries = useMemo(
     () =>
@@ -63,7 +63,7 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
     .slice(0, 3);
 
   const fallbackType = pressurePoints[0]?.type || safePivots[0]?.type || ALL_TYPES[0];
-  const activeType = hoveredType || pinnedType || fallbackType;
+  const activeType = hoveredType || selectedType || fallbackType;
   const activeData = typeSummaries.find((item) => item.type === activeType) || typeSummaries[0];
 
   const getCellBg = (net: number, weakCount: number, resistCount: number): string => {
@@ -75,7 +75,7 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
   };
 
   const getCellBorder = (net: number, weakCount: number, resistCount: number): string => {
-    if (weakCount === 0 && resistCount === 0) return "rgba(69, 51, 34, 0.16)";
+    if (weakCount === 0 && resistCount === 0) return "rgba(148, 163, 184, 0.25)";
     if (net >= 1) return "rgba(19, 111, 58, 0.4)";
     if (net >= 0) return "rgba(196, 126, 31, 0.38)";
     return "rgba(185, 28, 28, 0.4)";
@@ -97,7 +97,7 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
 
   const previewType = (type: string) => setHoveredType(type);
   const clearPreview = () => setHoveredType(null);
-  const pinType = (type: string) => setPinnedType((prev) => (prev === type ? null : type));
+  const selectType = (type: string) => setSelectedType(type);
 
   return (
     <div className="panel p-4 sm:p-5">
@@ -107,7 +107,7 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
             Step 3: Type Coverage
           </h3>
           <p className="mt-0.5 text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
-            Hover any type to preview details. Click a type to keep it selected.
+            Hover to preview, click to lock a type.
           </p>
         </div>
 
@@ -130,25 +130,29 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {pressurePoints.length > 0 ? (
-              pressurePoints.map((item) => (
-                <button
-                  key={item.type}
-                  type="button"
-                  onMouseEnter={() => previewType(item.type)}
-                  onMouseLeave={clearPreview}
-                  onFocus={() => previewType(item.type)}
-                  onBlur={clearPreview}
-                  onClick={() => pinType(item.type)}
-                  className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold capitalize"
-                  style={{
-                    background: "rgba(185, 28, 28, 0.12)",
-                    border: "1px solid rgba(185, 28, 28, 0.26)",
-                    color: "#fca5a5",
-                  }}
-                >
-                  {item.type} ({item.weakCount} weak)
-                </button>
-              ))
+              pressurePoints.map((item) => {
+                const isActive = item.type === activeType;
+                return (
+                  <button
+                    key={item.type}
+                    type="button"
+                    onMouseEnter={() => previewType(item.type)}
+                    onMouseLeave={clearPreview}
+                    onFocus={() => previewType(item.type)}
+                    onBlur={clearPreview}
+                    onClick={() => selectType(item.type)}
+                    className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold capitalize"
+                    style={{
+                      background: isActive ? "rgba(185, 28, 28, 0.18)" : "rgba(185, 28, 28, 0.12)",
+                      border: isActive ? "1px solid rgba(248, 113, 113, 0.45)" : "1px solid rgba(185, 28, 28, 0.26)",
+                      color: "#fca5a5",
+                      boxShadow: isActive ? "0 0 0 2px rgba(248, 113, 113, 0.2)" : undefined,
+                    }}
+                  >
+                    {item.type} ({item.weakCount} weak)
+                  </button>
+                );
+              })
             ) : (
               <span className="text-[0.7rem]" style={{ color: "var(--text-muted)" }}>
                 No major weak points detected.
@@ -163,25 +167,29 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {safePivots.length > 0 ? (
-              safePivots.map((item) => (
-                <button
-                  key={item.type}
-                  type="button"
-                  onMouseEnter={() => previewType(item.type)}
-                  onMouseLeave={clearPreview}
-                  onFocus={() => previewType(item.type)}
-                  onBlur={clearPreview}
-                  onClick={() => pinType(item.type)}
-                  className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold capitalize"
-                  style={{
-                    background: "rgba(19, 111, 58, 0.12)",
-                    border: "1px solid rgba(19, 111, 58, 0.26)",
-                    color: "#86efac",
-                  }}
-                >
-                  {item.type} (+{Math.max(item.net, 0)})
-                </button>
-              ))
+              safePivots.map((item) => {
+                const isActive = item.type === activeType;
+                return (
+                  <button
+                    key={item.type}
+                    type="button"
+                    onMouseEnter={() => previewType(item.type)}
+                    onMouseLeave={clearPreview}
+                    onFocus={() => previewType(item.type)}
+                    onBlur={clearPreview}
+                    onClick={() => selectType(item.type)}
+                    className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold capitalize"
+                    style={{
+                      background: isActive ? "rgba(19, 111, 58, 0.18)" : "rgba(19, 111, 58, 0.12)",
+                      border: isActive ? "1px solid rgba(134, 239, 172, 0.45)" : "1px solid rgba(19, 111, 58, 0.26)",
+                      color: "#86efac",
+                      boxShadow: isActive ? "0 0 0 2px rgba(74, 222, 128, 0.2)" : undefined,
+                    }}
+                  >
+                    {item.type} (+{Math.max(item.net, 0)})
+                  </button>
+                );
+              })
             ) : (
               <span className="text-[0.7rem]" style={{ color: "var(--text-muted)" }}>
                 Add more resistances to stabilize matchups.
@@ -205,13 +213,16 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
                   style={{
                     background: getCellBg(net, weakCount, resistCount),
                     border: `1px solid ${getCellBorder(net, weakCount, resistCount)}`,
-                    boxShadow: isActive ? "inset 0 0 0 2px rgba(31, 26, 20, 0.35)" : undefined,
+                    boxShadow: isActive
+                      ? "0 0 0 2px var(--heatmap-ring), inset 0 0 0 1px rgba(226, 232, 240, 0.22)"
+                      : undefined,
+                    transform: isActive ? "translateY(-1px) scale(1.06)" : undefined,
                   }}
                   onMouseEnter={() => previewType(type)}
                   onMouseLeave={clearPreview}
                   onFocus={() => previewType(type)}
                   onBlur={clearPreview}
-                  onClick={() => pinType(type)}
+                  onClick={() => selectType(type)}
                   aria-label={`${type}: ${weakCount} weak, ${resistCount} resist`}
                 >
                   <div className="mb-1 h-3.5 w-3.5 rounded-full" style={{ background: TYPE_HEX[type] }} />
