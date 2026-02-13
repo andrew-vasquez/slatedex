@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useCallback } from "react";
-import type { Dispatch, KeyboardEvent, PointerEvent, SetStateAction } from "react";
+import type { Dispatch, KeyboardEvent, SetStateAction } from "react";
 import type { Pokemon } from "@/lib/types";
 
 interface Recommendation {
@@ -33,8 +33,8 @@ const TeamRecommendations = ({
     onToggleRecommendations((prev) => !prev);
   }, [onToggleRecommendations]);
 
-  const handleTogglePointerUp = useCallback(
-    (event: PointerEvent<HTMLButtonElement>) => {
+  const handleToggleClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       toggleRecommendations();
     },
@@ -67,7 +67,7 @@ const TeamRecommendations = ({
           role="switch"
           aria-checked={recommendationsEnabled}
           aria-label="Toggle smart picks"
-          onPointerUp={handleTogglePointerUp}
+          onClick={handleToggleClick}
           onKeyDown={handleToggleKeyDown}
           className="inline-flex w-full items-center justify-between gap-2 rounded-xl border px-2.5 py-1.5 text-left sm:w-auto sm:justify-normal sm:rounded-full"
           style={{
