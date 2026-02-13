@@ -1,8 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { FiArrowLeft, FiTrash2, FiShuffle } from "react-icons/fi";
 import type { Game } from "@/lib/types";
+import ThemeMenu from "@/components/ui/ThemeMenu";
 
 interface TeamBuilderHeaderProps {
   game: Game;
@@ -12,63 +13,78 @@ interface TeamBuilderHeaderProps {
 }
 
 const TeamBuilderHeader = ({ game, onShuffle, onClear, teamLength }: TeamBuilderHeaderProps) => {
-  const router = useRouter();
+  const completion = Math.round((teamLength / 6) * 100);
 
   return (
-    <header className="glass sticky top-0 z-40 border-b border-[var(--border)]" role="banner">
-      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 py-3">
-        <div className="flex items-center justify-between gap-3">
-          {/* Left: Back + game context */}
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-            <button
-              onClick={() => router.push("/")}
-              className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-200 cursor-pointer shrink-0"
-              style={{ background: "var(--surface-3)" }}
-              aria-label="Go back to game selection"
-            >
-              <FiArrowLeft size={16} style={{ color: "var(--text-secondary)" }} />
-            </button>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm sm:text-base truncate" style={{ color: "var(--text-primary)" }}>
-                  {game.name}
-                </span>
-                <span
-                  className="text-[0.6rem] font-medium tracking-wider uppercase px-2 py-0.5 rounded shrink-0"
-                  style={{ background: "var(--surface-3)", color: "var(--text-muted)" }}
-                >
-                  {game.region}
-                </span>
+    <header className="glass sticky top-0 z-40 border-b" style={{ borderColor: "var(--border)" }} role="banner">
+      <div className="mx-auto max-w-screen-xl px-4 py-3 sm:px-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5">
+              <Link
+                href="/"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-xl"
+                style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                aria-label="Go back to game selection"
+              >
+                <FiArrowLeft size={14} aria-hidden="true" />
+              </Link>
+
+              <div className="min-w-0">
+                <p className="font-display text-[0.62rem] uppercase tracking-[0.2em]" style={{ color: "var(--text-muted)" }}>
+                  Team Builder
+                </p>
+                <div className="flex min-w-0 items-center gap-2">
+                  <h1 className="font-display truncate text-base sm:text-lg" style={{ color: "var(--text-primary)" }}>
+                    {game.name}
+                  </h1>
+                  <span
+                    className="rounded-md px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]"
+                    style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
+                  >
+                    {game.region}
+                  </span>
+                </div>
               </div>
+            </div>
+
+            <div className="mt-2 flex items-center gap-2.5">
+              <div className="h-1.5 w-36 overflow-hidden rounded-full" style={{ background: "rgba(148, 163, 184, 0.24)" }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${completion}%`,
+                    background: "linear-gradient(90deg, var(--accent) 0%, #ef6f40 100%)",
+                    transition: "width 0.3s ease",
+                  }}
+                />
+              </div>
+              <span className="text-[0.65rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                {teamLength}/6 slots filled
+              </span>
             </div>
           </div>
 
-          {/* Right: Team counter + actions */}
-          <div className="flex items-center gap-2 sm:gap-3" role="toolbar" aria-label="Team management">
-            <span
-              className="text-xs font-medium tabular-nums hidden sm:block"
-              style={{ color: "var(--text-muted)" }}
-            >
-              {teamLength}/6 slots
-            </span>
+          <div className="flex items-center gap-2" role="toolbar" aria-label="Team management">
             <button
               onClick={onShuffle}
               disabled={teamLength === 0}
-              className="btn-secondary disabled:opacity-30 disabled:pointer-events-none"
+              className="btn-secondary disabled:pointer-events-none disabled:opacity-50"
               aria-label="Shuffle current team members"
             >
               <FiShuffle size={14} aria-hidden="true" />
-              <span className="hidden sm:inline">Shuffle</span>
+              Shuffle
             </button>
             <button
               onClick={onClear}
               disabled={teamLength === 0}
-              className="btn-danger disabled:opacity-30 disabled:pointer-events-none"
+              className="btn-danger disabled:pointer-events-none disabled:opacity-50"
               aria-label="Clear all team members"
             >
               <FiTrash2 size={14} aria-hidden="true" />
-              <span className="hidden sm:inline">Clear</span>
+              Clear Team
             </button>
+            <ThemeMenu />
           </div>
         </div>
       </div>

@@ -1,17 +1,26 @@
 import type { Metadata } from "next";
-import { DM_Sans, JetBrains_Mono } from "next/font/google";
+import { Chakra_Petch, IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
 import "@/app/globals.css";
 
-const sans = DM_Sans({
+const display = Chakra_Petch({
   subsets: ["latin"],
-  variable: "--font-sans",
+  variable: "--font-display",
   display: "swap",
+  weight: ["500", "600", "700"],
+});
+
+const body = IBM_Plex_Sans({
+  subsets: ["latin"],
+  variable: "--font-body",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
 });
 
 const mono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
   display: "swap",
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -33,10 +42,40 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
 };
 
+const themeInitScript = `
+  (function () {
+    try {
+      var savedTheme = localStorage.getItem("theme");
+      var systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      var resolvedTheme = savedTheme === "light" || savedTheme === "dark"
+        ? savedTheme
+        : (systemPrefersDark ? "dark" : "light");
+
+      var root = document.documentElement;
+      root.dataset.theme = resolvedTheme;
+      root.style.colorScheme = resolvedTheme;
+
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", resolvedTheme === "dark" ? "#060914" : "#f3ecde");
+    } catch (e) {
+      document.documentElement.dataset.theme = "dark";
+      document.documentElement.style.colorScheme = "dark";
+    }
+  })();
+`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
+    <html
+      lang="en"
+      className={`${display.variable} ${body.variable} ${mono.variable}`}
+      style={{ colorScheme: "dark" }}
+      suppressHydrationWarning
+    >
       <head>
+        <meta name="theme-color" content="#060914" />
+        <link rel="preconnect" href="https://raw.githubusercontent.com" />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -56,7 +95,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className="font-[family-name:var(--font-sans)] antialiased">{children}</body>
+      <body className="font-body antialiased">{children}</body>
     </html>
   );
 }

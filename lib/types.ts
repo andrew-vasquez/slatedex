@@ -3,10 +3,20 @@ export interface Pokemon {
   name: string;
   types: string[];
   generation: number;
+  isFinalEvolution: boolean;
   hp: number;
   attack: number;
   defense: number;
   sprite: string;
+}
+
+export type DexMode = "regional" | "national";
+
+export interface PokemonPools {
+  national: Pokemon[];
+  regional: Pokemon[];
+  regionalResolved: boolean;
+  regionalDexName: string | null;
 }
 
 export interface PokemonWithEffectiveness extends Pokemon {
@@ -18,6 +28,8 @@ export interface Game {
   name: string;
   generation: number;
   region: string;
+  versionGroupCandidates: string[];
+  regionalDexCandidates: string[];
   starters: string[];
   legendaries: string[];
 }

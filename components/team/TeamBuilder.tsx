@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -12,45 +12,67 @@ import {
 import type { DragStartEvent, DragEndEvent, DragOverEvent } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import dynamic from "next/dynamic";
-import PokemonCard from "@/components/ui/PokemonCard";
 import PokemonDragPreview from "@/components/ui/PokemonDragPreview";
 import TeamBuilderHeader from "./TeamBuilderHeader";
+import ClearTeamDialog from "./ClearTeamDialog";
+import TeamRecommendations from "./TeamRecommendations";
 import PokemonSelection from "./PokemonSelection";
 import TeamPanel from "./TeamPanel";
+import { TYPE_EFFECTIVENESS, TYPE_RESISTANCES } from "@/lib/constants";
 import { getTeamDefensiveCoverage } from "@/lib/teamAnalysis";
-import type { Pokemon, Game } from "@/lib/types";
+import type { DexMode, Pokemon, PokemonPools, Game } from "@/lib/types";
 
-// Best practice §2.4: dynamic import — only rendered when team has members
 const DefensiveCoverage = dynamic(() => import("./DefensiveCoverage"));
 
-// Best practice §4.4: versioned localStorage schema
 const STORAGE_VERSION = 1;
 
 function getStorageKey(gameId: number): string {
   return `team_game_${gameId}_v${STORAGE_VERSION}`;
 }
 
-interface TeamBuilderProps {
-  selectedGame: Game;
-  pokemonData: Pokemon[];
+function getDexModeStorageKey(gameId: number): string {
+  return `dex_mode_game_${gameId}_v${STORAGE_VERSION}`;
 }
 
-const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
-  // Best practice §5.8: lazy state initialization for localStorage
-  const [team, setTeam] = useState<(Pokemon | null)[]>(() => {
-    if (typeof window === "undefined") return Array(6).fill(null);
-    try {
-      const saved = localStorage.getItem(getStorageKey(selectedGame.id));
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // ignore parse errors
-    }
-    return Array(6).fill(null);
+function createEmptyTeam(): (Pokemon | null)[] {
+  return Array(6).fill(null);
+}
+
+function getPokemonEffectivenessAgainstType(pokemon: Pokemon, attackingType: string): number {
+  let effectiveness = 1;
+
+  pokemon.types.forEach((defenderType: string) => {
+    const weaknesses: string[] = TYPE_EFFECTIVENESS[defenderType] || [];
+    if (weaknesses.includes(attackingType)) effectiveness *= 2;
+
+    const resistances: string[] = TYPE_RESISTANCES[defenderType] || [];
+    if (resistances.includes(attackingType)) effectiveness *= 0.5;
   });
+
+  return effectiveness;
+}
+
+interface Recommendation {
+  pokemon: Pokemon;
+  score: number;
+  covers: string[];
+  risky: string[];
+}
+
+interface TeamBuilderProps {
+  selectedGame: Game;
+  pokemonPools: PokemonPools;
+}
+
+const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
+  const [team, setTeam] = useState<(Pokemon | null)[]>(createEmptyTeam);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [draggedPokemon, setDraggedPokemon] = useState<Pokemon | null>(null);
   const [activeDropId, setActiveDropId] = useState<string | null>(null);
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+  const [recommendationsEnabled, setRecommendationsEnabled] = useState(true);
+  const [dexMode, setDexMode] = useState<DexMode>(pokemonPools.regionalResolved ? "regional" : "national");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -59,15 +81,63 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
     })
   );
 
-  // Persist team to localStorage
   const persistTeam = useCallback(
     (newTeam: (Pokemon | null)[]) => {
       try {
         localStorage.setItem(getStorageKey(selectedGame.id), JSON.stringify(newTeam));
-      } catch { /* ignore storage errors */ }
+      } catch {
+        // ignore storage errors
+      }
     },
     [selectedGame.id]
   );
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(getStorageKey(selectedGame.id));
+      if (!saved) {
+        setTeam(createEmptyTeam());
+        return;
+      }
+
+      const parsed = JSON.parse(saved) as (Pokemon | null)[];
+      if (Array.isArray(parsed) && parsed.length === 6) {
+        setTeam(parsed);
+      } else {
+        setTeam(createEmptyTeam());
+      }
+    } catch {
+      setTeam(createEmptyTeam());
+    }
+  }, [selectedGame.id]);
+
+  useEffect(() => {
+    const defaultMode: DexMode = pokemonPools.regionalResolved ? "regional" : "national";
+    let nextMode: DexMode = defaultMode;
+
+    try {
+      const savedMode = localStorage.getItem(getDexModeStorageKey(selectedGame.id));
+      if (savedMode === "regional" || savedMode === "national") {
+        nextMode = savedMode;
+      }
+    } catch {
+      // ignore storage errors
+    }
+
+    if (nextMode === "regional" && !pokemonPools.regionalResolved) {
+      nextMode = "national";
+    }
+
+    setDexMode(nextMode);
+  }, [selectedGame.id, pokemonPools.regionalResolved]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(getDexModeStorageKey(selectedGame.id), dexMode);
+    } catch {
+      // ignore storage errors
+    }
+  }, [selectedGame.id, dexMode]);
 
   const updateTeam = useCallback(
     (newTeam: (Pokemon | null)[]) => {
@@ -77,23 +147,32 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
     [persistTeam]
   );
 
-  // Best practice §7.6: combine iterations, §7.11: Set for O(1) lookups
-  const teamPokemonIds = new Set(
-    team.filter((p): p is Pokemon => p !== null).map((p) => p.id)
-  );
+  const teamPokemonIds = new Set(team.filter((p): p is Pokemon => p !== null).map((p) => p.id));
   const lowerSearch = searchTerm.toLowerCase();
-  const filteredPokemon = pokemonData.filter(
-    (p) => !teamPokemonIds.has(p.id) && p.name.toLowerCase().includes(lowerSearch)
+
+  const handleDexModeChange = useCallback(
+    (nextMode: DexMode) => {
+      if (nextMode === "regional" && !pokemonPools.regionalResolved) {
+        setDexMode("national");
+        return;
+      }
+
+      setDexMode(nextMode);
+    },
+    [pokemonPools.regionalResolved]
   );
 
-  const handleDragStart = useCallback(
-    (e: DragStartEvent) => setDraggedPokemon(e.active.data.current?.pokemon),
-    []
+  const activePokemonPool = useMemo(
+    () => (dexMode === "regional" && pokemonPools.regionalResolved ? pokemonPools.regional : pokemonPools.national),
+    [dexMode, pokemonPools.national, pokemonPools.regional, pokemonPools.regionalResolved]
   );
-  const handleDragOver = useCallback(
-    (e: DragOverEvent) => setActiveDropId(e.over?.id as string || null),
-    []
-  );
+
+  const availablePokemon = activePokemonPool.filter((p) => !teamPokemonIds.has(p.id));
+
+  const filteredPokemon = availablePokemon.filter((p) => p.name.toLowerCase().includes(lowerSearch));
+
+  const handleDragStart = useCallback((e: DragStartEvent) => setDraggedPokemon(e.active.data.current?.pokemon), []);
+  const handleDragOver = useCallback((e: DragOverEvent) => setActiveDropId((e.over?.id as string) || null), []);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -104,12 +183,7 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
       if (!over || !active.data.current?.pokemon) return;
 
       const slotIndex = parseInt((over.id as string).split("-")[2]);
-      if (
-        (over.id as string).startsWith("team-slot-") &&
-        slotIndex >= 0 &&
-        slotIndex < 6
-      ) {
-        // Best practice §5.7: functional setState
+      if ((over.id as string).startsWith("team-slot-") && slotIndex >= 0 && slotIndex < 6) {
         setTeam((prev) => {
           const newTeam = [...prev];
           newTeam[slotIndex] = active.data.current!.pokemon;
@@ -121,7 +195,6 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
     [persistTeam]
   );
 
-  // Best practice §5.7: functional setState updates
   const removeFromTeam = useCallback(
     (index: number) => {
       setTeam((prev) => {
@@ -134,22 +207,30 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
     [persistTeam]
   );
 
-  const clearTeam = useCallback(() => {
-    const empty: (Pokemon | null)[] = Array(6).fill(null);
+  const openClearDialog = useCallback(() => {
+    if (team.every((slot) => slot === null)) return;
+    setIsClearDialogOpen(true);
+  }, [team]);
+
+  const closeClearDialog = useCallback(() => {
+    setIsClearDialogOpen(false);
+  }, []);
+
+  const confirmClearTeam = useCallback(() => {
+    const empty = createEmptyTeam();
     updateTeam(empty);
+    setIsClearDialogOpen(false);
   }, [updateTeam]);
 
   const shuffleTeam = useCallback(() => {
     setTeam((prev) => {
       const currentTeam = prev.filter((p): p is Pokemon => p !== null);
-      for (let i = currentTeam.length - 1; i > 0; i--) {
+      for (let i = currentTeam.length - 1; i > 0; i -= 1) {
         const j = Math.floor(Math.random() * (i + 1));
         [currentTeam[i], currentTeam[j]] = [currentTeam[j], currentTeam[i]];
       }
-      const newTeam: (Pokemon | null)[] = [
-        ...currentTeam,
-        ...Array(6 - currentTeam.length).fill(null),
-      ];
+
+      const newTeam: (Pokemon | null)[] = [...currentTeam, ...Array(6 - currentTeam.length).fill(null)];
       persistTeam(newTeam);
       return newTeam;
     });
@@ -160,6 +241,7 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
       setTeam((prev) => {
         const firstEmptySlot = prev.findIndex((slot) => slot === null);
         if (firstEmptySlot === -1) return prev;
+
         const newTeam = [...prev];
         newTeam[firstEmptySlot] = pokemon;
         persistTeam(newTeam);
@@ -172,32 +254,128 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
   const currentTeam = team.filter((p): p is Pokemon => p !== null);
   const defensiveCoverage = getTeamDefensiveCoverage(currentTeam);
 
+  const exposedTypeNames = useMemo(
+    () =>
+      Object.entries(defensiveCoverage)
+        .filter(([, entry]) => entry.weakPokemon.length > entry.resistPokemon.length)
+        .map(([type]) => type),
+    [defensiveCoverage]
+  );
+
+  const exposedTypes = exposedTypeNames.length;
+
+  const stableTypes = Object.values(defensiveCoverage).filter(
+    (entry) => entry.resistPokemon.length >= entry.weakPokemon.length
+  ).length;
+
+  const recommendations = useMemo<Recommendation[]>(() => {
+    if (!recommendationsEnabled || currentTeam.length === 0 || availablePokemon.length === 0) return [];
+
+    const candidatePool = availablePokemon.filter((pokemon) => pokemon.isFinalEvolution);
+
+    if (candidatePool.length === 0) return [];
+
+    const deficitByType = Object.entries(defensiveCoverage)
+      .map(([type, entry]) => ({ type, deficit: Math.max(0, entry.weakPokemon.length - entry.resistPokemon.length) }))
+      .filter((entry) => entry.deficit > 0);
+
+    if (deficitByType.length === 0) return [];
+
+    const ranked = candidatePool.map((pokemon) => {
+      let score = 0;
+      const covers: string[] = [];
+      const risky: string[] = [];
+
+      deficitByType.forEach(({ type, deficit }) => {
+        const effectiveness = getPokemonEffectivenessAgainstType(pokemon, type);
+
+        if (effectiveness < 1) {
+          score += effectiveness <= 0.5 ? 1.9 * deficit : 1.4 * deficit;
+          if (covers.length < 3) covers.push(type);
+        } else if (effectiveness > 1) {
+          score -= effectiveness >= 4 ? 1.9 * deficit : 1.1 * deficit;
+          if (risky.length < 2) risky.push(type);
+        } else {
+          score += 0.15 * deficit;
+        }
+      });
+
+      const bulkBonus = (pokemon.hp + pokemon.defense + pokemon.attack) / 240;
+      score += bulkBonus;
+
+      return { pokemon, score, covers, risky };
+    });
+
+    return ranked.sort((a, b) => b.score - a.score).slice(0, 3);
+  }, [availablePokemon, currentTeam.length, defensiveCoverage, recommendationsEnabled]);
+
   return (
     <DndContext
+      id={`team-builder-dnd-${selectedGame.id}`}
       sensors={sensors}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className="min-h-screen" style={{ color: "var(--text-primary)" }}>
-        <TeamBuilderHeader
-          game={selectedGame}
-          onShuffle={shuffleTeam}
-          onClear={clearTeam}
-          teamLength={currentTeam.length}
-        />
+        <TeamBuilderHeader game={selectedGame} onShuffle={shuffleTeam} onClear={openClearDialog} teamLength={currentTeam.length} />
 
-        <main className="max-w-screen-xl mx-auto p-4 sm:p-6" role="main">
-          <h1 className="sr-only">
-            Pokémon Team Builder for {selectedGame.name}
-          </h1>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+        <main id="main-content" className="mx-auto max-w-screen-xl px-4 pb-8 pt-4 sm:px-6 sm:pb-10" role="main">
+          <section className="panel mb-4 p-4 sm:mb-5 sm:p-5" aria-label="Team planning status">
+            <h2 className="font-display text-lg sm:text-xl" style={{ color: "var(--text-primary)" }}>
+              Build Order
+            </h2>
+            <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+              <div className="panel-soft px-3.5 py-3">
+                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+                  Drafted
+                </p>
+                <p className="font-display mt-1 text-2xl" style={{ color: "var(--accent)" }}>
+                  {currentTeam.length}/6
+                </p>
+              </div>
+              <div className="panel-soft px-3.5 py-3">
+                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+                  Exposed Types
+                </p>
+                <p className="font-display mt-1 text-2xl" style={{ color: exposedTypes > 0 ? "#b91c1c" : "#136f3a" }}>
+                  {exposedTypes}
+                </p>
+              </div>
+              <div className="panel-soft px-3.5 py-3">
+                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+                  Stable Matchups
+                </p>
+                <p className="font-display mt-1 text-2xl" style={{ color: "var(--accent-blue)" }}>
+                  {stableTypes}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {currentTeam.length > 0 && (
+            <TeamRecommendations
+              recommendations={recommendations}
+              exposedTypes={exposedTypeNames}
+              teamFull={currentTeam.length >= 6}
+              recommendationsEnabled={recommendationsEnabled}
+              onToggleRecommendations={setRecommendationsEnabled}
+              onAddPokemon={addPokemonToTeam}
+            />
+          )}
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
             <PokemonSelection
               filteredPokemon={filteredPokemon}
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
               onAddPokemon={addPokemonToTeam}
               currentTeamLength={currentTeam.length}
+              dexMode={dexMode}
+              onDexModeChange={handleDexModeChange}
+              regionalAvailable={pokemonPools.regionalResolved}
+              dexNotice={pokemonPools.regionalResolved ? null : "Regional dex unavailable; switched to National."}
+              generation={selectedGame.generation}
             />
 
             <TeamPanel
@@ -209,18 +387,20 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
           </div>
 
           {currentTeam.length > 0 && (
-            <section
-              className="mt-4 sm:mt-5"
-              aria-labelledby="coverage-heading"
-            >
+            <section className="mt-4 sm:mt-5" aria-labelledby="coverage-heading">
               <DefensiveCoverage coverage={defensiveCoverage} />
             </section>
           )}
         </main>
       </div>
-      <DragOverlay>
-        {draggedPokemon && <PokemonDragPreview pokemon={draggedPokemon} />}
-      </DragOverlay>
+
+      <DragOverlay>{draggedPokemon && <PokemonDragPreview pokemon={draggedPokemon} />}</DragOverlay>
+      <ClearTeamDialog
+        isOpen={isClearDialogOpen}
+        teamCount={currentTeam.length}
+        onCancel={closeClearDialog}
+        onConfirm={confirmClearTeam}
+      />
     </DndContext>
   );
 };

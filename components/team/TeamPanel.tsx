@@ -13,35 +13,31 @@ interface TeamPanelProps {
 
 const TeamPanel = ({ team, currentTeamLength, activeDropId, onRemove }: TeamPanelProps) => {
   return (
-    <section
-      className="rounded-2xl p-5 sm:p-6"
-      style={{ background: "var(--surface-1)", border: "1px solid var(--border)" }}
-      aria-labelledby="team-heading"
-    >
-      <div className="flex items-center justify-between mb-5">
-        <h2
-          id="team-heading"
-          className="text-base sm:text-lg font-semibold"
-          style={{ color: "var(--text-primary)" }}
-        >
-          Your Team
-        </h2>
+    <section className="panel p-4 sm:p-5" aria-labelledby="team-heading">
+      <div className="mb-4 flex items-center justify-between sm:mb-5">
+        <div>
+          <h2 id="team-heading" className="font-display text-lg" style={{ color: "var(--text-primary)" }}>
+            Step 2: Build Team
+          </h2>
+          <p className="mt-0.5 text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
+            Fill all slots for full coverage analysis.
+          </p>
+        </div>
+
         <span
-          className="text-[0.65rem] font-semibold tabular-nums px-2.5 py-1 rounded-full"
+          className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold tabular-nums"
           style={{
-            background: currentTeamLength > 0 ? "rgba(229, 62, 62, 0.15)" : "var(--surface-3)",
-            color: currentTeamLength > 0 ? "#f87171" : "var(--text-muted)",
+            background: currentTeamLength > 0 ? "var(--accent-soft)" : "var(--surface-2)",
+            border: "1px solid var(--border)",
+            color: currentTeamLength > 0 ? "var(--accent)" : "var(--text-muted)",
           }}
           aria-label={`${currentTeamLength} out of 6 team slots filled`}
         >
           {currentTeamLength}/6
         </span>
       </div>
-      <div
-        className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3"
-        role="grid"
-        aria-label="Team slots"
-      >
+
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3" role="grid" aria-label="Team slots">
         {team.map((pokemon: Pokemon | null, index: number) => (
           <TeamSlot
             key={index}
@@ -52,13 +48,8 @@ const TeamPanel = ({ team, currentTeamLength, activeDropId, onRemove }: TeamPane
             onRemove={pokemon ? () => onRemove(index) : null}
           >
             {pokemon ? (
-              <div className="w-full h-full p-0.5">
-                <PokemonCard
-                  pokemon={pokemon}
-                  isDraggable={false}
-                  isCompact={true}
-                  dragId={`team-${index}-${pokemon.id}`}
-                />
+              <div className="h-full w-full p-0.5">
+                <PokemonCard pokemon={pokemon} isDraggable={false} isCompact={true} dragId={`team-${index}-${pokemon.id}`} />
               </div>
             ) : null}
           </TeamSlot>
