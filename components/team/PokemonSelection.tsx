@@ -48,10 +48,10 @@ const PokemonSelection = ({
 }: PokemonSelectionProps) => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const rafIdRef = useRef<number | null>(null);
-  const rowMeasureObserverRef = useRef<ResizeObserver | null>(null);
+  const rowObserversRef = useRef<Map<number, ResizeObserver>>(new Map());
   const pendingScrollTopRef = useRef(0);
   const [columns, setColumns] = useState(1);
-  const [rowHeight, setRowHeight] = useState(DEFAULT_ROW_HEIGHT);
+  const [measuredRowHeights, setMeasuredRowHeights] = useState<Record<number, number>>({});
   const [viewportHeight, setViewportHeight] = useState(0);
   const [scrollTop, setScrollTop] = useState(0);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -99,16 +99,27 @@ const PokemonSelection = ({
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
       }
-      if (rowMeasureObserverRef.current) {
-        rowMeasureObserverRef.current.disconnect();
+      for (const observer of rowObserversRef.current.values()) {
+        observer.disconnect();
       }
+      rowObserversRef.current.clear();
     };
   }, []);
 
-  const measureFirstItem = useCallback((node: HTMLDivElement | null) => {
-    if (rowMeasureObserverRef.current) {
-      rowMeasureObserverRef.current.disconnect();
-      rowMeasureObserverRef.current = null;
+  useEffect(() => {
+    setMeasuredRowHeights({});
+
+    for (const observer of rowObserversRef.current.values()) {
+      observer.disconnect();
+    }
+    rowObserversRef.current.clear();
+  }, [columns]);
+
+  const setMeasuredRowRef = useCallback((row: number, node: HTMLDivElement | null) => {
+    const existingObserver = rowObserversRef.current.get(row);
+    if (existingObserver) {
+      existingObserver.disconnect();
+      rowObserversRef.current.delete(row);
     }
 
     if (!node) return;
@@ -116,14 +127,17 @@ const PokemonSelection = ({
     const syncHeight = () => {
       const next = Math.round(node.getBoundingClientRect().height);
       if (next <= 0) return;
-      setRowHeight((prev) => (Math.abs(prev - next) >= 1 ? next : prev));
+      setMeasuredRowHeights((prev) => {
+        if (prev[row] === next) return prev;
+        return { ...prev, [row]: next };
+      });
     };
 
     syncHeight();
 
     const observer = new ResizeObserver(syncHeight);
     observer.observe(node);
-    rowMeasureObserverRef.current = observer;
+    rowObserversRef.current.set(row, observer);
   }, []);
 
   const handleScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
@@ -138,26 +152,57 @@ const PokemonSelection = ({
   }, []);
 
   const rowCount = Math.ceil(filteredPokemon.length / columns);
-  const rowStride = rowHeight + GRID_GAP_PX;
-  const totalHeight = rowCount > 0 ? rowCount * rowHeight + (rowCount - 1) * GRID_GAP_PX : 0;
+  const { rowOffsets, totalHeight } = useMemo(() => {
+    if (rowCount === 0) return { rowOffsets: [] as number[], totalHeight: 0 };
+
+    const offsets: number[] = new Array(rowCount);
+    let y = 0;
+
+    for (let row = 0; row < rowCount; row += 1) {
+      offsets[row] = y;
+      const rowHeight = measuredRowHeights[row] ?? DEFAULT_ROW_HEIGHT;
+      y += rowHeight;
+      if (row < rowCount - 1) y += GRID_GAP_PX;
+    }
+
+    return { rowOffsets: offsets, totalHeight: y };
+  }, [measuredRowHeights, rowCount]);
+
   const maxVisibleBottom = scrollTop + viewportHeight;
-  const startRow = Math.max(0, Math.floor(scrollTop / rowStride) - OVERSCAN_ROWS);
-  const endRow = Math.min(rowCount - 1, Math.ceil(maxVisibleBottom / rowStride) + OVERSCAN_ROWS);
 
   const visibleRows = useMemo(() => {
     if (rowCount === 0) return [];
 
-    const rows: Array<{ row: number; startIndex: number; items: Pokemon[] }> = [];
+    const getRowHeight = (row: number) => measuredRowHeights[row] ?? DEFAULT_ROW_HEIGHT;
+
+    let firstVisibleRow = 0;
+    while (firstVisibleRow < rowCount) {
+      const rowBottom = rowOffsets[firstVisibleRow] + getRowHeight(firstVisibleRow);
+      if (rowBottom >= scrollTop) break;
+      firstVisibleRow += 1;
+    }
+
+    let lastVisibleRow = firstVisibleRow;
+    while (lastVisibleRow < rowCount) {
+      if (rowOffsets[lastVisibleRow] > maxVisibleBottom) break;
+      lastVisibleRow += 1;
+    }
+
+    const startRow = Math.max(0, firstVisibleRow - OVERSCAN_ROWS);
+    const endRow = Math.min(rowCount - 1, lastVisibleRow + OVERSCAN_ROWS);
+
+    const rows: Array<{ row: number; top: number; startIndex: number; items: Pokemon[] }> = [];
     for (let row = startRow; row <= endRow; row += 1) {
       const startIndex = row * columns;
       rows.push({
         row,
+        top: rowOffsets[row],
         startIndex,
         items: filteredPokemon.slice(startIndex, startIndex + columns),
       });
     }
     return rows;
-  }, [columns, endRow, filteredPokemon, rowCount, startRow]);
+  }, [columns, filteredPokemon, maxVisibleBottom, measuredRowHeights, rowCount, rowOffsets, scrollTop]);
 
   return (
     <section className="panel p-4 sm:p-5" aria-labelledby="available-pokemon-heading">
@@ -340,12 +385,13 @@ const PokemonSelection = ({
           <div
             style={{ position: "relative", height: totalHeight, width: "100%" }}
           >
-            {visibleRows.map(({ row, startIndex, items }) => (
+            {visibleRows.map(({ row, top, startIndex, items }) => (
               <div
                 key={`row-${row}`}
+                ref={(node) => setMeasuredRowRef(row, node)}
                 style={{
                   position: "absolute",
-                  top: row * rowStride,
+                  top,
                   left: 0,
                   right: 0,
                   display: "grid",
@@ -354,11 +400,9 @@ const PokemonSelection = ({
                 }}
               >
                 {items.map((pokemon: Pokemon, offset: number) => {
-                  const index = startIndex + offset;
                   return (
                     <div
                       key={pokemon.id}
-                      ref={index === 0 ? measureFirstItem : undefined}
                       role="listitem"
                       className="pokemon-list-item"
                     >

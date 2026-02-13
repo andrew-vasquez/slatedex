@@ -405,24 +405,26 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
           </section>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
-            <PokemonSelection
-              filteredPokemon={filteredPokemon}
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-              onAddPokemon={addPokemonToTeam}
-              currentTeamLength={currentTeam.length}
-              dexMode={dexMode}
-              onDexModeChange={handleDexModeChange}
-              regionalAvailable={pokemonPools.regionalResolved}
-              dexNotice={pokemonPools.regionalResolved ? null : "Regional dex unavailable; switched to National."}
-              generation={selectedGame.generation}
-              versions={selectedGame.versions}
-              selectedVersionId={selectedVersionId}
-              onVersionChange={setSelectedVersionId}
-              versionFilterEnabled={versionFilterEnabled}
-              onVersionFilterChange={setVersionFilterEnabled}
-              dragEnabled={dragEnabled}
-            />
+            <div className="min-w-0">
+              <PokemonSelection
+                filteredPokemon={filteredPokemon}
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                onAddPokemon={addPokemonToTeam}
+                currentTeamLength={currentTeam.length}
+                dexMode={dexMode}
+                onDexModeChange={handleDexModeChange}
+                regionalAvailable={pokemonPools.regionalResolved}
+                dexNotice={pokemonPools.regionalResolved ? null : "Regional dex unavailable; switched to National."}
+                generation={selectedGame.generation}
+                versions={selectedGame.versions}
+                selectedVersionId={selectedVersionId}
+                onVersionChange={setSelectedVersionId}
+                versionFilterEnabled={versionFilterEnabled}
+                onVersionFilterChange={setVersionFilterEnabled}
+                dragEnabled={dragEnabled}
+              />
+            </div>
 
             <TeamPanel
               team={team}

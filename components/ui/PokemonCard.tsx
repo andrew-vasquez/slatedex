@@ -107,8 +107,8 @@ const PokemonCard = ({
 
         <div className="mt-1 flex flex-wrap justify-center gap-0.5">
           {pokemon.types.map((type: string) => (
-            <span key={type} className={`rounded px-1.5 py-0 text-[0.5rem] font-semibold text-white ${TYPE_COLORS[type]}`}>
-              {type.slice(0, 3).toUpperCase()}
+            <span key={type} className={`rounded px-1.5 py-0 text-[0.48rem] font-semibold leading-none text-white ${TYPE_COLORS[type]}`}>
+              {type.charAt(0).toUpperCase() + type.slice(1)}
             </span>
           ))}
         </div>
