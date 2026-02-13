@@ -30,6 +30,14 @@ function getStorageKey(gameId: number): string {
   return `team_game_${gameId}_v${STORAGE_VERSION}`;
 }
 
+function getSelectedVersionStorageKey(gameId: number): string {
+  return `selected_version_game_${gameId}_v${STORAGE_VERSION}`;
+}
+
+function getVersionFilterStorageKey(gameId: number): string {
+  return `version_filter_game_${gameId}_v${STORAGE_VERSION}`;
+}
+
 function createEmptyTeam(): (Pokemon | null)[] {
   return Array(6).fill(null);
 }
@@ -69,6 +77,8 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [recommendationsEnabled, setRecommendationsEnabled] = useState(true);
   const [dexMode, setDexMode] = useState<DexMode>(pokemonPools.regionalResolved ? "regional" : "national");
+  const [selectedVersionId, setSelectedVersionId] = useState<string>(selectedGame.versions[0]?.id ?? "");
+  const [versionFilterEnabled, setVersionFilterEnabled] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -111,6 +121,48 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
     setDexMode(pokemonPools.regionalResolved ? "regional" : "national");
   }, [selectedGame.id, pokemonPools.regionalResolved]);
 
+  useEffect(() => {
+    const allowedVersionIds = new Set(selectedGame.versions.map((version) => version.id));
+    const defaultVersionId = selectedGame.versions[0]?.id ?? "";
+
+    try {
+      const saved = localStorage.getItem(getSelectedVersionStorageKey(selectedGame.id));
+      if (saved && allowedVersionIds.has(saved)) {
+        setSelectedVersionId(saved);
+      } else {
+        setSelectedVersionId(defaultVersionId);
+      }
+    } catch {
+      setSelectedVersionId(defaultVersionId);
+    }
+  }, [selectedGame.id, selectedGame.versions]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(getVersionFilterStorageKey(selectedGame.id));
+      setVersionFilterEnabled(saved === "true");
+    } catch {
+      setVersionFilterEnabled(false);
+    }
+  }, [selectedGame.id]);
+
+  useEffect(() => {
+    if (!selectedVersionId) return;
+    try {
+      localStorage.setItem(getSelectedVersionStorageKey(selectedGame.id), selectedVersionId);
+    } catch {
+      // ignore storage errors
+    }
+  }, [selectedGame.id, selectedVersionId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(getVersionFilterStorageKey(selectedGame.id), versionFilterEnabled ? "true" : "false");
+    } catch {
+      // ignore storage errors
+    }
+  }, [selectedGame.id, versionFilterEnabled]);
+
   const updateTeam = useCallback(
     (newTeam: (Pokemon | null)[]) => {
       setTeam(newTeam);
@@ -139,7 +191,17 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
     [dexMode, pokemonPools.national, pokemonPools.regional, pokemonPools.regionalResolved]
   );
 
-  const availablePokemon = activePokemonPool.filter((p) => !teamPokemonIds.has(p.id));
+  const versionScopedPokemonPool = useMemo(() => {
+    if (!versionFilterEnabled || !selectedVersionId) return activePokemonPool;
+
+    return activePokemonPool.filter((pokemon) => {
+      if (pokemon.exclusiveStatus !== "exclusive") return true;
+      if (!pokemon.exclusiveToVersionIds || pokemon.exclusiveToVersionIds.length === 0) return true;
+      return pokemon.exclusiveToVersionIds.includes(selectedVersionId);
+    });
+  }, [activePokemonPool, selectedVersionId, versionFilterEnabled]);
+
+  const availablePokemon = versionScopedPokemonPool.filter((p) => !teamPokemonIds.has(p.id));
 
   const filteredPokemon = availablePokemon.filter((p) => p.name.toLowerCase().includes(lowerSearch));
 
@@ -348,6 +410,11 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
               regionalAvailable={pokemonPools.regionalResolved}
               dexNotice={pokemonPools.regionalResolved ? null : "Regional dex unavailable; switched to National."}
               generation={selectedGame.generation}
+              versions={selectedGame.versions}
+              selectedVersionId={selectedVersionId}
+              onVersionChange={setSelectedVersionId}
+              versionFilterEnabled={versionFilterEnabled}
+              onVersionFilterChange={setVersionFilterEnabled}
             />
 
             <TeamPanel

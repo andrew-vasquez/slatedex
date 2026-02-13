@@ -15,6 +15,11 @@ interface PokemonSelectionProps {
   regionalAvailable: boolean;
   dexNotice: string | null;
   generation: number;
+  versions: { id: string; label: string }[];
+  selectedVersionId: string;
+  onVersionChange: (versionId: string) => void;
+  versionFilterEnabled: boolean;
+  onVersionFilterChange: (enabled: boolean) => void;
 }
 
 const PokemonSelection = ({
@@ -28,7 +33,16 @@ const PokemonSelection = ({
   regionalAvailable,
   dexNotice,
   generation,
+  versions,
+  selectedVersionId,
+  onVersionChange,
+  versionFilterEnabled,
+  onVersionFilterChange,
 }: PokemonSelectionProps) => {
+  const versionLabelMap: Record<string, string> = Object.fromEntries(
+    versions.map((version) => [version.id, version.label])
+  );
+
   return (
     <section className="panel p-4 sm:p-5" aria-labelledby="available-pokemon-heading">
       <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-center sm:justify-between">
@@ -45,7 +59,7 @@ const PokemonSelection = ({
           </span>
         </div>
 
-        <div className="w-full sm:w-72">
+        <div className="w-full sm:w-[21.5rem]">
           <div className="mb-2 inline-flex w-full rounded-xl border p-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
             <button
               type="button"
@@ -74,6 +88,41 @@ const PokemonSelection = ({
             >
               National
             </button>
+          </div>
+
+          <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
+            <label className="flex items-center gap-2 rounded-xl border px-2.5 py-2" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+              <span className="text-[0.65rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
+                Version
+              </span>
+              <select
+                value={selectedVersionId}
+                onChange={(e) => onVersionChange(e.target.value)}
+                className="min-w-0 flex-1 bg-transparent text-xs font-semibold outline-none"
+                style={{ color: "var(--text-primary)" }}
+                aria-label="Select game version"
+              >
+                {versions.map((version) => (
+                  <option key={version.id} value={version.id} style={{ color: "#111827" }}>
+                    {version.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label
+              className="inline-flex items-center gap-2 rounded-xl border px-2.5 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.08em] md:hover:cursor-pointer"
+              style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}
+            >
+              <input
+                type="checkbox"
+                checked={versionFilterEnabled}
+                onChange={(e) => onVersionFilterChange(e.target.checked)}
+                className="h-3.5 w-3.5 accent-[var(--accent)]"
+                aria-label="Only show Pokemon available in selected version"
+              />
+              Show Pokémon from selected version
+            </label>
           </div>
 
           <div className="relative">
@@ -125,6 +174,11 @@ const PokemonSelection = ({
           : `Showing National Pokédex up to Generation ${generation}.`}
       </p>
 
+      <p className="mb-2 text-[0.68rem]" style={{ color: "var(--text-muted)" }}>
+        Version view: <span className="font-semibold">{versionLabelMap[selectedVersionId] ?? selectedVersionId}</span>
+        {versionFilterEnabled ? " (filter ON)" : " (showing all)"}
+      </p>
+
       {dexNotice && (
         <p className="mb-2 text-[0.68rem]" style={{ color: "#fca5a5" }}>
           {dexNotice}
@@ -158,6 +212,7 @@ const PokemonSelection = ({
               dragId={`available-${pokemon.id}`}
               onTap={onAddPokemon}
               canAddToTeam={currentTeamLength < 6}
+              versionLabelMap={versionLabelMap}
             />
           </div>
         ))}

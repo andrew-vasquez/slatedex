@@ -1,5 +1,6 @@
 import Pokedex from "pokedex-promise-v2";
 import type { Game, Pokemon, PokemonPools } from "@/lib/types";
+import { resolveVersionExclusivity } from "@/lib/versionExclusives";
 
 const pokedex = new Pokedex();
 const TYPE_INTRO_GENERATION: Partial<Record<string, number>> = {
@@ -240,7 +241,23 @@ async function resolveRegionalDexFromVersionGroupRegions(
 }
 
 export async function getPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
-  const national = await getPokemonByGeneration(game.generation);
+  const baseNational = await getPokemonByGeneration(game.generation);
+  const gameVersionIds = game.versions.map((version) => version.id.toLowerCase());
+  const national = baseNational.map((pokemon) => {
+    const exclusivity = resolveVersionExclusivity({
+      gameId: game.id,
+      speciesName: pokemon.name.toLowerCase(),
+      gameVersionIds,
+      gameIndexVersionIds: pokemon.gameIndexVersionIds,
+    });
+
+    return {
+      ...pokemon,
+      // Used only for server-side exclusivity inference; omit from client payload.
+      gameIndexVersionIds: undefined,
+      ...exclusivity,
+    };
+  });
   const regionalDexCandidates = [
     () => resolveRegionalDexSpecies(game.regionalDexCandidates),
     () => resolveRegionalDexFromVersionGroups(game.versionGroupCandidates),
@@ -263,9 +280,20 @@ export async function getPokemonPoolsForGame(game: Game): Promise<PokemonPools> 
     };
   }
 
+  const starterOrder = new Map(game.starters.map((speciesName, index) => [speciesName.toLowerCase(), index]));
   const regional = national
     .filter((pokemon) => regionalDex.speciesNames.has(pokemon.name.toLowerCase()))
     .sort((a, b) => {
+      const aStarterIndex = starterOrder.get(a.name.toLowerCase());
+      const bStarterIndex = starterOrder.get(b.name.toLowerCase());
+      const aIsStarter = aStarterIndex !== undefined;
+      const bIsStarter = bStarterIndex !== undefined;
+
+      if (aIsStarter || bIsStarter) {
+        if (aIsStarter && bIsStarter) return aStarterIndex - bStarterIndex;
+        return aIsStarter ? -1 : 1;
+      }
+
       const aIndex = regionalDex.orderBySpecies.get(a.name.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
       const bIndex = regionalDex.orderBySpecies.get(b.name.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
       if (aIndex !== bIndex) return aIndex - bIndex;
@@ -318,5 +346,8 @@ function mapPokemonData(pokemon: any, generation: number, rulesGeneration: numbe
     attack: stats.attack || 0,
     defense: stats.defense || 0,
     sprite: pokemon.sprites.front_default || "",
+    gameIndexVersionIds: ((pokemon.game_indices ?? []) as Array<{ version?: { name?: string } }>)
+      .map((entry) => entry.version?.name)
+      .filter((name): name is string => typeof name === "string"),
   };
 }

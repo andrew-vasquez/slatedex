@@ -13,6 +13,7 @@ interface PokemonCardProps {
   dragId?: string | null;
   onTap?: ((pokemon: Pokemon) => void) | null;
   canAddToTeam?: boolean;
+  versionLabelMap?: Record<string, string>;
 }
 
 const STAT_COLORS: Record<string, string> = {
@@ -34,6 +35,7 @@ const PokemonCard = ({
   dragId = null,
   onTap = null,
   canAddToTeam = false,
+  versionLabelMap = {},
 }: PokemonCardProps) => {
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
@@ -72,6 +74,15 @@ const PokemonCard = ({
     isTouchDevice && onTap && canAddToTeam ? "active:scale-[0.98]" : "",
     isTouchDevice ? "select-none" : "",
   ].join(" ");
+
+  const exclusiveVersionLabels: string[] =
+    pokemon.exclusiveStatus === "exclusive" && pokemon.exclusiveToVersionIds
+      ? pokemon.exclusiveToVersionIds.map((versionId) => versionLabelMap[versionId] ?? versionId)
+      : [];
+  const isVersionExclusive = exclusiveVersionLabels.length > 0;
+  const exclusivityText = isVersionExclusive
+    ? `Exclusive to: ${exclusiveVersionLabels.join(", ")}`
+    : "";
 
   if (isCompact) {
     return (
@@ -154,6 +165,20 @@ const PokemonCard = ({
             <span className="shrink-0 font-mono text-[0.6rem]" style={{ color: "var(--text-muted)" }}>
               #{pokemon.id.toString().padStart(3, "0")}
             </span>
+            {isVersionExclusive && (
+              <span
+                className="shrink-0 rounded px-1.5 py-0.5 text-[0.52rem] font-semibold uppercase tracking-[0.08em]"
+                style={{
+                  background: "rgba(234, 179, 8, 0.16)",
+                  border: "1px solid rgba(234, 179, 8, 0.34)",
+                  color: "#fef08a",
+                }}
+                title={exclusivityText}
+                aria-label={exclusivityText}
+              >
+                Exclusive
+              </span>
+            )}
           </div>
 
           <div className="mb-2 flex gap-1">
