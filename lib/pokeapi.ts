@@ -281,17 +281,17 @@ async function fetchPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
   ]);
   const gameVersionIds = game.versions.map((version) => version.id.toLowerCase());
   const national = baseNational.map((pokemon) => {
+    const { gameIndexVersionIds, ...pokemonWithoutGameIndexVersionIds } = pokemon;
     const exclusivity = resolveVersionExclusivity({
       gameId: game.id,
       speciesName: pokemon.name.toLowerCase(),
       gameVersionIds,
-      gameIndexVersionIds: pokemon.gameIndexVersionIds,
+      gameIndexVersionIds,
     });
 
     return {
-      ...pokemon,
-      // Used only for server-side exclusivity inference; omit from client payload.
-      gameIndexVersionIds: undefined,
+      ...pokemonWithoutGameIndexVersionIds,
+      // gameIndexVersionIds is used only for server-side exclusivity inference and is omitted from the client payload.
       ...exclusivity,
     };
   });
