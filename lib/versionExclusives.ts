@@ -245,7 +245,7 @@ const RAW_CURATED_EXCLUSIVES: Record<number, VersionSpeciesMap> = {
     "ultra-moon": ["oranguru", "drampa", "electrike", "manectric", "vullaby", "mandibuzz", "petilil", "lilligant"],
   },
   10: {
-    sword: ["deino", "deino", "hydreigon", "jangmo-o", "hakamo-o", "kommo-o", "farfetchd", "sirfetchd", "flapple", "stonjourner", "zacian"],
+    sword: ["deino", "zweilous", "hydreigon", "jangmo-o", "hakamo-o", "kommo-o", "farfetchd", "sirfetchd", "flapple", "stonjourner", "zacian"],
     shield: ["larvitar", "pupitar", "tyranitar", "goomy", "sliggoo", "goodra", "ponyta", "rapidash", "appletun", "eiscue", "zamazenta"],
   },
   11: {
