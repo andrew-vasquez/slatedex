@@ -30,10 +30,6 @@ function getStorageKey(gameId: number): string {
   return `team_game_${gameId}_v${STORAGE_VERSION}`;
 }
 
-function getDexModeStorageKey(gameId: number): string {
-  return `dex_mode_game_${gameId}_v${STORAGE_VERSION}`;
-}
-
 function createEmptyTeam(): (Pokemon | null)[] {
   return Array(6).fill(null);
 }
@@ -112,32 +108,8 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
   }, [selectedGame.id]);
 
   useEffect(() => {
-    const defaultMode: DexMode = pokemonPools.regionalResolved ? "regional" : "national";
-    let nextMode: DexMode = defaultMode;
-
-    try {
-      const savedMode = localStorage.getItem(getDexModeStorageKey(selectedGame.id));
-      if (savedMode === "regional" || savedMode === "national") {
-        nextMode = savedMode;
-      }
-    } catch {
-      // ignore storage errors
-    }
-
-    if (nextMode === "regional" && !pokemonPools.regionalResolved) {
-      nextMode = "national";
-    }
-
-    setDexMode(nextMode);
+    setDexMode(pokemonPools.regionalResolved ? "regional" : "national");
   }, [selectedGame.id, pokemonPools.regionalResolved]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(getDexModeStorageKey(selectedGame.id), dexMode);
-    } catch {
-      // ignore storage errors
-    }
-  }, [selectedGame.id, dexMode]);
 
   const updateTeam = useCallback(
     (newTeam: (Pokemon | null)[]) => {
