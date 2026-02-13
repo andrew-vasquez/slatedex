@@ -181,9 +181,21 @@ const GameSelector = () => {
                         {gen.region}
                       </p>
                       {gen.games.length > 1 && (
-                        <p className="mt-1 text-[0.65rem]" style={{ color: "var(--text-muted)" }}>
-                          {gen.games.map((g) => g.name).join(" + ")}
-                        </p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {gen.games.map((g) => (
+                            <span
+                              key={g.id}
+                              className="rounded-lg px-2.5 py-1 text-[0.65rem] font-semibold"
+                              style={{
+                                background: colors.soft,
+                                border: `1px solid ${colors.edge}`,
+                                color: colors.accent,
+                              }}
+                            >
+                              {g.name}
+                            </span>
+                          ))}
+                        </div>
                       )}
                     </div>
 
