@@ -5,16 +5,30 @@
  * specifically defensive coverage calculations.
  */
 
-import { TYPE_EFFECTIVENESS, TYPE_RESISTANCES, ALL_TYPES } from '@/lib/constants';
+import { TYPE_EFFECTIVENESS, TYPE_RESISTANCES, ALL_TYPES, TYPE_INTRO_GENERATION } from '@/lib/constants';
 import type { Pokemon, PokemonWithEffectiveness, CoverageMap } from '@/lib/types';
 
 /**
- * Get detailed team defensive coverage with Pokemon details
+ * Get detailed team defensive coverage with Pokemon details.
+ * When a generation is provided, types introduced after that generation
+ * are marked as locked in the returned map.
  */
-export const getTeamDefensiveCoverage = (team: Pokemon[]): CoverageMap => {
+export const getTeamDefensiveCoverage = (team: Pokemon[], generation?: number): CoverageMap => {
   const coverage: CoverageMap = {};
 
   ALL_TYPES.forEach((attackingType: string) => {
+    const introGen = TYPE_INTRO_GENERATION[attackingType] ?? 1;
+    if (generation !== undefined && introGen > generation) {
+      coverage[attackingType] = {
+        weak: 0,
+        resist: 0,
+        weakPokemon: [],
+        resistPokemon: [],
+        locked: true,
+      };
+      return;
+    }
+
     const weakPokemon: PokemonWithEffectiveness[] = [];
     const resistPokemon: PokemonWithEffectiveness[] = [];
 

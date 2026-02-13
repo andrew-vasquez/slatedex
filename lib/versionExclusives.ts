@@ -228,6 +228,30 @@ const RAW_CURATED_EXCLUSIVES: Record<number, VersionSpeciesMap> = {
       "zekrom",
     ],
   },
+  6: {
+    x: ["clauncher", "clawitzer", "swirlix", "slurpuff", "xerneas"],
+    y: ["skrelp", "dragalge", "spritzee", "aromatisse", "yveltal"],
+  },
+  7: {
+    "omega-ruby": ["seedot", "nuzleaf", "shiftry", "mawile", "zangoose", "solrock", "groudon", "ho-oh", "palkia", "reshiram", "tornadus"],
+    "alpha-sapphire": ["lotad", "lombre", "ludicolo", "sableye", "seviper", "lunatone", "kyogre", "lugia", "dialga", "zekrom", "thundurus"],
+  },
+  8: {
+    sun: ["passimian", "turtonator", "solgaleo"],
+    moon: ["oranguru", "drampa", "lunala"],
+  },
+  9: {
+    "ultra-sun": ["passimian", "turtonator", "houndour", "houndoom", "rufflet", "braviary", "cottonee", "whimsicott"],
+    "ultra-moon": ["oranguru", "drampa", "electrike", "manectric", "vullaby", "mandibuzz", "petilil", "lilligant"],
+  },
+  10: {
+    sword: ["deino", "zweilous", "hydreigon", "jangmo-o", "hakamo-o", "kommo-o", "farfetchd", "sirfetchd", "flapple", "stonjourner", "zacian"],
+    shield: ["larvitar", "pupitar", "tyranitar", "goomy", "sliggoo", "goodra", "ponyta", "rapidash", "appletun", "eiscue", "zamazenta"],
+  },
+  11: {
+    scarlet: ["larvitar", "pupitar", "tyranitar", "drifloon", "drifblim", "stunky", "skuntank", "oranguru", "koraidon"],
+    violet: ["bagon", "shelgon", "salamence", "misdreavus", "mismagius", "gulpin", "swalot", "passimian", "miraidon"],
+  },
 };
 
 function normalizeId(value: string): string {

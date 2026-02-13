@@ -60,12 +60,17 @@ const TeamSlot = ({ children, id, isEmpty, isOver, pokemon, onRemove }: TeamSlot
 
       {pokemon && onRemove && (
         <button
+          type="button"
           onClick={onRemove}
-          className="absolute -right-1.5 -top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full shadow"
-          style={{ background: "var(--accent)", color: "white" }}
+          className="absolute right-1.5 top-1.5 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition-transform duration-150 active:scale-95 sm:h-7 sm:w-7"
+          style={{
+            background: "rgba(218, 44, 67, 0.16)",
+            borderColor: "rgba(218, 44, 67, 0.42)",
+            color: "#ff9aa8",
+          }}
           aria-label={`Remove ${pokemon.name} from team`}
         >
-          <FiX size={10} aria-hidden="true" />
+          <FiX size={14} aria-hidden="true" />
         </button>
       )}
     </div>

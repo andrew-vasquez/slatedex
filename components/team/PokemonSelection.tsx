@@ -3,7 +3,7 @@
 import { FiSearch, FiX } from "react-icons/fi";
 import { type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PokemonCard from "@/components/ui/PokemonCard";
-import type { DexMode, Pokemon } from "@/lib/types";
+import type { DexMode, Pokemon, Game } from "@/lib/types";
 
 interface PokemonSelectionProps {
   filteredPokemon: Pokemon[];
@@ -22,6 +22,9 @@ interface PokemonSelectionProps {
   versionFilterEnabled: boolean;
   onVersionFilterChange: (enabled: boolean) => void;
   dragEnabled: boolean;
+  games?: Game[];
+  selectedGameId?: number;
+  onGameChange?: (gameId: number) => void;
 }
 
 const GRID_GAP_PX = 10;
@@ -45,6 +48,9 @@ const PokemonSelection = ({
   versionFilterEnabled,
   onVersionFilterChange,
   dragEnabled,
+  games,
+  selectedGameId,
+  onGameChange,
 }: PokemonSelectionProps) => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const rafIdRef = useRef<number | null>(null);
@@ -106,6 +112,8 @@ const PokemonSelection = ({
     };
   }, []);
 
+  const rowRefCallbacksRef = useRef<Map<number, (node: HTMLDivElement | null) => void>>(new Map());
+
   useEffect(() => {
     setMeasuredRowHeights({});
 
@@ -113,31 +121,37 @@ const PokemonSelection = ({
       observer.disconnect();
     }
     rowObserversRef.current.clear();
+    rowRefCallbacksRef.current.clear();
   }, [columns]);
 
-  const setMeasuredRowRef = useCallback((row: number, node: HTMLDivElement | null) => {
-    const existingObserver = rowObserversRef.current.get(row);
-    if (existingObserver) {
-      existingObserver.disconnect();
-      rowObserversRef.current.delete(row);
+  const getRowRef = useCallback((row: number) => {
+    let cb = rowRefCallbacksRef.current.get(row);
+    if (!cb) {
+      cb = (node: HTMLDivElement | null) => {
+        const existingObserver = rowObserversRef.current.get(row);
+        if (existingObserver) {
+          existingObserver.disconnect();
+          rowObserversRef.current.delete(row);
+        }
+
+        if (!node) return;
+
+        const syncHeight = () => {
+          const next = Math.round(node.getBoundingClientRect().height);
+          if (next <= 0) return;
+          setMeasuredRowHeights((prev) => {
+            if (prev[row] === next) return prev;
+            return { ...prev, [row]: next };
+          });
+        };
+
+        const observer = new ResizeObserver(syncHeight);
+        observer.observe(node);
+        rowObserversRef.current.set(row, observer);
+      };
+      rowRefCallbacksRef.current.set(row, cb);
     }
-
-    if (!node) return;
-
-    const syncHeight = () => {
-      const next = Math.round(node.getBoundingClientRect().height);
-      if (next <= 0) return;
-      setMeasuredRowHeights((prev) => {
-        if (prev[row] === next) return prev;
-        return { ...prev, [row]: next };
-      });
-    };
-
-    syncHeight();
-
-    const observer = new ResizeObserver(syncHeight);
-    observer.observe(node);
-    rowObserversRef.current.set(row, observer);
+    return cb;
   }, []);
 
   const handleScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
@@ -250,6 +264,48 @@ const PokemonSelection = ({
               National
             </button>
           </div>
+
+          {games && games.length > 1 && onGameChange && (
+            <div className="mb-2">
+              <p className="mb-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
+                Game
+              </p>
+              <div
+                className="inline-flex w-full rounded-xl border p-1"
+                style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
+                role="radiogroup"
+                aria-label="Select game"
+              >
+                {games.map((game) => {
+                  const isSelected = game.id === selectedGameId;
+                  return (
+                    <button
+                      key={game.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => onGameChange(game.id)}
+                      className="flex-1 rounded-lg px-2.5 py-2 text-[0.68rem] font-semibold leading-tight"
+                      style={{
+                        background: isSelected ? "var(--accent-soft)" : "transparent",
+                        color: isSelected ? "var(--text-primary)" : "var(--text-muted)",
+                        border: isSelected ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
+                        transition: "background 0.15s ease, border-color 0.15s ease, color 0.15s ease",
+                      }}
+                    >
+                      <span className="block">{game.name}</span>
+                      <span
+                        className="mt-0.5 block text-[0.55rem] font-normal uppercase tracking-[0.12em]"
+                        style={{ color: isSelected ? "var(--accent)" : "var(--text-muted)", opacity: isSelected ? 1 : 0.7 }}
+                      >
+                        {game.region}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
             <label className="flex items-center gap-2 rounded-xl border px-2.5 py-2" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
@@ -387,10 +443,10 @@ const PokemonSelection = ({
           <div
             style={{ position: "relative", height: totalHeight, width: "100%" }}
           >
-            {visibleRows.map(({ row, top, startIndex, items }) => (
+            {visibleRows.map(({ row, top, items }) => (
               <div
                 key={`row-${row}`}
-                ref={(node) => setMeasuredRowRef(row, node)}
+                ref={getRowRef(row)}
                 style={{
                   position: "absolute",
                   top,
@@ -401,7 +457,7 @@ const PokemonSelection = ({
                   columnGap: GRID_GAP_PX,
                 }}
               >
-                {items.map((pokemon: Pokemon, offset: number) => {
+                {items.map((pokemon: Pokemon) => {
                   return (
                     <div
                       key={pokemon.id}

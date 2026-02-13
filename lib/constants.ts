@@ -56,6 +56,23 @@ export const ALL_TYPES: string[] = [
   'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'
 ];
 
+// Generation in which each type was introduced
+export const TYPE_INTRO_GENERATION: Record<string, number> = {
+  normal: 1, fire: 1, water: 1, electric: 1, grass: 1, ice: 1,
+  fighting: 1, poison: 1, ground: 1, flying: 1, psychic: 1, bug: 1,
+  rock: 1, ghost: 1, dragon: 1,
+  dark: 2, steel: 2,
+  fairy: 6,
+};
+
+export function getAvailableTypes(generation: number): string[] {
+  return ALL_TYPES.filter(type => TYPE_INTRO_GENERATION[type] <= generation);
+}
+
+export function getLockedTypes(generation: number): string[] {
+  return ALL_TYPES.filter(type => TYPE_INTRO_GENERATION[type] > generation);
+}
+
 // Type colors for UI components (Tailwind classes)
 export const TYPE_COLORS: Record<string, string> = {
   normal: 'bg-stone-400',

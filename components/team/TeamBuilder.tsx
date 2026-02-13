@@ -15,7 +15,6 @@ import dynamic from "next/dynamic";
 import PokemonDragPreview from "@/components/ui/PokemonDragPreview";
 import TeamBuilderHeader from "./TeamBuilderHeader";
 import ClearTeamDialog from "./ClearTeamDialog";
-import TeamRecommendations from "./TeamRecommendations";
 import PokemonSelection from "./PokemonSelection";
 import TeamPanel from "./TeamPanel";
 import { TYPE_EFFECTIVENESS, TYPE_RESISTANCES } from "@/lib/constants";
@@ -23,11 +22,12 @@ import { getTeamDefensiveCoverage } from "@/lib/teamAnalysis";
 import type { DexMode, Pokemon, PokemonPools, Game } from "@/lib/types";
 
 const DefensiveCoverage = dynamic(() => import("./DefensiveCoverage"));
+const TeamRecommendations = dynamic(() => import("./TeamRecommendations"));
 
 const STORAGE_VERSION = 1;
 
-function getStorageKey(gameId: number): string {
-  return `team_game_${gameId}_v${STORAGE_VERSION}`;
+function getStorageKey(generation: number, gameId: number): string {
+  return `team_gen_${generation}_game_${gameId}_v${STORAGE_VERSION}`;
 }
 
 function getSelectedVersionStorageKey(gameId: number): string {
@@ -36,6 +36,10 @@ function getSelectedVersionStorageKey(gameId: number): string {
 
 function getVersionFilterStorageKey(gameId: number): string {
   return `version_filter_game_${gameId}_v${STORAGE_VERSION}`;
+}
+
+function getSelectedGameStorageKey(generation: number): string {
+  return `selected_game_gen_${generation}_v${STORAGE_VERSION}`;
 }
 
 function createEmptyTeam(): (Pokemon | null)[] {
@@ -64,11 +68,13 @@ interface Recommendation {
 }
 
 interface TeamBuilderProps {
-  selectedGame: Game;
-  pokemonPools: PokemonPools;
+  generation: number;
+  games: Game[];
+  allPools: Record<number, PokemonPools>;
 }
 
-const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
+const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
+  const [selectedGameId, setSelectedGameId] = useState<number>(games[0].id);
   const [team, setTeam] = useState<(Pokemon | null)[]>(createEmptyTeam);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -76,10 +82,13 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
   const [activeDropId, setActiveDropId] = useState<string | null>(null);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [recommendationsEnabled, setRecommendationsEnabled] = useState(true);
-  const [dexMode, setDexMode] = useState<DexMode>(pokemonPools.regionalResolved ? "regional" : "national");
-  const [selectedVersionId, setSelectedVersionId] = useState<string>(selectedGame.versions[0]?.id ?? "");
+  const [dexMode, setDexMode] = useState<DexMode>("national");
+  const [selectedVersionId, setSelectedVersionId] = useState<string>("");
   const [versionFilterEnabled, setVersionFilterEnabled] = useState(false);
   const [dragEnabled, setDragEnabled] = useState(false);
+
+  const selectedGame = useMemo(() => games.find((g) => g.id === selectedGameId) ?? games[0], [games, selectedGameId]);
+  const pokemonPools = useMemo(() => allPools[selectedGame.id] ?? allPools[games[0].id], [allPools, selectedGame.id, games]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -91,17 +100,44 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
   const persistTeam = useCallback(
     (newTeam: (Pokemon | null)[]) => {
       try {
-        localStorage.setItem(getStorageKey(selectedGame.id), JSON.stringify(newTeam));
+        localStorage.setItem(getStorageKey(generation, selectedGame.id), JSON.stringify(newTeam));
       } catch {
         // ignore storage errors
       }
     },
-    [selectedGame.id]
+    [generation, selectedGame.id]
   );
 
+  // Load persisted game selection
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(getStorageKey(selectedGame.id));
+      const saved = localStorage.getItem(getSelectedGameStorageKey(generation));
+      if (saved) {
+        const savedId = parseInt(saved);
+        if (games.some((g) => g.id === savedId)) {
+          setSelectedGameId(savedId);
+          return;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    setSelectedGameId(games[0].id);
+  }, [generation, games]);
+
+  // Persist game selection
+  useEffect(() => {
+    try {
+      localStorage.setItem(getSelectedGameStorageKey(generation), String(selectedGameId));
+    } catch {
+      // ignore
+    }
+  }, [generation, selectedGameId]);
+
+  // Load team from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(getStorageKey(generation, selectedGame.id));
       if (!saved) {
         setTeam(createEmptyTeam());
         return;
@@ -116,7 +152,7 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
     } catch {
       setTeam(createEmptyTeam());
     }
-  }, [selectedGame.id]);
+  }, [generation, selectedGame.id]);
 
   useEffect(() => {
     const canUsePointerDrag =
@@ -169,6 +205,11 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
       // ignore storage errors
     }
   }, [selectedGame.id, versionFilterEnabled]);
+
+  const handleGameChange = useCallback((gameId: number) => {
+    setSelectedGameId(gameId);
+    setSearchTerm("");
+  }, []);
 
   const updateTeam = useCallback(
     (newTeam: (Pokemon | null)[]) => {
@@ -303,12 +344,12 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
   );
 
   const currentTeam = useMemo(() => team.filter((p): p is Pokemon => p !== null), [team]);
-  const defensiveCoverage = useMemo(() => getTeamDefensiveCoverage(currentTeam), [currentTeam]);
+  const defensiveCoverage = useMemo(() => getTeamDefensiveCoverage(currentTeam, generation), [currentTeam, generation]);
 
   const exposedTypeNames = useMemo(
     () =>
       Object.entries(defensiveCoverage)
-        .filter(([, entry]) => entry.weakPokemon.length > entry.resistPokemon.length)
+        .filter(([, entry]) => !entry.locked && entry.weakPokemon.length > entry.resistPokemon.length)
         .map(([type]) => type),
     [defensiveCoverage]
   );
@@ -316,7 +357,7 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
   const exposedTypes = exposedTypeNames.length;
 
   const stableTypes = Object.values(defensiveCoverage).filter(
-    (entry) => entry.resistPokemon.length >= entry.weakPokemon.length
+    (entry) => !entry.locked && entry.resistPokemon.length >= entry.weakPokemon.length
   ).length;
 
   const recommendations = useMemo<Recommendation[]>(() => {
@@ -327,6 +368,7 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
     if (candidatePool.length === 0) return [];
 
     const deficitByType = Object.entries(defensiveCoverage)
+      .filter(([, entry]) => !entry.locked)
       .map(([type, entry]) => ({ type, deficit: Math.max(0, entry.weakPokemon.length - entry.resistPokemon.length) }))
       .filter((entry) => entry.deficit > 0);
 
@@ -369,7 +411,7 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
       onDragEnd={handleDragEnd}
     >
       <div className="min-h-screen" style={{ color: "var(--text-primary)" }}>
-        <TeamBuilderHeader game={selectedGame} onShuffle={shuffleTeam} onClear={openClearDialog} teamLength={currentTeam.length} />
+        <TeamBuilderHeader game={selectedGame} generation={generation} onShuffle={shuffleTeam} onClear={openClearDialog} teamLength={currentTeam.length} />
 
         <main id="main-content" className="mx-auto max-w-screen-xl px-4 pb-8 pt-4 sm:px-6 sm:pb-10" role="main">
           <section className="panel mb-4 p-4 sm:mb-5 sm:p-5" aria-label="Team planning status">
@@ -416,13 +458,16 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
                 onDexModeChange={handleDexModeChange}
                 regionalAvailable={pokemonPools.regionalResolved}
                 dexNotice={pokemonPools.regionalResolved ? null : "Regional dex unavailable; switched to National."}
-                generation={selectedGame.generation}
+                generation={generation}
                 versions={selectedGame.versions}
                 selectedVersionId={selectedVersionId}
                 onVersionChange={setSelectedVersionId}
                 versionFilterEnabled={versionFilterEnabled}
                 onVersionFilterChange={setVersionFilterEnabled}
                 dragEnabled={dragEnabled}
+                games={games}
+                selectedGameId={selectedGame.id}
+                onGameChange={handleGameChange}
               />
             </div>
 
@@ -449,7 +494,7 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
 
           {currentTeam.length > 0 && (
             <section className="mt-4 sm:mt-5" aria-labelledby="coverage-heading">
-              <DefensiveCoverage coverage={defensiveCoverage} />
+              <DefensiveCoverage coverage={defensiveCoverage} generation={generation} />
             </section>
           )}
         </main>

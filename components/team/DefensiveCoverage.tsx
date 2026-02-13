@@ -7,6 +7,7 @@ import type { CoverageMap } from "@/lib/types";
 
 interface DefensiveCoverageProps {
   coverage: CoverageMap;
+  generation?: number;
 }
 
 const TYPE_HEX: Record<string, string> = {
@@ -30,7 +31,7 @@ const TYPE_HEX: Record<string, string> = {
   fairy: "#ee99ac",
 };
 
-const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
+const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => {
   const [hoveredType, setHoveredType] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
 
@@ -38,6 +39,7 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
     () =>
       ALL_TYPES.map((type) => {
         const data = coverage[type] || { weakPokemon: [], resistPokemon: [] };
+        const isLocked = data.locked === true;
         const weakCount = data.weakPokemon.length;
         const resistCount = data.resistPokemon.length;
 
@@ -47,22 +49,28 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
           resistCount,
           net: resistCount - weakCount,
           data,
+          isLocked,
         };
       }),
     [coverage]
   );
 
-  const pressurePoints = [...typeSummaries]
+  const activeTypeSummaries = useMemo(
+    () => typeSummaries.filter((entry) => !entry.isLocked),
+    [typeSummaries]
+  );
+
+  const pressurePoints = [...activeTypeSummaries]
     .filter((entry) => entry.weakCount > entry.resistCount)
     .sort((a, b) => a.net - b.net)
     .slice(0, 3);
 
-  const safePivots = [...typeSummaries]
+  const safePivots = [...activeTypeSummaries]
     .filter((entry) => entry.resistCount >= entry.weakCount && entry.resistCount > 0)
     .sort((a, b) => b.net - a.net)
     .slice(0, 3);
 
-  const fallbackType = pressurePoints[0]?.type || safePivots[0]?.type || ALL_TYPES[0];
+  const fallbackType = pressurePoints[0]?.type || safePivots[0]?.type || activeTypeSummaries[0]?.type || ALL_TYPES[0];
   const activeType = hoveredType || selectedType || fallbackType;
   const activeData = typeSummaries.find((item) => item.type === activeType) || typeSummaries[0];
 
@@ -120,6 +128,12 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
             <span className="h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(218, 44, 67, 0.3)" }} />
             Exposed
           </span>
+          {typeSummaries.some((t) => t.isLocked) && (
+            <span className="inline-flex items-center gap-1">
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(148, 163, 184, 0.18)", border: "1px dashed rgba(148, 163, 184, 0.4)" }} />
+              Locked
+            </span>
+          )}
         </div>
       </div>
 
@@ -202,7 +216,37 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div>
           <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-9 sm:gap-2" role="grid" aria-label="Type coverage heatmap">
-            {typeSummaries.map(({ type, weakCount, resistCount, net }) => {
+            {typeSummaries.map(({ type, weakCount, resistCount, net, isLocked }) => {
+              if (isLocked) {
+                return (
+                  <div
+                    key={type}
+                    className="relative flex aspect-square flex-col items-center justify-center rounded-lg"
+                    style={{
+                      background: "var(--surface-2)",
+                      border: "1px dashed rgba(148, 163, 184, 0.35)",
+                      opacity: 0.35,
+                      pointerEvents: "none",
+                      cursor: "not-allowed",
+                      overflow: "hidden",
+                    }}
+                    aria-label={`${type}: not available in this generation`}
+                  >
+                    <div
+                      className="pointer-events-none absolute inset-0"
+                      style={{
+                        background: "linear-gradient(135deg, transparent 45%, rgba(148, 163, 184, 0.4) 45%, rgba(148, 163, 184, 0.4) 55%, transparent 55%)",
+                      }}
+                      aria-hidden="true"
+                    />
+                    <div className="mb-1 h-3.5 w-3.5 rounded-full" style={{ background: TYPE_HEX[type], opacity: 0.5 }} />
+                    <span className="text-[0.54rem] font-bold uppercase leading-none" style={{ color: "var(--text-muted)" }}>
+                      {type.slice(0, 3)}
+                    </span>
+                  </div>
+                );
+              }
+
               const isActive = type === activeType;
 
               return (
@@ -251,95 +295,108 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
             <span className="font-display text-base capitalize" style={{ color: "var(--text-primary)" }}>
               {activeData.type}
             </span>
+            {activeData.isLocked && (
+              <span className="rounded-full px-2 py-0.5 text-[0.58rem] font-semibold" style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                Locked
+              </span>
+            )}
           </div>
 
-          <div className="mb-3 grid grid-cols-3 gap-1.5">
-            <div className="rounded-md px-2 py-1.5" style={{ background: "rgba(248, 113, 113, 0.12)", border: "1px solid rgba(248, 113, 113, 0.28)" }}>
-              <p className="text-[0.55rem] font-semibold uppercase" style={{ color: "#fca5a5" }}>
-                Weak
-              </p>
-              <p className="font-mono text-xs" style={{ color: "#fca5a5" }}>
-                {activeData.weakCount}
-              </p>
-            </div>
-            <div className="rounded-md px-2 py-1.5" style={{ background: "rgba(74, 222, 128, 0.12)", border: "1px solid rgba(74, 222, 128, 0.28)" }}>
-              <p className="text-[0.55rem] font-semibold uppercase" style={{ color: "#86efac" }}>
-                Resist
-              </p>
-              <p className="font-mono text-xs" style={{ color: "#86efac" }}>
-                {activeData.resistCount}
-              </p>
-            </div>
-            <div className="rounded-md px-2 py-1.5" style={{ background: "var(--surface-1)", border: "1px solid var(--border)" }}>
-              <p className="text-[0.55rem] font-semibold uppercase" style={{ color: "var(--text-muted)" }}>
-                Net
-              </p>
-              <p className="font-mono text-xs" style={{ color: getNetColor(activeData.net) }}>
-                {formatNet(activeData.net)}
-              </p>
-            </div>
-          </div>
-
-          {!hasCoverageData && (
+          {activeData.isLocked ? (
             <p className="text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
-              No team member is currently weak or resistant to this type.
+              This type was not introduced until a later generation.
             </p>
-          )}
-
-          {hasCoverageData && (
-            <div className="grid grid-cols-1 gap-3">
-              <div>
-                <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "#fca5a5" }}>
-                  Weak ({activeData.weakCount})
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {activeData.data.weakPokemon.length > 0 ? (
-                    activeData.data.weakPokemon.map((pokemon) => (
-                      <Image
-                        key={pokemon.id}
-                        src={pokemon.sprite}
-                        alt={pokemon.name}
-                        width={30}
-                        height={30}
-                        className="rounded border"
-                        style={{ borderColor: "rgba(248, 113, 113, 0.35)", background: "rgba(248, 113, 113, 0.16)" }}
-                        title={`${pokemon.name} (${pokemon.effectiveness}x)`}
-                      />
-                    ))
-                  ) : (
-                    <span className="text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
-                      No listed weaknesses.
-                    </span>
-                  )}
+          ) : (
+            <>
+              <div className="mb-3 grid grid-cols-3 gap-1.5">
+                <div className="rounded-md px-2 py-1.5" style={{ background: "rgba(248, 113, 113, 0.12)", border: "1px solid rgba(248, 113, 113, 0.28)" }}>
+                  <p className="text-[0.55rem] font-semibold uppercase" style={{ color: "#fca5a5" }}>
+                    Weak
+                  </p>
+                  <p className="font-mono text-xs" style={{ color: "#fca5a5" }}>
+                    {activeData.weakCount}
+                  </p>
+                </div>
+                <div className="rounded-md px-2 py-1.5" style={{ background: "rgba(74, 222, 128, 0.12)", border: "1px solid rgba(74, 222, 128, 0.28)" }}>
+                  <p className="text-[0.55rem] font-semibold uppercase" style={{ color: "#86efac" }}>
+                    Resist
+                  </p>
+                  <p className="font-mono text-xs" style={{ color: "#86efac" }}>
+                    {activeData.resistCount}
+                  </p>
+                </div>
+                <div className="rounded-md px-2 py-1.5" style={{ background: "var(--surface-1)", border: "1px solid var(--border)" }}>
+                  <p className="text-[0.55rem] font-semibold uppercase" style={{ color: "var(--text-muted)" }}>
+                    Net
+                  </p>
+                  <p className="font-mono text-xs" style={{ color: getNetColor(activeData.net) }}>
+                    {formatNet(activeData.net)}
+                  </p>
                 </div>
               </div>
 
-              <div>
-                <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "#86efac" }}>
-                  Resist ({activeData.resistCount})
+              {!hasCoverageData && (
+                <p className="text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
+                  No team member is currently weak or resistant to this type.
                 </p>
-                <div className="flex flex-wrap gap-1">
-                  {activeData.data.resistPokemon.length > 0 ? (
-                    activeData.data.resistPokemon.map((pokemon) => (
-                      <Image
-                        key={pokemon.id}
-                        src={pokemon.sprite}
-                        alt={pokemon.name}
-                        width={30}
-                        height={30}
-                        className="rounded border"
-                        style={{ borderColor: "rgba(74, 222, 128, 0.35)", background: "rgba(74, 222, 128, 0.14)" }}
-                        title={`${pokemon.name} (${pokemon.effectiveness}x)`}
-                      />
-                    ))
-                  ) : (
-                    <span className="text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
-                      No listed resistances.
-                    </span>
-                  )}
+              )}
+
+              {hasCoverageData && (
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "#fca5a5" }}>
+                      Weak ({activeData.weakCount})
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {activeData.data.weakPokemon.length > 0 ? (
+                        activeData.data.weakPokemon.map((pokemon) => (
+                          <Image
+                            key={pokemon.id}
+                            src={pokemon.sprite}
+                            alt={pokemon.name}
+                            width={30}
+                            height={30}
+                            className="rounded border"
+                            style={{ borderColor: "rgba(248, 113, 113, 0.35)", background: "rgba(248, 113, 113, 0.16)" }}
+                            title={`${pokemon.name} (${pokemon.effectiveness}x)`}
+                          />
+                        ))
+                      ) : (
+                        <span className="text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
+                          No listed weaknesses.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "#86efac" }}>
+                      Resist ({activeData.resistCount})
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {activeData.data.resistPokemon.length > 0 ? (
+                        activeData.data.resistPokemon.map((pokemon) => (
+                          <Image
+                            key={pokemon.id}
+                            src={pokemon.sprite}
+                            alt={pokemon.name}
+                            width={30}
+                            height={30}
+                            className="rounded border"
+                            style={{ borderColor: "rgba(74, 222, 128, 0.35)", background: "rgba(74, 222, 128, 0.14)" }}
+                            title={`${pokemon.name} (${pokemon.effectiveness}x)`}
+                          />
+                        ))
+                      ) : (
+                        <span className="text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
+                          No listed resistances.
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              )}
+            </>
           )}
         </aside>
       </div>
