@@ -1,8 +1,21 @@
 import type { Metadata } from "next";
+import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import "@/app/globals.css";
 
+const sans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Pokémon Team Builder - Build Your Ultimate Pokémon Team",
+  title: "Pokémon Team Builder — Build Your Ultimate Team",
   description:
     "Create and optimize your perfect Pokémon team with our interactive team builder. Choose from all generations, analyze type coverage, and build competitive teams for any Pokémon game.",
   keywords:
@@ -22,7 +35,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <head>
         <script
           type="application/ld+json"
@@ -36,22 +49,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               url: "https://pokemon-team-builder.com",
               applicationCategory: "GameApplication",
               operatingSystem: "Web Browser",
-              offers: {
-                "@type": "Offer",
-                price: "0",
-                priceCurrency: "USD",
-              },
-              author: {
-                "@type": "Organization",
-                name: "Pokémon Team Builder",
-              },
-              keywords:
-                "pokemon, team builder, competitive pokemon, pokemon strategy, pokemon types",
+              offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+              author: { "@type": "Organization", name: "Pokémon Team Builder" },
+              keywords: "pokemon, team builder, competitive pokemon, pokemon strategy",
             }),
           }}
         />
       </head>
-      <body>{children}</body>
+      <body className="font-[family-name:var(--font-sans)] antialiased">{children}</body>
     </html>
   );
 }

@@ -14,23 +14,31 @@ interface TeamPanelProps {
 const TeamPanel = ({ team, currentTeamLength, activeDropId, onRemove }: TeamPanelProps) => {
   return (
     <section
-      className="bg-gray-800/50 backdrop-blur-sm border-2 border-gray-700 rounded-xl p-4 sm:p-6"
+      className="rounded-2xl p-5 sm:p-6"
+      style={{ background: "var(--surface-1)", border: "1px solid var(--border)" }}
       aria-labelledby="team-heading"
     >
-      <h2
-        id="team-heading"
-        className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6 flex items-center justify-between"
-      >
-        Your Team
+      <div className="flex items-center justify-between mb-5">
+        <h2
+          id="team-heading"
+          className="text-base sm:text-lg font-semibold"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Your Team
+        </h2>
         <span
-          className="text-xs sm:text-sm bg-red-600 px-2 sm:px-3 py-1 rounded-full text-white"
+          className="text-[0.65rem] font-semibold tabular-nums px-2.5 py-1 rounded-full"
+          style={{
+            background: currentTeamLength > 0 ? "rgba(229, 62, 62, 0.15)" : "var(--surface-3)",
+            color: currentTeamLength > 0 ? "#f87171" : "var(--text-muted)",
+          }}
           aria-label={`${currentTeamLength} out of 6 team slots filled`}
         >
           {currentTeamLength}/6
         </span>
-      </h2>
+      </div>
       <div
-        className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 max-h-[50vh] sm:max-h-[calc(100vh-350px)]  pr-1 sm:pr-2 custom-scrollbar my-6"
+        className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3"
         role="grid"
         aria-label="Team slots"
       >
@@ -43,8 +51,8 @@ const TeamPanel = ({ team, currentTeamLength, activeDropId, onRemove }: TeamPane
             pokemon={pokemon}
             onRemove={pokemon ? () => onRemove(index) : null}
           >
-            {pokemon && (
-              <div className="w-full h-full p-0.5 sm:p-1">
+            {pokemon ? (
+              <div className="w-full h-full p-0.5">
                 <PokemonCard
                   pokemon={pokemon}
                   isDraggable={false}
@@ -52,7 +60,7 @@ const TeamPanel = ({ team, currentTeamLength, activeDropId, onRemove }: TeamPane
                   dragId={`team-${index}-${pokemon.id}`}
                 />
               </div>
-            )}
+            ) : null}
           </TeamSlot>
         ))}
       </div>

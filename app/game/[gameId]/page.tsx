@@ -34,7 +34,7 @@ export default async function GamePage({ params }: { params: Promise<{ gameId: s
   const pokemonData = await getPokemonByGeneration(game.generation);
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen" style={{ background: "var(--surface-0)" }}>
       <TeamBuilder selectedGame={game} pokemonData={pokemonData} />
     </div>
   );

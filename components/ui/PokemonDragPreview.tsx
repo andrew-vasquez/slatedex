@@ -10,36 +10,42 @@ interface PokemonDragPreviewProps {
 
 const PokemonDragPreview = ({ pokemon }: PokemonDragPreviewProps) => {
   return (
-    <div className="relative bg-gray-800/90 backdrop-blur-sm rounded-xl shadow-2xl overflow-hidden border-2 border-red-500 transform rotate-6 scale-110 pointer-events-none">
-      <div className="absolute top-1 right-1 bg-gray-900/70 text-white text-xs px-2 py-0.5 rounded-full font-mono z-10">
-        #{pokemon.id.toString().padStart(3, "0")}
-      </div>
-
-      <div className="relative pt-3 pb-3 px-3 text-white">
-        <div className="relative mx-auto w-16 h-16 mb-2">
+    <div
+      className="rounded-xl shadow-2xl overflow-hidden pointer-events-none transform rotate-3 scale-105"
+      style={{
+        background: "var(--surface-1)",
+        border: "2px solid rgba(229, 62, 62, 0.5)",
+        boxShadow: "0 25px 50px rgba(0,0,0,0.4), 0 0 30px rgba(229,62,62,0.15)",
+      }}
+    >
+      <div className="flex items-center gap-3 p-3">
+        <div
+          className="shrink-0 w-12 h-12 rounded-lg flex items-center justify-center"
+          style={{ background: "var(--surface-3)" }}
+        >
           <Image
             src={pokemon.sprite}
             alt={pokemon.name}
-            width={64}
-            height={64}
-            className="relative w-full h-full object-contain drop-shadow-lg"
+            width={40}
+            height={40}
+            className="w-10 h-10 object-contain drop-shadow-lg"
             priority
           />
         </div>
-
-        <h3 className="font-bold text-gray-100 text-center mb-2 text-sm leading-tight">
-          {pokemon.name}
-        </h3>
-
-        <div className="flex justify-center gap-1 flex-wrap">
-          {pokemon.types.map((type: string) => (
-            <span
-              key={type}
-              className={`px-2 py-0.5 rounded-full text-white text-xs font-semibold shadow-md ${TYPE_COLORS[type]}`}
-            >
-              {type.charAt(0).toUpperCase() + type.slice(1)}
-            </span>
-          ))}
+        <div>
+          <h3 className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>
+            {pokemon.name}
+          </h3>
+          <div className="flex gap-1 mt-0.5">
+            {pokemon.types.map((type: string) => (
+              <span
+                key={type}
+                className={`px-1.5 py-0 rounded text-[0.55rem] font-semibold text-white ${TYPE_COLORS[type]}`}
+              >
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </div>

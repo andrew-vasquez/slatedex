@@ -5,7 +5,6 @@ import Image from "next/image";
 import { MAINLINE_GAMES } from "@/lib/pokemon";
 import type { Game } from "@/lib/types";
 
-// Static sprite lookup from PokeAPI CDN
 const getSpriteUrl = (name: string): string => {
   const SPRITE_IDS: Record<string, number> = {
     bulbasaur: 1, charmander: 4, squirtle: 7, mewtwo: 150,
@@ -20,147 +19,155 @@ const getSpriteUrl = (name: string): string => {
     : "";
 };
 
+const REGION_GRADIENTS: Record<string, string> = {
+  Kanto: "from-red-500/20 to-orange-500/20",
+  Johto: "from-amber-500/20 to-yellow-500/20",
+  Hoenn: "from-emerald-500/20 to-cyan-500/20",
+  Sinnoh: "from-blue-500/20 to-indigo-500/20",
+  Unova: "from-violet-500/20 to-fuchsia-500/20",
+};
+
+const REGION_ACCENTS: Record<string, string> = {
+  Kanto: "group-hover:border-red-500/50 group-hover:shadow-red-500/10",
+  Johto: "group-hover:border-amber-500/50 group-hover:shadow-amber-500/10",
+  Hoenn: "group-hover:border-emerald-500/50 group-hover:shadow-emerald-500/10",
+  Sinnoh: "group-hover:border-blue-500/50 group-hover:shadow-blue-500/10",
+  Unova: "group-hover:border-violet-500/50 group-hover:shadow-violet-500/10",
+};
+
 const GameSelector = () => {
   return (
-    <div className="min-h-screen bg-gray-900 text-white font-sans">
-      <div
-        className="absolute inset-0 z-0 opacity-5"
-        style={{
-          backgroundImage: `
-            radial-gradient(circle at 25px 25px, #ef4444 2%, transparent 0%),
-            radial-gradient(circle at 75px 75px, #3b82f6 2%, transparent 0%)`,
-          backgroundSize: "100px 100px",
-        }}
-        aria-hidden="true"
-      />
+    <div className="min-h-screen relative overflow-hidden" style={{ background: "var(--surface-0)" }}>
+      {/* Ambient background glow */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute -top-[40%] -left-[20%] w-[70%] h-[70%] rounded-full bg-red-600/[0.04] blur-[120px]" />
+        <div className="absolute -bottom-[30%] -right-[20%] w-[60%] h-[60%] rounded-full bg-blue-600/[0.04] blur-[120px]" />
+      </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <header
-          className="text-center mb-8 sm:mb-12 lg:mb-16 pt-8 sm:pt-12 lg:pt-16"
-          role="banner"
-        >
-          <div className="inline-block relative mb-6 sm:mb-8">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white tracking-wider">
-              POKÉMON
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Hero */}
+        <header className="pt-16 sm:pt-24 pb-12 sm:pb-16 text-center" role="banner">
+          <div className="inline-flex flex-col items-center gap-3">
+            <span
+              className="text-[0.7rem] sm:text-xs font-medium tracking-[0.3em] uppercase"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Interactive Team Builder
+            </span>
+            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.9]">
+              <span className="block" style={{ color: "var(--text-primary)" }}>
+                POKÉMON
+              </span>
+              <span
+                className="block bg-gradient-to-r from-red-400 via-red-500 to-orange-500 bg-clip-text text-transparent"
+              >
+                TEAM BUILDER
+              </span>
             </h1>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-red-500 tracking-wide -mt-2">
-              TEAM BUILDER
-            </h2>
-            <div
-              className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3/4 h-1 bg-gradient-to-r from-red-600 via-red-500 to-red-600 rounded-full"
-              aria-hidden="true"
-            />
+            <p
+              className="mt-4 text-base sm:text-lg max-w-md leading-relaxed"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Choose your generation. Craft the perfect team.
+            </p>
           </div>
-          <p className="text-lg sm:text-xl lg:text-2xl text-gray-300 max-w-3xl mx-auto px-4 leading-relaxed">
-            Choose your adventure and build the ultimate team
-          </p>
         </header>
 
-        <main
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8 pb-12"
-          role="main"
-        >
+        {/* Game cards grid */}
+        <main role="main" className="pb-16 sm:pb-24">
           <h2 className="sr-only">Select a Pokémon Game Generation</h2>
-          {MAINLINE_GAMES.map((game: Game) => (
-            // Best practice §2.5: next/link prefetches on hover
-            <Link
-              key={game.id}
-              href={`/game/${game.id}`}
-              className="group relative bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm 
-                         border-2 border-gray-600 rounded-2xl overflow-hidden cursor-pointer
-                         transition-all duration-500 hover:border-red-500 hover:scale-105 
-                         hover:shadow-2xl hover:shadow-red-500/25 hover:from-gray-700/90 hover:to-gray-800/90
-                         active:scale-95 transform-gpu block"
-              aria-label={`Select ${game.name} from Generation ${game.generation} set in the ${game.region} region`}
-            >
-              <div
-                className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-transparent to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                aria-hidden="true"
-              />
-
-              <div
-                className="absolute inset-0 z-0 overflow-hidden rounded-2xl"
-                aria-hidden="true"
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            {MAINLINE_GAMES.map((game: Game, i: number) => (
+              <Link
+                key={game.id}
+                href={`/game/${game.id}`}
+                className={`
+                  group relative rounded-2xl overflow-hidden block
+                  border border-[var(--border)] transition-all duration-300
+                  hover:shadow-2xl hover:-translate-y-1
+                  ${REGION_ACCENTS[game.region] || ""}
+                  animate-fade-in-up
+                `}
+                style={{
+                  background: "var(--surface-1)",
+                  animationDelay: `${i * 80}ms`,
+                }}
+                aria-label={`Select ${game.name} — Generation ${game.generation}, ${game.region} region`}
               >
-                <Image
-                  src={getSpriteUrl(game.legendaries[0])}
-                  alt=""
-                  width={128}
-                  height={128}
-                  className="absolute -top-4 -right-4 w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 object-contain
-                             opacity-20 group-hover:opacity-40 transition-opacity duration-500 
-                             transform group-hover:scale-110 group-hover:rotate-6"
+                {/* Region gradient overlay */}
+                <div
+                  className={`absolute inset-0 bg-gradient-to-br ${REGION_GRADIENTS[game.region] || "from-gray-500/20 to-gray-600/20"} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
+                  aria-hidden="true"
                 />
-                <div className="absolute bottom-2 left-2 flex space-x-1">
-                  {game.starters.map((starter: string) => (
-                    <Image
-                      key={starter}
-                      src={getSpriteUrl(starter)}
-                      alt=""
-                      width={40}
-                      height={40}
-                      className="w-8 h-8 sm:w-10 sm:h-10 object-contain
-                                 opacity-40 group-hover:opacity-80 transition-all duration-300
-                                 transform group-hover:scale-110"
-                    />
-                  ))}
-                </div>
-              </div>
 
-              <div className="absolute top-4 left-4 z-10">
-                <div className="bg-gradient-to-r from-red-600 to-red-500 text-white text-sm font-bold px-3 py-1.5 rounded-full shadow-lg">
-                  <span className="sr-only">Generation</span>
-                  Gen {game.generation}
+                {/* Legendary watermark */}
+                <div className="absolute -top-2 -right-2 pointer-events-none" aria-hidden="true">
+                  <Image
+                    src={getSpriteUrl(game.legendaries[0])}
+                    alt=""
+                    width={120}
+                    height={120}
+                    className="w-24 h-24 sm:w-28 sm:h-28 object-contain opacity-[0.06] group-hover:opacity-[0.14] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3"
+                  />
                 </div>
-              </div>
 
-              <div className="relative z-10 p-6 sm:p-8 h-full flex flex-col justify-between min-h-[200px]">
-                <div className="flex-1">
-                  <h3
-                    className="text-xl sm:text-2xl lg:text-3xl font-bold text-white group-hover:text-red-100 
-                                 transition-colors duration-300 leading-tight mb-3 pt-6"
-                  >
+                <div className="relative p-5 sm:p-6 flex flex-col min-h-[200px]">
+                  {/* Gen badge */}
+                  <div className="flex items-center gap-2 mb-auto">
+                    <span
+                      className="text-[0.65rem] font-semibold tracking-wider uppercase px-2.5 py-1 rounded-md"
+                      style={{ background: "var(--surface-3)", color: "var(--text-secondary)" }}
+                    >
+                      Gen {game.generation}
+                    </span>
+                    <span
+                      className="text-[0.65rem] font-medium tracking-wider uppercase"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {game.region}
+                    </span>
+                  </div>
+
+                  {/* Title */}
+                  <h3 className="text-2xl sm:text-3xl font-bold mt-6 mb-4 tracking-tight transition-colors duration-300">
                     {game.name}
                   </h3>
-                  <p className="text-base sm:text-lg text-gray-300 group-hover:text-gray-200 transition-colors duration-300">
-                    {game.region} Region
-                  </p>
-                </div>
 
-                <div className="mt-6 flex items-center justify-between">
-                  <div className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
-                    Click to start building
-                  </div>
-                  <div
-                    className="w-8 h-8 rounded-full bg-red-600/20 group-hover:bg-red-600/40 
-                                  flex items-center justify-center transition-all duration-300 group-hover:scale-110"
-                    aria-hidden="true"
-                  >
-                    <svg
-                      className="w-4 h-4 text-red-400 group-hover:text-red-300"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                  {/* Starters row */}
+                  <div className="flex items-center justify-between mt-auto">
+                    <div className="flex -space-x-1">
+                      {game.starters.map((starter: string) => (
+                        <div
+                          key={starter}
+                          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+                          style={{ background: "var(--surface-3)" }}
+                        >
+                          <Image
+                            src={getSpriteUrl(starter)}
+                            alt={starter}
+                            width={32}
+                            height={32}
+                            className="w-7 h-7 sm:w-8 sm:h-8 object-contain"
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Arrow indicator */}
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 group-hover:translate-x-1"
+                      style={{ background: "var(--surface-3)" }}
                       aria-hidden="true"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
+                      <svg className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div
-                className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 via-red-500 to-red-600 
-                              transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center"
-                aria-hidden="true"
-              />
-            </Link>
-          ))}
+              </Link>
+            ))}
+          </div>
         </main>
       </div>
     </div>

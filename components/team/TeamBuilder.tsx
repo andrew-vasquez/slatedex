@@ -179,8 +179,9 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="min-h-screen bg-gray-900 text-white font-sans">
+      <div className="min-h-screen" style={{ color: "var(--text-primary)" }}>
         <TeamBuilderHeader
+          game={selectedGame}
           onShuffle={shuffleTeam}
           onClear={clearTeam}
           teamLength={currentTeam.length}
@@ -190,7 +191,7 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
           <h1 className="sr-only">
             Pokémon Team Builder for {selectedGame.name}
           </h1>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
             <PokemonSelection
               filteredPokemon={filteredPokemon}
               searchTerm={searchTerm}
@@ -209,7 +210,7 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
 
           {currentTeam.length > 0 && (
             <section
-              className="mt-4 sm:mt-6"
+              className="mt-4 sm:mt-5"
               aria-labelledby="coverage-heading"
             >
               <DefensiveCoverage coverage={defensiveCoverage} />

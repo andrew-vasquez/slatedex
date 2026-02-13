@@ -21,65 +21,81 @@ const PokemonSelection = ({
 }: PokemonSelectionProps) => {
   return (
     <section
-      className="bg-gray-800/50 backdrop-blur-sm border-2 border-gray-700 rounded-xl p-4 sm:p-6"
+      className="rounded-2xl p-5 sm:p-6"
+      style={{ background: "var(--surface-1)", border: "1px solid var(--border)" }}
       aria-labelledby="available-pokemon-heading"
     >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 mb-4 sm:mb-6">
-        <div className="flex flex-col gap-2">
+      {/* Header row */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+        <div className="flex items-center gap-2.5">
           <h2
             id="available-pokemon-heading"
-            className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2 sm:gap-3"
+            className="text-base sm:text-lg font-semibold"
+            style={{ color: "var(--text-primary)" }}
           >
             Available Pokémon
-            <span
-              className="text-xs sm:text-sm bg-gray-700 px-2 sm:px-3 py-1 rounded-full text-gray-300"
-              aria-label={`${filteredPokemon.length} Pokémon available`}
-            >
-              {filteredPokemon.length}
-            </span>
           </h2>
-          {currentTeamLength < 6 && (
-            <p className="text-xs text-gray-400">
-              Tap any Pokémon to add to your team
-            </p>
-          )}
+          <span
+            className="text-[0.65rem] font-medium tabular-nums px-2 py-0.5 rounded-md"
+            style={{ background: "var(--surface-3)", color: "var(--text-muted)" }}
+            aria-label={`${filteredPokemon.length} Pokémon available`}
+          >
+            {filteredPokemon.length}
+          </span>
         </div>
-        <div className="relative w-full sm:w-auto">
-          <label htmlFor="pokemon-search" className="sr-only">
-            Search Pokémon
-          </label>
+
+        {/* Search */}
+        <div className="relative w-full sm:w-56">
+          <label htmlFor="pokemon-search" className="sr-only">Search Pokémon</label>
           <FiSearch
-            className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400"
-            size={18}
+            className="absolute left-3 top-1/2 -translate-y-1/2"
+            size={14}
+            style={{ color: "var(--text-muted)" }}
             aria-hidden="true"
           />
           <input
             id="pokemon-search"
             type="text"
-            placeholder="Search Pokémon..."
+            placeholder="Search…"
             value={searchTerm}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
-            className="pl-10 sm:pl-12 pr-4 py-2 w-full sm:w-64 bg-gray-700/80 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition text-sm sm:text-base"
-            aria-describedby="search-help"
+            className="pl-8 pr-3 py-2 w-full rounded-lg text-sm transition-all duration-200
+                       focus:ring-2 focus:ring-red-500/40 focus:border-transparent"
+            style={{
+              background: "var(--surface-2)",
+              border: "1px solid var(--border)",
+              color: "var(--text-primary)",
+            }}
           />
-          <div id="search-help" className="sr-only">
-            Search through available Pokémon by name
-          </div>
         </div>
       </div>
+
+      {currentTeamLength < 6 && (
+        <p className="text-[0.7rem] mb-4" style={{ color: "var(--text-muted)" }}>
+          Tap or drag a Pokémon to add it to your team
+        </p>
+      )}
+
+      {/* Pokemon grid */}
       <div
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 max-h-[50vh] sm:max-h-[calc(100vh-350px)] overflow-y-auto pr-1 sm:pr-2 custom-scrollbar"
-        role="grid"
-        aria-label="Available Pokémon selection"
+        className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[50vh] sm:max-h-[calc(100vh-280px)] overflow-y-auto pr-1 custom-scrollbar"
+        role="list"
+        aria-label="Available Pokémon"
       >
-        {filteredPokemon.map((pokemon: Pokemon) => (
-          <PokemonCard
+        {filteredPokemon.map((pokemon: Pokemon, i: number) => (
+          <div
             key={pokemon.id}
-            pokemon={pokemon}
-            dragId={`available-${pokemon.id}`}
-            onTap={onAddPokemon}
-            canAddToTeam={currentTeamLength < 6}
-          />
+            role="listitem"
+            className="animate-fade-in-up"
+            style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
+          >
+            <PokemonCard
+              pokemon={pokemon}
+              dragId={`available-${pokemon.id}`}
+              onTap={onAddPokemon}
+              canAddToTeam={currentTeamLength < 6}
+            />
+          </div>
         ))}
       </div>
     </section>
