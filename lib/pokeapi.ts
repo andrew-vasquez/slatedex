@@ -7,6 +7,23 @@ const TYPE_INTRO_GENERATION: Partial<Record<string, number>> = {
   steel: 2,
   fairy: 6,
 };
+const GENERATION_NAME_TO_ID: Record<string, number> = {
+  "generation-i": 1,
+  "generation-ii": 2,
+  "generation-iii": 3,
+  "generation-iv": 4,
+  "generation-v": 5,
+  "generation-vi": 6,
+  "generation-vii": 7,
+  "generation-viii": 8,
+  "generation-ix": 9,
+};
+
+interface ResolvedRegionalDex {
+  dexName: string;
+  speciesNames: Set<string>;
+  orderBySpecies: Map<string, number>;
+}
 
 /**
  * Fetch all Pokémon for generations up to and including the given generation.
@@ -85,16 +102,29 @@ export async function getPokemonByGeneration(maxGeneration: number): Promise<Pok
   return allPokemon.sort((a, b) => a.id - b.id);
 }
 
-async function resolveRegionalDexSpecies(candidates: string[]): Promise<{ dexName: string; speciesNames: Set<string> } | null> {
+function getOrderedSpeciesFromDexEntries(entries: any[]): string[] {
+  return [...entries]
+    .sort((a, b) => a.entry_number - b.entry_number)
+    .map((entry: any) => entry.pokemon_species.name);
+}
+
+function createSpeciesOrderMap(species: string[]): Map<string, number> {
+  return new Map(species.map((name, index) => [name, index]));
+}
+
+async function resolveRegionalDexSpecies(candidates: string[]): Promise<ResolvedRegionalDex | null> {
   for (const dexName of candidates) {
     try {
       const dexData: any = await pokedex.getPokedexByName(dexName);
-      const speciesNames = new Set<string>(
-        dexData.pokemon_entries.map((entry: any) => entry.pokemon_species.name)
-      );
+      const orderedSpecies = getOrderedSpeciesFromDexEntries(dexData.pokemon_entries);
+      const speciesNames = new Set<string>(orderedSpecies);
 
       if (speciesNames.size > 0) {
-        return { dexName, speciesNames };
+        return {
+          dexName,
+          speciesNames,
+          orderBySpecies: createSpeciesOrderMap(orderedSpecies),
+        };
       }
     } catch {
       // try next candidate
@@ -106,19 +136,24 @@ async function resolveRegionalDexSpecies(candidates: string[]): Promise<{ dexNam
 
 async function resolveRegionalDexSpeciesUnion(
   candidates: string[]
-): Promise<{ dexName: string; speciesNames: Set<string> } | null> {
+): Promise<ResolvedRegionalDex | null> {
   const uniqueCandidates = [...new Set(candidates)];
   const mergedSpecies = new Set<string>();
+  const orderedSpecies: string[] = [];
   const resolvedDexNames: string[] = [];
 
   for (const dexName of uniqueCandidates) {
     try {
       const dexData: any = await pokedex.getPokedexByName(dexName);
-      const dexSpecies = dexData.pokemon_entries.map((entry: any) => entry.pokemon_species.name);
+      const dexSpecies = getOrderedSpeciesFromDexEntries(dexData.pokemon_entries);
 
       if (dexSpecies.length === 0) continue;
 
-      dexSpecies.forEach((name: string) => mergedSpecies.add(name));
+      dexSpecies.forEach((name: string) => {
+        if (mergedSpecies.has(name)) return;
+        mergedSpecies.add(name);
+        orderedSpecies.push(name);
+      });
       resolvedDexNames.push(dexName);
     } catch {
       // try next candidate
@@ -130,12 +165,13 @@ async function resolveRegionalDexSpeciesUnion(
   return {
     dexName: resolvedDexNames.join(" + "),
     speciesNames: mergedSpecies,
+    orderBySpecies: createSpeciesOrderMap(orderedSpecies),
   };
 }
 
 async function resolveRegionalDexFromVersionGroups(
   versionGroupCandidates: string[]
-): Promise<{ dexName: string; speciesNames: Set<string> } | null> {
+): Promise<ResolvedRegionalDex | null> {
   const regionalDexNames: string[] = [];
 
   for (const versionGroupName of versionGroupCandidates) {
@@ -158,7 +194,7 @@ async function resolveRegionalDexFromVersionGroups(
 
 async function resolveRegionalDexFromRegions(
   regionCandidates: string[]
-): Promise<{ dexName: string; speciesNames: Set<string> } | null> {
+): Promise<ResolvedRegionalDex | null> {
   const regionalDexNames: string[] = [];
 
   for (const rawRegionName of regionCandidates) {
@@ -184,7 +220,7 @@ async function resolveRegionalDexFromRegions(
 
 async function resolveRegionalDexFromVersionGroupRegions(
   versionGroupCandidates: string[]
-): Promise<{ dexName: string; speciesNames: Set<string> } | null> {
+): Promise<ResolvedRegionalDex | null> {
   const regionNames: string[] = [];
 
   for (const versionGroupName of versionGroupCandidates) {
@@ -212,7 +248,7 @@ export async function getPokemonPoolsForGame(game: Game): Promise<PokemonPools> 
     () => resolveRegionalDexFromRegions([game.region]),
   ];
 
-  let regionalDex: { dexName: string; speciesNames: Set<string> } | null = null;
+  let regionalDex: ResolvedRegionalDex | null = null;
   for (const resolveCandidate of regionalDexCandidates) {
     regionalDex = await resolveCandidate();
     if (regionalDex) break;
@@ -227,7 +263,14 @@ export async function getPokemonPoolsForGame(game: Game): Promise<PokemonPools> 
     };
   }
 
-  const regional = national.filter((pokemon) => regionalDex.speciesNames.has(pokemon.name.toLowerCase()));
+  const regional = national
+    .filter((pokemon) => regionalDex.speciesNames.has(pokemon.name.toLowerCase()))
+    .sort((a, b) => {
+      const aIndex = regionalDex.orderBySpecies.get(a.name.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
+      const bIndex = regionalDex.orderBySpecies.get(b.name.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
+      if (aIndex !== bIndex) return aIndex - bIndex;
+      return a.id - b.id;
+    });
   const regionalResolved = regional.length > 0;
 
   return {
@@ -247,17 +290,29 @@ function mapPokemonData(pokemon: any, generation: number, rulesGeneration: numbe
     else if (name === "defense") stats.defense = stat.base_stat;
   }
 
-  const generationFilteredTypes: string[] = pokemon.types
-    .map((t: any) => t.type.name)
-    .filter((type: string) => {
-      const introducedIn = TYPE_INTRO_GENERATION[type] ?? 1;
-      return introducedIn <= rulesGeneration;
-    });
+  const currentTypes: string[] = pokemon.types.map((t: any) => t.type.name);
+  const pastTypes: Array<{ generation?: { name?: string }; types?: Array<{ type: { name: string } }> }> =
+    Array.isArray(pokemon.past_types) ? pokemon.past_types : [];
+
+  const matchingPastType = pastTypes
+    .map((entry) => ({
+      types: (entry.types ?? []).map((item) => item.type.name),
+      lastGenerationWithTypes: GENERATION_NAME_TO_ID[entry.generation?.name ?? ""],
+    }))
+    .filter((entry) => Number.isFinite(entry.lastGenerationWithTypes) && rulesGeneration <= entry.lastGenerationWithTypes)
+    .sort((a, b) => a.lastGenerationWithTypes - b.lastGenerationWithTypes)[0];
+
+  const generationTypes = matchingPastType?.types.length ? matchingPastType.types : currentTypes;
+  const generationFilteredTypes: string[] = generationTypes.filter((type: string) => {
+    const introducedIn = TYPE_INTRO_GENERATION[type] ?? 1;
+    return introducedIn <= rulesGeneration;
+  });
+  const finalTypes = generationFilteredTypes.length > 0 ? generationFilteredTypes : generationTypes;
 
   return {
     id: pokemon.id,
     name: pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1),
-    types: generationFilteredTypes,
+    types: finalTypes,
     generation,
     hp: stats.hp || 0,
     attack: stats.attack || 0,
