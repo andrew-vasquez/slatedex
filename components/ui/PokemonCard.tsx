@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useDraggable } from "@dnd-kit/core";
-import { useEffect, useState } from "react";
+import { memo } from "react";
 import { TYPE_COLORS } from "@/lib/constants";
 import type { Pokemon } from "@/lib/types";
 
@@ -14,6 +14,7 @@ interface PokemonCardProps {
   onTap?: ((pokemon: Pokemon) => void) | null;
   canAddToTeam?: boolean;
   versionLabelMap?: Record<string, string>;
+  dragEnabled?: boolean;
 }
 
 const STAT_COLORS: Record<string, string> = {
@@ -36,21 +37,10 @@ const PokemonCard = ({
   onTap = null,
   canAddToTeam = false,
   versionLabelMap = {},
+  dragEnabled = true,
 }: PokemonCardProps) => {
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
-
-  useEffect(() => {
-    const check = () => {
-      setIsTouchDevice("ontouchstart" in window || navigator.maxTouchPoints > 0 || window.innerWidth <= 768);
-    };
-
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
   const uniqueId = dragId || `pokemon-${isDraggableProp ? "available" : "team"}-${pokemon.id}`;
-  const shouldEnableDrag = isDraggableProp && !isTouchDevice;
+  const shouldEnableDrag = isDraggableProp && dragEnabled;
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: uniqueId,
@@ -71,8 +61,7 @@ const PokemonCard = ({
   const interactiveClass = [
     shouldEnableDrag && !isDragging ? "cursor-grab active:cursor-grabbing" : "",
     onTap && canAddToTeam ? "cursor-pointer" : "",
-    isTouchDevice && onTap && canAddToTeam ? "active:scale-[0.98]" : "",
-    isTouchDevice ? "select-none" : "",
+    onTap && canAddToTeam ? "active:scale-[0.98] select-none" : "",
   ].join(" ");
 
   const exclusiveVersionLabels: string[] =
@@ -88,6 +77,7 @@ const PokemonCard = ({
     return (
       <div
         ref={setNodeRef}
+        suppressHydrationWarning
         style={{ ...style, transition: "transform 0.2s ease" }}
         {...(shouldEnableDrag ? listeners : {})}
         {...(shouldEnableDrag ? attributes : {})}
@@ -129,6 +119,7 @@ const PokemonCard = ({
   return (
     <div
       ref={setNodeRef}
+      suppressHydrationWarning
       style={{ ...style, transition: "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease" }}
       {...(shouldEnableDrag ? listeners : {})}
       {...(shouldEnableDrag ? attributes : {})}
@@ -229,4 +220,6 @@ const PokemonCard = ({
   );
 };
 
-export default PokemonCard;
+PokemonCard.displayName = "PokemonCard";
+
+export default memo(PokemonCard);

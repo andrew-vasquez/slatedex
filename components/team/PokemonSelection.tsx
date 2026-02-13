@@ -1,6 +1,7 @@
 "use client";
 
 import { FiSearch, FiX } from "react-icons/fi";
+import { type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PokemonCard from "@/components/ui/PokemonCard";
 import type { DexMode, Pokemon } from "@/lib/types";
 
@@ -20,7 +21,12 @@ interface PokemonSelectionProps {
   onVersionChange: (versionId: string) => void;
   versionFilterEnabled: boolean;
   onVersionFilterChange: (enabled: boolean) => void;
+  dragEnabled: boolean;
 }
+
+const GRID_GAP_PX = 10;
+const DEFAULT_ROW_HEIGHT = 190;
+const OVERSCAN_ROWS = 4;
 
 const PokemonSelection = ({
   filteredPokemon,
@@ -38,10 +44,120 @@ const PokemonSelection = ({
   onVersionChange,
   versionFilterEnabled,
   onVersionFilterChange,
+  dragEnabled,
 }: PokemonSelectionProps) => {
-  const versionLabelMap: Record<string, string> = Object.fromEntries(
-    versions.map((version) => [version.id, version.label])
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const rowMeasureObserverRef = useRef<ResizeObserver | null>(null);
+  const pendingScrollTopRef = useRef(0);
+  const [columns, setColumns] = useState(1);
+  const [rowHeight, setRowHeight] = useState(DEFAULT_ROW_HEIGHT);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  const versionLabelMap: Record<string, string> = useMemo(
+    () => Object.fromEntries(versions.map((version) => [version.id, version.label])),
+    [versions]
   );
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 640px)");
+    const updateColumns = () => setColumns(query.matches ? 2 : 1);
+
+    updateColumns();
+    query.addEventListener("change", updateColumns);
+
+    return () => query.removeEventListener("change", updateColumns);
+  }, []);
+
+  useEffect(() => {
+    const node = scrollContainerRef.current;
+    if (!node) return;
+
+    const updateViewportHeight = () => {
+      setViewportHeight(node.clientHeight);
+      setScrollTop(node.scrollTop);
+    };
+
+    updateViewportHeight();
+
+    const observer = new ResizeObserver(updateViewportHeight);
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [filteredPokemon.length]);
+
+  useEffect(() => {
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+      if (rowMeasureObserverRef.current) {
+        rowMeasureObserverRef.current.disconnect();
+      }
+    };
+  }, []);
+
+  const measureFirstItem = useCallback((node: HTMLDivElement | null) => {
+    if (rowMeasureObserverRef.current) {
+      rowMeasureObserverRef.current.disconnect();
+      rowMeasureObserverRef.current = null;
+    }
+
+    if (!node) return;
+
+    const syncHeight = () => {
+      const next = Math.round(node.getBoundingClientRect().height);
+      if (next <= 0) return;
+      setRowHeight((prev) => (Math.abs(prev - next) >= 1 ? next : prev));
+    };
+
+    syncHeight();
+
+    const observer = new ResizeObserver(syncHeight);
+    observer.observe(node);
+    rowMeasureObserverRef.current = observer;
+  }, []);
+
+  const handleScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
+    pendingScrollTopRef.current = event.currentTarget.scrollTop;
+
+    if (rafIdRef.current !== null) return;
+
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = null;
+      setScrollTop(pendingScrollTopRef.current);
+    });
+  }, []);
+
+  const rowCount = Math.ceil(filteredPokemon.length / columns);
+  const rowStride = rowHeight + GRID_GAP_PX;
+  const totalHeight = rowCount > 0 ? rowCount * rowHeight + (rowCount - 1) * GRID_GAP_PX : 0;
+  const maxVisibleBottom = scrollTop + viewportHeight;
+  const startRow = Math.max(0, Math.floor(scrollTop / rowStride) - OVERSCAN_ROWS);
+  const endRow = Math.min(rowCount - 1, Math.ceil(maxVisibleBottom / rowStride) + OVERSCAN_ROWS);
+
+  const visibleRows = useMemo(() => {
+    if (rowCount === 0) return [];
+
+    const rows: Array<{ row: number; startIndex: number; items: Pokemon[] }> = [];
+    for (let row = startRow; row <= endRow; row += 1) {
+      const startIndex = row * columns;
+      rows.push({
+        row,
+        startIndex,
+        items: filteredPokemon.slice(startIndex, startIndex + columns),
+      });
+    }
+    return rows;
+  }, [columns, endRow, filteredPokemon, rowCount, startRow]);
 
   return (
     <section className="panel p-4 sm:p-5" aria-labelledby="available-pokemon-heading">
@@ -192,30 +308,75 @@ const PokemonSelection = ({
       </p>
 
       <div
-        className="grid max-h-[50vh] grid-cols-1 gap-2.5 overflow-y-auto pr-1 custom-scrollbar sm:max-h-[calc(100vh-360px)] sm:grid-cols-2"
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="max-h-[50vh] overflow-y-auto pr-1 custom-scrollbar sm:max-h-[calc(100vh-360px)]"
         role="list"
         aria-label="Available Pokémon"
       >
-        {filteredPokemon.length === 0 && (
+        {filteredPokemon.length === 0 ? (
           <div
-            className="rounded-xl px-4 py-6 text-center text-sm sm:col-span-2"
+            className="rounded-xl px-4 py-6 text-center text-sm"
             style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
           >
             No matching Pokémon found. Try a different name.
           </div>
-        )}
-
-        {filteredPokemon.map((pokemon: Pokemon, i: number) => (
-          <div key={pokemon.id} role="listitem" className="animate-fade-in-up pokemon-list-item" style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
-            <PokemonCard
-              pokemon={pokemon}
-              dragId={`available-${pokemon.id}`}
-              onTap={onAddPokemon}
-              canAddToTeam={currentTeamLength < 6}
-              versionLabelMap={versionLabelMap}
-            />
+        ) : !isHydrated ? (
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {filteredPokemon.map((pokemon: Pokemon) => (
+              <div key={pokemon.id} role="listitem" className="pokemon-list-item">
+                <PokemonCard
+                  pokemon={pokemon}
+                  dragId={`available-${pokemon.id}`}
+                  onTap={onAddPokemon}
+                  canAddToTeam={currentTeamLength < 6}
+                  versionLabelMap={versionLabelMap}
+                  dragEnabled={dragEnabled}
+                />
+              </div>
+            ))}
           </div>
-        ))}
+        ) : (
+          <div
+            style={{ position: "relative", height: totalHeight, width: "100%" }}
+          >
+            {visibleRows.map(({ row, startIndex, items }) => (
+              <div
+                key={`row-${row}`}
+                style={{
+                  position: "absolute",
+                  top: row * rowStride,
+                  left: 0,
+                  right: 0,
+                  display: "grid",
+                  gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                  columnGap: GRID_GAP_PX,
+                }}
+              >
+                {items.map((pokemon: Pokemon, offset: number) => {
+                  const index = startIndex + offset;
+                  return (
+                    <div
+                      key={pokemon.id}
+                      ref={index === 0 ? measureFirstItem : undefined}
+                      role="listitem"
+                      className="pokemon-list-item"
+                    >
+                      <PokemonCard
+                        pokemon={pokemon}
+                        dragId={`available-${pokemon.id}`}
+                        onTap={onAddPokemon}
+                        canAddToTeam={currentTeamLength < 6}
+                        versionLabelMap={versionLabelMap}
+                        dragEnabled={dragEnabled}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

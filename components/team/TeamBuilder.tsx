@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useDeferredValue } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -79,6 +79,7 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
   const [dexMode, setDexMode] = useState<DexMode>(pokemonPools.regionalResolved ? "regional" : "national");
   const [selectedVersionId, setSelectedVersionId] = useState<string>(selectedGame.versions[0]?.id ?? "");
   const [versionFilterEnabled, setVersionFilterEnabled] = useState(false);
+  const [dragEnabled, setDragEnabled] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -116,6 +117,12 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
       setTeam(createEmptyTeam());
     }
   }, [selectedGame.id]);
+
+  useEffect(() => {
+    const canUsePointerDrag =
+      window.matchMedia("(hover: hover) and (pointer: fine)").matches && navigator.maxTouchPoints === 0;
+    setDragEnabled(canUsePointerDrag);
+  }, []);
 
   useEffect(() => {
     setDexMode(pokemonPools.regionalResolved ? "regional" : "national");
@@ -171,8 +178,12 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
     [persistTeam]
   );
 
-  const teamPokemonIds = new Set(team.filter((p): p is Pokemon => p !== null).map((p) => p.id));
-  const lowerSearch = searchTerm.toLowerCase();
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const lowerSearch = deferredSearchTerm.toLowerCase();
+  const teamPokemonIds = useMemo(
+    () => new Set(team.filter((p): p is Pokemon => p !== null).map((p) => p.id)),
+    [team]
+  );
 
   const handleDexModeChange = useCallback(
     (nextMode: DexMode) => {
@@ -201,9 +212,15 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
     });
   }, [activePokemonPool, selectedVersionId, versionFilterEnabled]);
 
-  const availablePokemon = versionScopedPokemonPool.filter((p) => !teamPokemonIds.has(p.id));
+  const availablePokemon = useMemo(
+    () => versionScopedPokemonPool.filter((p) => !teamPokemonIds.has(p.id)),
+    [teamPokemonIds, versionScopedPokemonPool]
+  );
 
-  const filteredPokemon = availablePokemon.filter((p) => p.name.toLowerCase().includes(lowerSearch));
+  const filteredPokemon = useMemo(() => {
+    if (!lowerSearch) return availablePokemon;
+    return availablePokemon.filter((p) => p.name.toLowerCase().includes(lowerSearch));
+  }, [availablePokemon, lowerSearch]);
 
   const handleDragStart = useCallback((e: DragStartEvent) => setDraggedPokemon(e.active.data.current?.pokemon), []);
   const handleDragOver = useCallback((e: DragOverEvent) => setActiveDropId((e.over?.id as string) || null), []);
@@ -285,8 +302,8 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
     [persistTeam]
   );
 
-  const currentTeam = team.filter((p): p is Pokemon => p !== null);
-  const defensiveCoverage = getTeamDefensiveCoverage(currentTeam);
+  const currentTeam = useMemo(() => team.filter((p): p is Pokemon => p !== null), [team]);
+  const defensiveCoverage = useMemo(() => getTeamDefensiveCoverage(currentTeam), [currentTeam]);
 
   const exposedTypeNames = useMemo(
     () =>
@@ -387,17 +404,6 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
             </div>
           </section>
 
-          {currentTeam.length > 0 && (
-            <TeamRecommendations
-              recommendations={recommendations}
-              exposedTypes={exposedTypeNames}
-              teamFull={currentTeam.length >= 6}
-              recommendationsEnabled={recommendationsEnabled}
-              onToggleRecommendations={setRecommendationsEnabled}
-              onAddPokemon={addPokemonToTeam}
-            />
-          )}
-
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
             <PokemonSelection
               filteredPokemon={filteredPokemon}
@@ -415,6 +421,7 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
               onVersionChange={setSelectedVersionId}
               versionFilterEnabled={versionFilterEnabled}
               onVersionFilterChange={setVersionFilterEnabled}
+              dragEnabled={dragEnabled}
             />
 
             <TeamPanel
@@ -424,6 +431,19 @@ const TeamBuilder = ({ selectedGame, pokemonPools }: TeamBuilderProps) => {
               onRemove={removeFromTeam}
             />
           </div>
+
+          {currentTeam.length > 0 && (
+            <section className="mt-4 sm:mt-5">
+              <TeamRecommendations
+                recommendations={recommendations}
+                exposedTypes={exposedTypeNames}
+                teamFull={currentTeam.length >= 6}
+                recommendationsEnabled={recommendationsEnabled}
+                onToggleRecommendations={setRecommendationsEnabled}
+                onAddPokemon={addPokemonToTeam}
+              />
+            </section>
+          )}
 
           {currentTeam.length > 0 && (
             <section className="mt-4 sm:mt-5" aria-labelledby="coverage-heading">

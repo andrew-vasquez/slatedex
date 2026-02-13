@@ -1,36 +1,34 @@
-"use client";
-
 import Link from "next/link";
 import Image from "next/image";
 import { MAINLINE_GAMES } from "@/lib/pokemon";
 import type { Game } from "@/lib/types";
 import ThemeMenu from "@/components/ui/ThemeMenu";
 
-const getSpriteUrl = (name: string): string => {
-  const SPRITE_IDS: Record<string, number> = {
-    bulbasaur: 1,
-    charmander: 4,
-    squirtle: 7,
-    mewtwo: 150,
-    chikorita: 152,
-    cyndaquil: 155,
-    totodile: 158,
-    lugia: 249,
-    "ho-oh": 250,
-    treecko: 252,
-    torchic: 255,
-    mudkip: 258,
-    rayquaza: 384,
-    turtwig: 387,
-    chimchar: 390,
-    piplup: 393,
-    arceus: 493,
-    snivy: 495,
-    tepig: 498,
-    oshawott: 501,
-    zekrom: 644,
-  };
+const SPRITE_IDS: Record<string, number> = {
+  bulbasaur: 1,
+  charmander: 4,
+  squirtle: 7,
+  mewtwo: 150,
+  chikorita: 152,
+  cyndaquil: 155,
+  totodile: 158,
+  lugia: 249,
+  "ho-oh": 250,
+  treecko: 252,
+  torchic: 255,
+  mudkip: 258,
+  rayquaza: 384,
+  turtwig: 387,
+  chimchar: 390,
+  piplup: 393,
+  arceus: 493,
+  snivy: 495,
+  tepig: 498,
+  oshawott: 501,
+  zekrom: 644,
+};
 
+const getSpriteUrl = (name: string): string => {
   const id = SPRITE_IDS[name];
   return id
     ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`

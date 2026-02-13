@@ -26,11 +26,14 @@ interface ResolvedRegionalDex {
   orderBySpecies: Map<string, number>;
 }
 
+const pokemonByGenerationCache = new Map<number, Promise<Pokemon[]>>();
+const pokemonPoolsByGameCache = new Map<number, Promise<PokemonPools>>();
+
 /**
  * Fetch all Pokémon for generations up to and including the given generation.
  * Uses Promise.all() for parallel fetching (Vercel best practice §1.4).
  */
-export async function getPokemonByGeneration(maxGeneration: number): Promise<Pokemon[]> {
+async function fetchPokemonByGeneration(maxGeneration: number): Promise<Pokemon[]> {
   const generationIds: number[] = Array.from(
     { length: maxGeneration },
     (_, i) => i + 1
@@ -101,6 +104,21 @@ export async function getPokemonByGeneration(maxGeneration: number): Promise<Pok
   }));
 
   return allPokemon.sort((a, b) => a.id - b.id);
+}
+
+export async function getPokemonByGeneration(maxGeneration: number): Promise<Pokemon[]> {
+  const cached = pokemonByGenerationCache.get(maxGeneration);
+  if (cached) return cached;
+
+  const request = fetchPokemonByGeneration(maxGeneration);
+  pokemonByGenerationCache.set(maxGeneration, request);
+
+  try {
+    return await request;
+  } catch (error) {
+    pokemonByGenerationCache.delete(maxGeneration);
+    throw error;
+  }
 }
 
 function getOrderedSpeciesFromDexEntries(entries: any[]): string[] {
@@ -240,8 +258,27 @@ async function resolveRegionalDexFromVersionGroupRegions(
   return resolveRegionalDexFromRegions(uniqueRegionNames);
 }
 
-export async function getPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
-  const baseNational = await getPokemonByGeneration(game.generation);
+async function resolveRegionalDexForGame(game: Game): Promise<ResolvedRegionalDex | null> {
+  const regionalDexCandidates = [
+    () => resolveRegionalDexSpecies(game.regionalDexCandidates),
+    () => resolveRegionalDexFromVersionGroups(game.versionGroupCandidates),
+    () => resolveRegionalDexFromVersionGroupRegions(game.versionGroupCandidates),
+    () => resolveRegionalDexFromRegions([game.region]),
+  ];
+
+  for (const resolveCandidate of regionalDexCandidates) {
+    const regionalDex = await resolveCandidate();
+    if (regionalDex) return regionalDex;
+  }
+
+  return null;
+}
+
+async function fetchPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
+  const [baseNational, regionalDex] = await Promise.all([
+    getPokemonByGeneration(game.generation),
+    resolveRegionalDexForGame(game),
+  ]);
   const gameVersionIds = game.versions.map((version) => version.id.toLowerCase());
   const national = baseNational.map((pokemon) => {
     const exclusivity = resolveVersionExclusivity({
@@ -258,18 +295,6 @@ export async function getPokemonPoolsForGame(game: Game): Promise<PokemonPools> 
       ...exclusivity,
     };
   });
-  const regionalDexCandidates = [
-    () => resolveRegionalDexSpecies(game.regionalDexCandidates),
-    () => resolveRegionalDexFromVersionGroups(game.versionGroupCandidates),
-    () => resolveRegionalDexFromVersionGroupRegions(game.versionGroupCandidates),
-    () => resolveRegionalDexFromRegions([game.region]),
-  ];
-
-  let regionalDex: ResolvedRegionalDex | null = null;
-  for (const resolveCandidate of regionalDexCandidates) {
-    regionalDex = await resolveCandidate();
-    if (regionalDex) break;
-  }
 
   if (!regionalDex) {
     return {
@@ -307,6 +332,21 @@ export async function getPokemonPoolsForGame(game: Game): Promise<PokemonPools> 
     regionalResolved,
     regionalDexName: regionalResolved ? regionalDex.dexName : null,
   };
+}
+
+export async function getPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
+  const cached = pokemonPoolsByGameCache.get(game.id);
+  if (cached) return cached;
+
+  const request = fetchPokemonPoolsForGame(game);
+  pokemonPoolsByGameCache.set(game.id, request);
+
+  try {
+    return await request;
+  } catch (error) {
+    pokemonPoolsByGameCache.delete(game.id);
+    throw error;
+  }
 }
 
 function mapPokemonData(pokemon: any, generation: number, rulesGeneration: number): Omit<Pokemon, "isFinalEvolution"> {
