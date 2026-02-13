@@ -158,12 +158,6 @@ main {
   display: inline-block;
 }
 
-.theme-menu-home-sticky {
-  position: sticky;
-  top: 14px;
-  z-index: 70;
-}
-
 .theme-menu-trigger {
   display: inline-flex;
   align-items: center;
@@ -410,10 +404,6 @@ a:focus-visible {
 }
 
 @media (max-width: 768px) {
-  .theme-menu-home-sticky {
-    top: 10px;
-  }
-
   button {
     min-height: 42px;
   }
