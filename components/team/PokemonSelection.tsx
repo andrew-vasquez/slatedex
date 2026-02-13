@@ -348,7 +348,9 @@ const PokemonSelection = ({
 
       <p className="mb-3 text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
         {currentTeamLength < 6
-          ? "Tap or drag a card to place it into your team slots."
+          ? dragEnabled
+            ? "Tap or drag a card to place it into your team slots."
+            : "Tap a card to place it into your team slots."
           : "Your team is full. Remove a member to add another Pokémon."}
       </p>
 

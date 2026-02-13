@@ -12,11 +12,11 @@
 Example routes: `app/page.tsx` (home) and `app/game/[gameId]/page.tsx` (team builder).
 
 ## Build, Test, and Development Commands
-- `npm run dev`: start local development server.
-- `npm run build`: create production build.
-- `npm run start`: run the production server.
-- `npm run lint`: run ESLint via Next.js config.
-- `npx tsc --noEmit --incremental false`: full type-check pass before PRs.
+- `bun run dev`: start local development server.
+- `bun run build`: create production build.
+- `bun run start`: run the production server.
+- `bun run lint`: run ESLint via Next.js config.
+- `bunx tsc --noEmit --incremental false`: full type-check pass before PRs.
 
 ## Coding Style & Naming Conventions
 - Use TypeScript and React function components.
