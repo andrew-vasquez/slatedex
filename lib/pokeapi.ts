@@ -1,5 +1,6 @@
 import Pokedex from "pokedex-promise-v2";
 import type { Game, Pokemon, PokemonPools } from "@/lib/types";
+import { resolveVersionExclusivity } from "@/lib/versionExclusives";
 
 const pokedex = new Pokedex();
 const TYPE_INTRO_GENERATION: Partial<Record<string, number>> = {
@@ -25,11 +26,14 @@ interface ResolvedRegionalDex {
   orderBySpecies: Map<string, number>;
 }
 
+const pokemonByGenerationCache = new Map<number, Promise<Pokemon[]>>();
+const pokemonPoolsByGameCache = new Map<number, Promise<PokemonPools>>();
+
 /**
  * Fetch all Pokémon for generations up to and including the given generation.
  * Uses Promise.all() for parallel fetching (Vercel best practice §1.4).
  */
-export async function getPokemonByGeneration(maxGeneration: number): Promise<Pokemon[]> {
+async function fetchPokemonByGeneration(maxGeneration: number): Promise<Pokemon[]> {
   const generationIds: number[] = Array.from(
     { length: maxGeneration },
     (_, i) => i + 1
@@ -100,6 +104,21 @@ export async function getPokemonByGeneration(maxGeneration: number): Promise<Pok
   }));
 
   return allPokemon.sort((a, b) => a.id - b.id);
+}
+
+export async function getPokemonByGeneration(maxGeneration: number): Promise<Pokemon[]> {
+  const cached = pokemonByGenerationCache.get(maxGeneration);
+  if (cached) return cached;
+
+  const request = fetchPokemonByGeneration(maxGeneration);
+  pokemonByGenerationCache.set(maxGeneration, request);
+
+  try {
+    return await request;
+  } catch (error) {
+    pokemonByGenerationCache.delete(maxGeneration);
+    throw error;
+  }
 }
 
 function getOrderedSpeciesFromDexEntries(entries: any[]): string[] {
@@ -239,8 +258,7 @@ async function resolveRegionalDexFromVersionGroupRegions(
   return resolveRegionalDexFromRegions(uniqueRegionNames);
 }
 
-export async function getPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
-  const national = await getPokemonByGeneration(game.generation);
+async function resolveRegionalDexForGame(game: Game): Promise<ResolvedRegionalDex | null> {
   const regionalDexCandidates = [
     () => resolveRegionalDexSpecies(game.regionalDexCandidates),
     () => resolveRegionalDexFromVersionGroups(game.versionGroupCandidates),
@@ -248,11 +266,35 @@ export async function getPokemonPoolsForGame(game: Game): Promise<PokemonPools> 
     () => resolveRegionalDexFromRegions([game.region]),
   ];
 
-  let regionalDex: ResolvedRegionalDex | null = null;
   for (const resolveCandidate of regionalDexCandidates) {
-    regionalDex = await resolveCandidate();
-    if (regionalDex) break;
+    const regionalDex = await resolveCandidate();
+    if (regionalDex) return regionalDex;
   }
+
+  return null;
+}
+
+async function fetchPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
+  const [baseNational, regionalDex] = await Promise.all([
+    getPokemonByGeneration(game.generation),
+    resolveRegionalDexForGame(game),
+  ]);
+  const gameVersionIds = game.versions.map((version) => version.id.toLowerCase());
+  const national = baseNational.map((pokemon) => {
+    const { gameIndexVersionIds, ...pokemonWithoutGameIndexVersionIds } = pokemon;
+    const exclusivity = resolveVersionExclusivity({
+      gameId: game.id,
+      speciesName: pokemon.name.toLowerCase(),
+      gameVersionIds,
+      gameIndexVersionIds,
+    });
+
+    return {
+      ...pokemonWithoutGameIndexVersionIds,
+      // gameIndexVersionIds is used only for server-side exclusivity inference and is omitted from the client payload.
+      ...exclusivity,
+    };
+  });
 
   if (!regionalDex) {
     return {
@@ -263,9 +305,20 @@ export async function getPokemonPoolsForGame(game: Game): Promise<PokemonPools> 
     };
   }
 
+  const starterOrder = new Map(game.starters.map((speciesName, index) => [speciesName.toLowerCase(), index]));
   const regional = national
     .filter((pokemon) => regionalDex.speciesNames.has(pokemon.name.toLowerCase()))
     .sort((a, b) => {
+      const aStarterIndex = starterOrder.get(a.name.toLowerCase());
+      const bStarterIndex = starterOrder.get(b.name.toLowerCase());
+      const aIsStarter = aStarterIndex !== undefined;
+      const bIsStarter = bStarterIndex !== undefined;
+
+      if (aIsStarter || bIsStarter) {
+        if (aIsStarter && bIsStarter) return aStarterIndex - bStarterIndex;
+        return aIsStarter ? -1 : 1;
+      }
+
       const aIndex = regionalDex.orderBySpecies.get(a.name.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
       const bIndex = regionalDex.orderBySpecies.get(b.name.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
       if (aIndex !== bIndex) return aIndex - bIndex;
@@ -279,6 +332,21 @@ export async function getPokemonPoolsForGame(game: Game): Promise<PokemonPools> 
     regionalResolved,
     regionalDexName: regionalResolved ? regionalDex.dexName : null,
   };
+}
+
+export async function getPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
+  const cached = pokemonPoolsByGameCache.get(game.id);
+  if (cached) return cached;
+
+  const request = fetchPokemonPoolsForGame(game);
+  pokemonPoolsByGameCache.set(game.id, request);
+
+  try {
+    return await request;
+  } catch (error) {
+    pokemonPoolsByGameCache.delete(game.id);
+    throw error;
+  }
 }
 
 function mapPokemonData(pokemon: any, generation: number, rulesGeneration: number): Omit<Pokemon, "isFinalEvolution"> {
@@ -318,5 +386,8 @@ function mapPokemonData(pokemon: any, generation: number, rulesGeneration: numbe
     attack: stats.attack || 0,
     defense: stats.defense || 0,
     sprite: pokemon.sprites.front_default || "",
+    gameIndexVersionIds: ((pokemon.game_indices ?? []) as Array<{ version?: { name?: string } }>)
+      .map((entry) => entry.version?.name)
+      .filter((name): name is string => typeof name === "string"),
   };
 }

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useDraggable } from "@dnd-kit/core";
-import { useEffect, useState } from "react";
+import { memo } from "react";
 import { TYPE_COLORS } from "@/lib/constants";
 import type { Pokemon } from "@/lib/types";
 
@@ -13,6 +13,8 @@ interface PokemonCardProps {
   dragId?: string | null;
   onTap?: ((pokemon: Pokemon) => void) | null;
   canAddToTeam?: boolean;
+  versionLabelMap?: Record<string, string>;
+  dragEnabled?: boolean;
 }
 
 const STAT_COLORS: Record<string, string> = {
@@ -34,21 +36,11 @@ const PokemonCard = ({
   dragId = null,
   onTap = null,
   canAddToTeam = false,
+  versionLabelMap = {},
+  dragEnabled = true,
 }: PokemonCardProps) => {
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
-
-  useEffect(() => {
-    const check = () => {
-      setIsTouchDevice("ontouchstart" in window || navigator.maxTouchPoints > 0 || window.innerWidth <= 768);
-    };
-
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
   const uniqueId = dragId || `pokemon-${isDraggableProp ? "available" : "team"}-${pokemon.id}`;
-  const shouldEnableDrag = isDraggableProp && !isTouchDevice;
+  const shouldEnableDrag = isDraggableProp && dragEnabled;
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: uniqueId,
@@ -69,14 +61,23 @@ const PokemonCard = ({
   const interactiveClass = [
     shouldEnableDrag && !isDragging ? "cursor-grab active:cursor-grabbing" : "",
     onTap && canAddToTeam ? "cursor-pointer" : "",
-    isTouchDevice && onTap && canAddToTeam ? "active:scale-[0.98]" : "",
-    isTouchDevice ? "select-none" : "",
+    onTap && canAddToTeam ? "active:scale-[0.98] select-none" : "",
   ].join(" ");
+
+  const exclusiveVersionLabels: string[] =
+    pokemon.exclusiveStatus === "exclusive" && pokemon.exclusiveToVersionIds
+      ? pokemon.exclusiveToVersionIds.map((versionId) => versionLabelMap[versionId] ?? versionId)
+      : [];
+  const isVersionExclusive = exclusiveVersionLabels.length > 0;
+  const exclusivityText = isVersionExclusive
+    ? `Exclusive to: ${exclusiveVersionLabels.join(", ")}`
+    : "";
 
   if (isCompact) {
     return (
       <div
         ref={setNodeRef}
+        suppressHydrationWarning
         style={{ ...style, transition: "transform 0.2s ease" }}
         {...(shouldEnableDrag ? listeners : {})}
         {...(shouldEnableDrag ? attributes : {})}
@@ -106,8 +107,8 @@ const PokemonCard = ({
 
         <div className="mt-1 flex flex-wrap justify-center gap-0.5">
           {pokemon.types.map((type: string) => (
-            <span key={type} className={`rounded px-1.5 py-0 text-[0.5rem] font-semibold text-white ${TYPE_COLORS[type]}`}>
-              {type.slice(0, 3).toUpperCase()}
+            <span key={type} className={`rounded px-1.5 py-0 text-[0.48rem] font-semibold leading-none text-white ${TYPE_COLORS[type]}`}>
+              {type.charAt(0).toUpperCase() + type.slice(1)}
             </span>
           ))}
         </div>
@@ -118,6 +119,7 @@ const PokemonCard = ({
   return (
     <div
       ref={setNodeRef}
+      suppressHydrationWarning
       style={{ ...style, transition: "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease" }}
       {...(shouldEnableDrag ? listeners : {})}
       {...(shouldEnableDrag ? attributes : {})}
@@ -154,6 +156,20 @@ const PokemonCard = ({
             <span className="shrink-0 font-mono text-[0.6rem]" style={{ color: "var(--text-muted)" }}>
               #{pokemon.id.toString().padStart(3, "0")}
             </span>
+            {isVersionExclusive && (
+              <span
+                className="shrink-0 rounded px-1.5 py-0.5 text-[0.52rem] font-semibold uppercase tracking-[0.08em]"
+                style={{
+                  background: "rgba(234, 179, 8, 0.16)",
+                  border: "1px solid rgba(234, 179, 8, 0.34)",
+                  color: "#fef08a",
+                }}
+                title={exclusivityText}
+                aria-label={exclusivityText}
+              >
+                Exclusive
+              </span>
+            )}
           </div>
 
           <div className="mb-2 flex gap-1">
@@ -204,4 +220,6 @@ const PokemonCard = ({
   );
 };
 
-export default PokemonCard;
+PokemonCard.displayName = "PokemonCard";
+
+export default memo(PokemonCard);

@@ -8,6 +8,10 @@ export interface Pokemon {
   attack: number;
   defense: number;
   sprite: string;
+  // Internal metadata for version/exclusivity features.
+  gameIndexVersionIds?: string[];
+  exclusiveStatus?: "exclusive" | "shared" | "unknown";
+  exclusiveToVersionIds?: string[] | null;
 }
 
 export type DexMode = "regional" | "national";
@@ -28,6 +32,7 @@ export interface Game {
   name: string;
   generation: number;
   region: string;
+  versions: { id: string; label: string }[];
   versionGroupCandidates: string[];
   regionalDexCandidates: string[];
   starters: string[];
