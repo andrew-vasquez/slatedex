@@ -7,12 +7,13 @@ import ThemeMenu from "@/components/ui/ThemeMenu";
 
 interface TeamBuilderHeaderProps {
   game: Game;
+  generation: number;
   onShuffle: () => void;
   onClear: () => void;
   teamLength: number;
 }
 
-const TeamBuilderHeader = ({ game, onShuffle, onClear, teamLength }: TeamBuilderHeaderProps) => {
+const TeamBuilderHeader = ({ game, generation, onShuffle, onClear, teamLength }: TeamBuilderHeaderProps) => {
   const completion = Math.round((teamLength / 6) * 100);
 
   return (
@@ -32,7 +33,7 @@ const TeamBuilderHeader = ({ game, onShuffle, onClear, teamLength }: TeamBuilder
 
               <div className="min-w-0">
                 <p className="font-display text-[0.62rem] uppercase tracking-[0.2em]" style={{ color: "var(--text-muted)" }}>
-                  Team Builder
+                  Gen {generation} Team Builder
                 </p>
                 <div className="flex min-w-0 items-center gap-2">
                   <h1 className="font-display truncate text-base sm:text-lg" style={{ color: "var(--text-primary)" }}>

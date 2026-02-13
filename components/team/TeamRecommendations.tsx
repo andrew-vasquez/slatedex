@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { useCallback } from "react";
+import type { Dispatch, KeyboardEvent, PointerEvent, SetStateAction } from "react";
 import type { Pokemon } from "@/lib/types";
 
 interface Recommendation {
@@ -15,7 +17,7 @@ interface TeamRecommendationsProps {
   exposedTypes: string[];
   teamFull: boolean;
   recommendationsEnabled: boolean;
-  onToggleRecommendations: (enabled: boolean) => void;
+  onToggleRecommendations: Dispatch<SetStateAction<boolean>>;
   onAddPokemon: (pokemon: Pokemon) => void;
 }
 
@@ -27,25 +29,57 @@ const TeamRecommendations = ({
   onToggleRecommendations,
   onAddPokemon,
 }: TeamRecommendationsProps) => {
+  const toggleRecommendations = useCallback(() => {
+    onToggleRecommendations((prev) => !prev);
+  }, [onToggleRecommendations]);
+
+  const handleTogglePointerUp = useCallback(
+    (event: PointerEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      toggleRecommendations();
+    },
+    [toggleRecommendations]
+  );
+
+  const handleToggleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLButtonElement>) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      toggleRecommendations();
+    },
+    [toggleRecommendations]
+  );
+
   return (
     <section className="panel mb-4 p-4 sm:mb-5 sm:p-5" aria-labelledby="smart-picks-heading">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 id="smart-picks-heading" className="font-display text-lg" style={{ color: "var(--text-primary)" }}>
+          <h2 id="smart-picks-heading" className="font-display text-base sm:text-lg" style={{ color: "var(--text-primary)" }}>
             Smart Picks
           </h2>
-          <p className="mt-0.5 text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
+          <p className="mt-1 text-[0.68rem] leading-tight sm:mt-0.5 sm:text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
             Ranked by how well each final-evolution or single-stage Pokémon patches your exposed matchups.
           </p>
         </div>
 
-        <label className="inline-flex items-center gap-2 text-[0.7rem] font-semibold" style={{ color: "var(--text-secondary)" }}>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={recommendationsEnabled}
-            onClick={() => onToggleRecommendations(!recommendationsEnabled)}
-            className="relative inline-flex h-6 w-11 items-center rounded-full p-1 md:hover:cursor-pointer"
+        <button
+          type="button"
+          role="switch"
+          aria-checked={recommendationsEnabled}
+          aria-label="Toggle smart picks"
+          onPointerUp={handleTogglePointerUp}
+          onKeyDown={handleToggleKeyDown}
+          className="inline-flex w-full items-center justify-between gap-2 rounded-xl border px-2.5 py-1.5 text-left sm:w-auto sm:justify-normal sm:rounded-full"
+          style={{
+            borderColor: "var(--border)",
+            background: "var(--surface-2)",
+          }}
+        >
+          <span className="text-[0.64rem] font-semibold tracking-[0.02em]" style={{ color: "var(--text-secondary)" }}>
+            Smart picks
+          </span>
+          <span
+            className="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5"
             style={{
               background: recommendationsEnabled ? "rgba(19, 111, 58, 0.25)" : "rgba(148, 163, 184, 0.14)",
               border: `1px solid ${recommendationsEnabled ? "rgba(19, 111, 58, 0.4)" : "rgba(148, 163, 184, 0.3)"}`,
@@ -53,16 +87,21 @@ const TeamRecommendations = ({
             }}
           >
             <span
-              className="h-4 w-4 rounded-full md:hover:cursor-pointer"
+              className="h-[22px] w-[22px] rounded-full"
               style={{
                 background: recommendationsEnabled ? "#136f3a" : "#94a3b8",
-                transform: recommendationsEnabled ? "translateX(20px)" : "translateX(0)",
+                transform: recommendationsEnabled ? "translateX(22px)" : "translateX(0)",
                 transition: "transform 0.2s ease, background 0.2s ease",
               }}
             />
-          </button>
-          Smart picks on
-        </label>
+          </span>
+          <span
+            className="w-8 shrink-0 text-right text-[0.62rem] font-semibold uppercase tracking-[0.06em]"
+            style={{ color: recommendationsEnabled ? "#86efac" : "var(--text-muted)" }}
+          >
+            {recommendationsEnabled ? "On" : "Off"}
+          </span>
+        </button>
       </div>
 
       {exposedTypes.length > 0 && (

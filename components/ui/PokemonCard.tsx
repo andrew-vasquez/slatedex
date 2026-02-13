@@ -82,15 +82,8 @@ const PokemonCard = ({
         {...(shouldEnableDrag ? listeners : {})}
         {...(shouldEnableDrag ? attributes : {})}
         onClick={handleTap}
-        className={`relative flex h-full w-full flex-col items-center justify-center rounded-xl p-2 ${interactiveClass}`}
+        className={`relative flex h-full w-full flex-col items-center justify-center rounded-xl px-2 py-2.5 ${interactiveClass}`}
       >
-        <span
-          className="absolute right-1.5 top-1.5 rounded px-1 py-0.5 font-mono text-[0.55rem] font-medium"
-          style={{ background: "rgba(148, 163, 184, 0.14)", color: "var(--text-muted)" }}
-        >
-          #{pokemon.id.toString().padStart(3, "0")}
-        </span>
-
         <div className="relative mb-1 h-12 w-12 sm:h-14 sm:w-14">
           <Image
             src={pokemon.sprite}
@@ -104,6 +97,9 @@ const PokemonCard = ({
         <h3 className="text-center text-[0.65rem] font-semibold leading-tight sm:text-xs" style={{ color: "var(--text-primary)" }}>
           {pokemon.name}
         </h3>
+        <p className="mt-0.5 font-mono text-[0.5rem] leading-none" style={{ color: "var(--text-muted)" }}>
+          #{pokemon.id.toString().padStart(3, "0")}
+        </p>
 
         <div className="mt-1 flex flex-wrap justify-center gap-0.5">
           {pokemon.types.map((type: string) => (

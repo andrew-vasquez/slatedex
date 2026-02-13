@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-import { MAINLINE_GAMES } from "@/lib/pokemon";
-import type { Game } from "@/lib/types";
+import { GENERATION_META } from "@/lib/pokemon";
+import type { GenerationMeta } from "@/lib/types";
 import ThemeMenu from "@/components/ui/ThemeMenu";
 
 const SPRITE_IDS: Record<string, number> = {
@@ -26,6 +26,26 @@ const SPRITE_IDS: Record<string, number> = {
   tepig: 498,
   oshawott: 501,
   zekrom: 644,
+  chespin: 650,
+  fennekin: 653,
+  froakie: 656,
+  xerneas: 716,
+  yveltal: 717,
+  rowlet: 722,
+  litten: 725,
+  popplio: 728,
+  solgaleo: 791,
+  lunala: 792,
+  grookey: 810,
+  scorbunny: 813,
+  sobble: 816,
+  zacian: 888,
+  zamazenta: 889,
+  sprigatito: 906,
+  fuecoco: 909,
+  quaxly: 912,
+  koraidon: 1007,
+  miraidon: 1008,
 };
 
 const getSpriteUrl = (name: string): string => {
@@ -41,11 +61,15 @@ const REGION_COLORS: Record<string, { accent: string; soft: string; edge: string
   Hoenn: { accent: "#00897b", soft: "rgba(0, 137, 123, 0.12)", edge: "rgba(0, 137, 123, 0.28)" },
   Sinnoh: { accent: "#1e88e5", soft: "rgba(30, 136, 229, 0.12)", edge: "rgba(30, 136, 229, 0.28)" },
   Unova: { accent: "#6d4c41", soft: "rgba(109, 76, 65, 0.12)", edge: "rgba(109, 76, 65, 0.28)" },
+  Kalos: { accent: "#5e35b1", soft: "rgba(94, 53, 177, 0.12)", edge: "rgba(94, 53, 177, 0.28)" },
+  Alola: { accent: "#f4511e", soft: "rgba(244, 81, 30, 0.12)", edge: "rgba(244, 81, 30, 0.28)" },
+  Galar: { accent: "#546e7a", soft: "rgba(84, 110, 122, 0.12)", edge: "rgba(84, 110, 122, 0.28)" },
+  Paldea: { accent: "#c62828", soft: "rgba(198, 40, 40, 0.12)", edge: "rgba(198, 40, 40, 0.28)" },
 };
 
 const STEPS = [
   "Pick your game generation",
-  "Add up to six Pokémon",
+  "Add up to six Pokemon",
   "Use type coverage to patch weaknesses",
 ];
 
@@ -62,7 +86,7 @@ const GameSelector = () => {
           <div className="panel overflow-hidden p-6 sm:p-9">
             <div className="flex items-start justify-between gap-3">
               <p className="font-display text-xs font-semibold uppercase tracking-[0.22em]" style={{ color: "var(--text-muted)" }}>
-                Pokédex Planning Lab
+                Pokedex Planning Lab
               </p>
               <ThemeMenu />
             </div>
@@ -99,10 +123,10 @@ const GameSelector = () => {
 
             <div className="mt-7 flex flex-wrap items-center gap-2.5 text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
               <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
-                5 mainline generations
+                9 mainline generations
               </span>
               <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
-                Up to 649 Pokémon
+                Up to 1025 Pokemon
               </span>
               <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
                 Live defensive analysis
@@ -117,19 +141,19 @@ const GameSelector = () => {
           Choose Your Region
         </h2>
         <p className="mt-1 text-xs sm:text-sm" style={{ color: "var(--text-muted)" }}>
-          Each card loads species from that generation only.
+          Each card loads species from that generation and earlier.
         </p>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:mt-5 sm:grid-cols-2">
-          {MAINLINE_GAMES.map((game: Game, i: number) => {
-            const colors = REGION_COLORS[game.region] || REGION_COLORS.Kanto;
+          {GENERATION_META.map((gen: GenerationMeta, i: number) => {
+            const colors = REGION_COLORS[gen.region] || REGION_COLORS.Kanto;
             return (
               <Link
-                key={game.id}
-                href={`/game/${game.id}`}
+                key={gen.generation}
+                href={`/game/${gen.generation}`}
                 className="group animate-fade-in-up relative overflow-hidden rounded-2xl"
                 style={{ animationDelay: `${i * 80}ms` }}
-                aria-label={`${game.name} generation ${game.generation}, ${game.region} region`}
+                aria-label={`Generation ${gen.generation}, ${gen.region} region`}
               >
                 <article
                   className="h-full p-4 sm:p-5"
@@ -148,26 +172,31 @@ const GameSelector = () => {
                         className="font-display text-[0.62rem] uppercase tracking-[0.2em]"
                         style={{ color: "var(--text-muted)" }}
                       >
-                        Generation {game.generation}
+                        Generation {gen.generation}
                       </p>
                       <h3 className="font-display mt-1 text-2xl sm:text-[1.85rem]" style={{ color: "var(--text-primary)" }}>
-                        {game.name}
+                        {gen.primaryName}
                       </h3>
                       <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em]" style={{ color: colors.accent }}>
-                        {game.region}
+                        {gen.region}
                       </p>
+                      {gen.games.length > 1 && (
+                        <p className="mt-1 text-[0.65rem]" style={{ color: "var(--text-muted)" }}>
+                          {gen.games.map((g) => g.name).join(" + ")}
+                        </p>
+                      )}
                     </div>
 
                     <div
                       className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold"
                       style={{ background: colors.soft, color: colors.accent, border: `1px solid ${colors.edge}` }}
                     >
-                      G{game.generation}
+                      G{gen.generation}
                     </div>
                   </div>
 
                   <div className="relative mt-4 flex items-center gap-2.5">
-                    {game.starters.map((starter: string) => (
+                    {gen.starters.map((starter: string) => (
                       <div
                         key={starter}
                         className="relative flex h-12 w-12 items-center justify-center rounded-xl"
@@ -184,7 +213,7 @@ const GameSelector = () => {
                     ))}
 
                     <div className="ml-auto flex items-center gap-1.5" aria-hidden="true">
-                      {game.legendaries.slice(0, 1).map((legendary) => (
+                      {gen.legendaries.slice(0, 1).map((legendary) => (
                         <Image
                           key={legendary}
                           src={getSpriteUrl(legendary)}

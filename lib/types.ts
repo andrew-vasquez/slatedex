@@ -44,6 +44,16 @@ export interface TypeCoverage {
   resist: number;
   weakPokemon: PokemonWithEffectiveness[];
   resistPokemon: PokemonWithEffectiveness[];
+  locked?: boolean;
 }
 
 export type CoverageMap = Record<string, TypeCoverage>;
+
+export interface GenerationMeta {
+  generation: number;
+  region: string;
+  primaryName: string;
+  games: Game[];
+  starters: string[];
+  legendaries: string[];
+}

@@ -1,6 +1,7 @@
 import Pokedex from "pokedex-promise-v2";
 import type { Game, Pokemon, PokemonPools } from "@/lib/types";
 import { resolveVersionExclusivity } from "@/lib/versionExclusives";
+import { getGamesForGeneration } from "@/lib/pokemon";
 
 const pokedex = new Pokedex();
 const TYPE_INTRO_GENERATION: Partial<Record<string, number>> = {
@@ -347,6 +348,23 @@ export async function getPokemonPoolsForGame(game: Game): Promise<PokemonPools> 
     pokemonPoolsByGameCache.delete(game.id);
     throw error;
   }
+}
+
+/**
+ * Fetch Pokemon pools for all games in a generation.
+ * Returns a Record keyed by game ID.
+ */
+export async function getPokemonPoolsForGeneration(
+  generation: number
+): Promise<Record<number, PokemonPools>> {
+  const games = getGamesForGeneration(generation);
+  const poolEntries = await Promise.all(
+    games.map(async (game) => {
+      const pools = await getPokemonPoolsForGame(game);
+      return [game.id, pools] as const;
+    })
+  );
+  return Object.fromEntries(poolEntries);
 }
 
 function mapPokemonData(pokemon: any, generation: number, rulesGeneration: number): Omit<Pokemon, "isFinalEvolution"> {
