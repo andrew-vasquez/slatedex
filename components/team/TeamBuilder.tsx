@@ -15,7 +15,6 @@ import dynamic from "next/dynamic";
 import PokemonDragPreview from "@/components/ui/PokemonDragPreview";
 import TeamBuilderHeader from "./TeamBuilderHeader";
 import ClearTeamDialog from "./ClearTeamDialog";
-import TeamRecommendations from "./TeamRecommendations";
 import PokemonSelection from "./PokemonSelection";
 import TeamPanel from "./TeamPanel";
 import { TYPE_EFFECTIVENESS, TYPE_RESISTANCES } from "@/lib/constants";
@@ -23,6 +22,7 @@ import { getTeamDefensiveCoverage } from "@/lib/teamAnalysis";
 import type { DexMode, Pokemon, PokemonPools, Game } from "@/lib/types";
 
 const DefensiveCoverage = dynamic(() => import("./DefensiveCoverage"));
+const TeamRecommendations = dynamic(() => import("./TeamRecommendations"));
 
 const STORAGE_VERSION = 1;
 

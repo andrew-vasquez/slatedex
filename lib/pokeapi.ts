@@ -1,9 +1,12 @@
+import { cache } from "react";
 import Pokedex from "pokedex-promise-v2";
 import type { Game, Pokemon, PokemonPools } from "@/lib/types";
 import { resolveVersionExclusivity } from "@/lib/versionExclusives";
 import { getGamesForGeneration } from "@/lib/pokemon";
 
-const pokedex = new Pokedex();
+const pokedex = new Pokedex({
+  cacheLimit: 300 * 1000, // 5-minute cache — covers full build duration
+});
 const TYPE_INTRO_GENERATION: Partial<Record<string, number>> = {
   dark: 2,
   steel: 2,
@@ -54,7 +57,7 @@ async function fetchPokemonByGeneration(maxGeneration: number): Promise<Pokemon[
   );
 
   // Fetch all Pokémon details in parallel (batched to avoid rate limits)
-  const BATCH_SIZE = 50;
+  const BATCH_SIZE = 100;
   const pokemonWithSpeciesData: Array<{
     pokemon: Omit<Pokemon, "isFinalEvolution">;
     speciesName: string;
@@ -107,7 +110,7 @@ async function fetchPokemonByGeneration(maxGeneration: number): Promise<Pokemon[
   return allPokemon.sort((a, b) => a.id - b.id);
 }
 
-export async function getPokemonByGeneration(maxGeneration: number): Promise<Pokemon[]> {
+export const getPokemonByGeneration = cache(async (maxGeneration: number): Promise<Pokemon[]> => {
   const cached = pokemonByGenerationCache.get(maxGeneration);
   if (cached) return cached;
 
@@ -120,7 +123,7 @@ export async function getPokemonByGeneration(maxGeneration: number): Promise<Pok
     pokemonByGenerationCache.delete(maxGeneration);
     throw error;
   }
-}
+});
 
 function getOrderedSpeciesFromDexEntries(entries: any[]): string[] {
   return [...entries]
@@ -133,51 +136,59 @@ function createSpeciesOrderMap(species: string[]): Map<string, number> {
 }
 
 async function resolveRegionalDexSpecies(candidates: string[]): Promise<ResolvedRegionalDex | null> {
-  for (const dexName of candidates) {
-    try {
-      const dexData: any = await pokedex.getPokedexByName(dexName);
-      const orderedSpecies = getOrderedSpeciesFromDexEntries(dexData.pokemon_entries);
-      const speciesNames = new Set<string>(orderedSpecies);
+  const results = await Promise.all(
+    candidates.map(async (dexName): Promise<ResolvedRegionalDex | null> => {
+      try {
+        const dexData: any = await pokedex.getPokedexByName(dexName);
+        const orderedSpecies = getOrderedSpeciesFromDexEntries(dexData.pokemon_entries);
+        const speciesNames = new Set<string>(orderedSpecies);
 
-      if (speciesNames.size > 0) {
-        return {
-          dexName,
-          speciesNames,
-          orderBySpecies: createSpeciesOrderMap(orderedSpecies),
-        };
+        if (speciesNames.size > 0) {
+          return {
+            dexName,
+            speciesNames,
+            orderBySpecies: createSpeciesOrderMap(orderedSpecies),
+          };
+        }
+      } catch {
+        // skip failed candidate
       }
-    } catch {
-      // try next candidate
-    }
-  }
-
-  return null;
+      return null;
+    })
+  );
+  return results.find((r) => r !== null) ?? null;
 }
 
 async function resolveRegionalDexSpeciesUnion(
   candidates: string[]
 ): Promise<ResolvedRegionalDex | null> {
   const uniqueCandidates = [...new Set(candidates)];
+
+  // Fetch all dexes in parallel
+  const dexResults = await Promise.all(
+    uniqueCandidates.map(async (dexName) => {
+      try {
+        const dexData: any = await pokedex.getPokedexByName(dexName);
+        const dexSpecies = getOrderedSpeciesFromDexEntries(dexData.pokemon_entries);
+        return dexSpecies.length > 0 ? { dexName, dexSpecies } : null;
+      } catch {
+        return null;
+      }
+    })
+  );
+
   const mergedSpecies = new Set<string>();
   const orderedSpecies: string[] = [];
   const resolvedDexNames: string[] = [];
 
-  for (const dexName of uniqueCandidates) {
-    try {
-      const dexData: any = await pokedex.getPokedexByName(dexName);
-      const dexSpecies = getOrderedSpeciesFromDexEntries(dexData.pokemon_entries);
-
-      if (dexSpecies.length === 0) continue;
-
-      dexSpecies.forEach((name: string) => {
-        if (mergedSpecies.has(name)) return;
-        mergedSpecies.add(name);
-        orderedSpecies.push(name);
-      });
-      resolvedDexNames.push(dexName);
-    } catch {
-      // try next candidate
-    }
+  for (const result of dexResults) {
+    if (!result) continue;
+    result.dexSpecies.forEach((name: string) => {
+      if (mergedSpecies.has(name)) return;
+      mergedSpecies.add(name);
+      orderedSpecies.push(name);
+    });
+    resolvedDexNames.push(result.dexName);
   }
 
   if (mergedSpecies.size === 0) return null;
@@ -192,21 +203,20 @@ async function resolveRegionalDexSpeciesUnion(
 async function resolveRegionalDexFromVersionGroups(
   versionGroupCandidates: string[]
 ): Promise<ResolvedRegionalDex | null> {
-  const regionalDexNames: string[] = [];
+  const dexNameArrays = await Promise.all(
+    versionGroupCandidates.map(async (versionGroupName) => {
+      try {
+        const versionGroup: any = await pokedex.getVersionGroupByName(versionGroupName);
+        return (versionGroup.pokedexes as Array<{ name: string }>)
+          .map((dex) => dex.name)
+          .filter((name) => name !== "national");
+      } catch {
+        return [];
+      }
+    })
+  );
 
-  for (const versionGroupName of versionGroupCandidates) {
-    try {
-      const versionGroup: any = await pokedex.getVersionGroupByName(versionGroupName);
-      const dexNames = (versionGroup.pokedexes as Array<{ name: string }>)
-        .map((dex) => dex.name)
-        .filter((name) => name !== "national");
-      regionalDexNames.push(...dexNames);
-    } catch {
-      // try next version group
-    }
-  }
-
-  const uniqueDexNames = [...new Set(regionalDexNames)];
+  const uniqueDexNames = [...new Set(dexNameArrays.flat())];
   if (uniqueDexNames.length === 0) return null;
 
   return resolveRegionalDexSpeciesUnion(uniqueDexNames);
@@ -215,24 +225,21 @@ async function resolveRegionalDexFromVersionGroups(
 async function resolveRegionalDexFromRegions(
   regionCandidates: string[]
 ): Promise<ResolvedRegionalDex | null> {
-  const regionalDexNames: string[] = [];
+  const dexNameArrays = await Promise.all(
+    regionCandidates.map(async (rawRegionName) => {
+      const regionName = rawRegionName.toLowerCase().replace(/\s+/g, "-");
+      try {
+        const region: any = await pokedex.getRegionByName(regionName);
+        return (region.pokedexes as Array<{ name: string }>)
+          .map((dex) => dex.name)
+          .filter((name) => name !== "national");
+      } catch {
+        return [];
+      }
+    })
+  );
 
-  for (const rawRegionName of regionCandidates) {
-    const regionName = rawRegionName.toLowerCase().replace(/\s+/g, "-");
-
-    try {
-      const region: any = await pokedex.getRegionByName(regionName);
-      const dexNames = (region.pokedexes as Array<{ name: string }>)
-        .map((dex) => dex.name)
-        .filter((name) => name !== "national");
-
-      regionalDexNames.push(...dexNames);
-    } catch {
-      // try next region
-    }
-  }
-
-  const uniqueDexNames = [...new Set(regionalDexNames)];
+  const uniqueDexNames = [...new Set(dexNameArrays.flat())];
   if (uniqueDexNames.length === 0) return null;
 
   return resolveRegionalDexSpeciesUnion(uniqueDexNames);
@@ -241,38 +248,33 @@ async function resolveRegionalDexFromRegions(
 async function resolveRegionalDexFromVersionGroupRegions(
   versionGroupCandidates: string[]
 ): Promise<ResolvedRegionalDex | null> {
-  const regionNames: string[] = [];
+  const regionNameArrays = await Promise.all(
+    versionGroupCandidates.map(async (versionGroupName) => {
+      try {
+        const versionGroup: any = await pokedex.getVersionGroupByName(versionGroupName);
+        return (versionGroup.regions as Array<{ name: string }>).map((region) => region.name);
+      } catch {
+        return [];
+      }
+    })
+  );
 
-  for (const versionGroupName of versionGroupCandidates) {
-    try {
-      const versionGroup: any = await pokedex.getVersionGroupByName(versionGroupName);
-      const names = (versionGroup.regions as Array<{ name: string }>).map((region) => region.name);
-      regionNames.push(...names);
-    } catch {
-      // try next version group
-    }
-  }
-
-  const uniqueRegionNames = [...new Set(regionNames)];
+  const uniqueRegionNames = [...new Set(regionNameArrays.flat())];
   if (uniqueRegionNames.length === 0) return null;
 
   return resolveRegionalDexFromRegions(uniqueRegionNames);
 }
 
 async function resolveRegionalDexForGame(game: Game): Promise<ResolvedRegionalDex | null> {
-  const regionalDexCandidates = [
-    () => resolveRegionalDexSpecies(game.regionalDexCandidates),
-    () => resolveRegionalDexFromVersionGroups(game.versionGroupCandidates),
-    () => resolveRegionalDexFromVersionGroupRegions(game.versionGroupCandidates),
-    () => resolveRegionalDexFromRegions([game.region]),
-  ];
+  // Fire all strategies in parallel, then pick the first successful result by priority order.
+  const [fromSpecies, fromVersionGroups, fromVersionGroupRegions, fromRegions] = await Promise.all([
+    resolveRegionalDexSpecies(game.regionalDexCandidates),
+    resolveRegionalDexFromVersionGroups(game.versionGroupCandidates),
+    resolveRegionalDexFromVersionGroupRegions(game.versionGroupCandidates),
+    resolveRegionalDexFromRegions([game.region]),
+  ]);
 
-  for (const resolveCandidate of regionalDexCandidates) {
-    const regionalDex = await resolveCandidate();
-    if (regionalDex) return regionalDex;
-  }
-
-  return null;
+  return fromSpecies ?? fromVersionGroups ?? fromVersionGroupRegions ?? fromRegions ?? null;
 }
 
 async function fetchPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
@@ -352,11 +354,12 @@ export async function getPokemonPoolsForGame(game: Game): Promise<PokemonPools> 
 
 /**
  * Fetch Pokemon pools for all games in a generation.
+ * Wrapped with React.cache() for per-request deduplication (e.g., generateMetadata + page).
  * Returns a Record keyed by game ID.
  */
-export async function getPokemonPoolsForGeneration(
+export const getPokemonPoolsForGeneration = cache(async (
   generation: number
-): Promise<Record<number, PokemonPools>> {
+): Promise<Record<number, PokemonPools>> => {
   const games = getGamesForGeneration(generation);
   const poolEntries = await Promise.all(
     games.map(async (game) => {
@@ -365,7 +368,7 @@ export async function getPokemonPoolsForGeneration(
     })
   );
   return Object.fromEntries(poolEntries);
-}
+});
 
 function mapPokemonData(pokemon: any, generation: number, rulesGeneration: number): Omit<Pokemon, "isFinalEvolution"> {
   const stats: { hp?: number; attack?: number; defense?: number } = {};
