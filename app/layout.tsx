@@ -44,9 +44,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`} style={{ colorScheme: "light" }}>
+    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`} style={{ colorScheme: "dark" }}>
       <head>
-        <meta name="theme-color" content="#f3ecde" />
+        <meta name="theme-color" content="#060914" />
         <link rel="preconnect" href="https://raw.githubusercontent.com" />
         <script
           type="application/ld+json"
@@ -67,12 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className="font-body antialiased">
-        <a href="#main-content" className="skip-link">
-          Skip to main content
-        </a>
-        {children}
-      </body>
+      <body className="font-body antialiased">{children}</body>
     </html>
   );
 }

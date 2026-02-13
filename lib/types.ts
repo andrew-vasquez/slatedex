@@ -3,6 +3,7 @@ export interface Pokemon {
   name: string;
   types: string[];
   generation: number;
+  isFinalEvolution: boolean;
   hp: number;
   attack: number;
   defense: number;

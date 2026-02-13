@@ -1,25 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --surface-0: #f3ecde;
-  --surface-1: #fffaf1;
-  --surface-2: #f3ead8;
-  --surface-3: #e6dac4;
-  --surface-4: #d8c6a8;
-  --border: rgba(69, 51, 34, 0.18);
-  --border-hover: rgba(69, 51, 34, 0.3);
-  --border-active: rgba(69, 51, 34, 0.5);
+  --surface-0: #060914;
+  --surface-1: #0f1424;
+  --surface-2: #171e32;
+  --surface-3: #202940;
+  --surface-4: #2d3753;
+  --border: rgba(148, 163, 184, 0.2);
+  --border-hover: rgba(148, 163, 184, 0.35);
+  --border-active: rgba(148, 163, 184, 0.55);
   --accent: #da2c43;
   --accent-soft: rgba(218, 44, 67, 0.12);
   --accent-glow: rgba(218, 44, 67, 0.28);
-  --accent-blue: #176bc1;
+  --accent-blue: #3b82f6;
   --accent-blue-soft: rgba(23, 107, 193, 0.12);
-  --text-primary: #1f1a14;
-  --text-secondary: #3f3529;
-  --text-muted: #756a5d;
-  --glass: rgba(255, 248, 236, 0.84);
-  --glass-border: rgba(69, 51, 34, 0.2);
-  --shadow-soft: 0 14px 40px rgba(64, 40, 20, 0.14);
+  --text-primary: #e7ecff;
+  --text-secondary: #b8c0d9;
+  --text-muted: #7f8cb0;
+  --glass: rgba(9, 13, 26, 0.86);
+  --glass-border: rgba(148, 163, 184, 0.2);
+  --shadow-soft: 0 16px 44px rgba(2, 6, 20, 0.55);
   --radius: 16px;
 }
 
@@ -38,9 +38,9 @@ body {
   overflow-x: hidden;
   color: var(--text-primary);
   background:
-    radial-gradient(circle at 12% 14%, rgba(218, 44, 67, 0.12), transparent 30%),
-    radial-gradient(circle at 88% 20%, rgba(23, 107, 193, 0.1), transparent 32%),
-    linear-gradient(160deg, #f5eee0 0%, #f3ecde 48%, #ece2cf 100%);
+    radial-gradient(circle at 12% 14%, rgba(218, 44, 67, 0.18), transparent 34%),
+    radial-gradient(circle at 88% 20%, rgba(59, 130, 246, 0.16), transparent 34%),
+    linear-gradient(165deg, #050814 0%, #0a1020 46%, #050814 100%);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -54,40 +54,21 @@ main {
   background: var(--accent);
 }
 
-.skip-link {
-  position: absolute;
-  top: -48px;
-  left: 16px;
-  z-index: 100;
-  border-radius: 999px;
-  padding: 0.5rem 0.85rem;
-  color: #fff;
-  background: #1f1a14;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  transition: top 0.2s ease;
-}
-
-.skip-link:focus-visible {
-  top: 16px;
-}
-
 ::-webkit-scrollbar {
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(69, 51, 34, 0.06);
+  background: rgba(148, 163, 184, 0.08);
 }
 
 ::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(69, 51, 34, 0.3);
+  background: rgba(148, 163, 184, 0.35);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(69, 51, 34, 0.45);
+  background: rgba(148, 163, 184, 0.5);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -100,7 +81,7 @@ main {
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(69, 51, 34, 0.24);
+  background: rgba(148, 163, 184, 0.3);
 }
 
 .glass {
@@ -142,21 +123,21 @@ a:focus-visible {
 .btn-secondary {
   @apply inline-flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold cursor-pointer;
   color: var(--text-secondary);
-  background: rgba(69, 51, 34, 0.08);
-  border: 1px solid rgba(69, 51, 34, 0.18);
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.25);
   transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
 
 .btn-secondary:hover {
   transform: translateY(-1px);
-  background: rgba(69, 51, 34, 0.14);
+  background: rgba(148, 163, 184, 0.2);
   border-color: var(--border-hover);
 }
 
 .btn-danger {
   @apply inline-flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold cursor-pointer;
-  color: #a5132d;
-  background: var(--accent-soft);
+  color: #ff96a4;
+  background: rgba(218, 44, 67, 0.18);
   border: 1px solid rgba(218, 44, 67, 0.24);
   transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
@@ -176,7 +157,7 @@ a:focus-visible {
 .stat-bar {
   height: 4px;
   border-radius: 999px;
-  background: rgba(69, 51, 34, 0.14);
+  background: rgba(148, 163, 184, 0.24);
   overflow: hidden;
 }
 
@@ -200,9 +181,9 @@ a:focus-visible {
   border-radius: 6px;
   background: linear-gradient(
     90deg,
-    rgba(69, 51, 34, 0.07) 0%,
-    rgba(69, 51, 34, 0.16) 42%,
-    rgba(69, 51, 34, 0.07) 80%
+    rgba(148, 163, 184, 0.08) 0%,
+    rgba(148, 163, 184, 0.18) 42%,
+    rgba(148, 163, 184, 0.08) 80%
   );
   background-size: 220% 100%;
   animation: shimmer 1.9s ease-in-out infinite;
@@ -268,7 +249,7 @@ a:focus-visible {
 .heatmap-cell:hover {
   transform: translateY(-1px) scale(1.06);
   z-index: 10;
-  box-shadow: 0 0 0 2px rgba(31, 26, 20, 0.16);
+  box-shadow: 0 0 0 2px rgba(226, 232, 240, 0.14);
 }
 
 .pokemon-list-item {

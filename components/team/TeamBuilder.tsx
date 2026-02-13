@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -14,8 +14,11 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import dynamic from "next/dynamic";
 import PokemonDragPreview from "@/components/ui/PokemonDragPreview";
 import TeamBuilderHeader from "./TeamBuilderHeader";
+import ClearTeamDialog from "./ClearTeamDialog";
+import TeamRecommendations from "./TeamRecommendations";
 import PokemonSelection from "./PokemonSelection";
 import TeamPanel from "./TeamPanel";
+import { TYPE_EFFECTIVENESS, TYPE_RESISTANCES } from "@/lib/constants";
 import { getTeamDefensiveCoverage } from "@/lib/teamAnalysis";
 import type { Pokemon, Game } from "@/lib/types";
 
@@ -25,6 +28,27 @@ const STORAGE_VERSION = 1;
 
 function getStorageKey(gameId: number): string {
   return `team_game_${gameId}_v${STORAGE_VERSION}`;
+}
+
+function getPokemonEffectivenessAgainstType(pokemon: Pokemon, attackingType: string): number {
+  let effectiveness = 1;
+
+  pokemon.types.forEach((defenderType: string) => {
+    const weaknesses: string[] = TYPE_EFFECTIVENESS[defenderType] || [];
+    if (weaknesses.includes(attackingType)) effectiveness *= 2;
+
+    const resistances: string[] = TYPE_RESISTANCES[defenderType] || [];
+    if (resistances.includes(attackingType)) effectiveness *= 0.5;
+  });
+
+  return effectiveness;
+}
+
+interface Recommendation {
+  pokemon: Pokemon;
+  score: number;
+  covers: string[];
+  risky: string[];
 }
 
 interface TeamBuilderProps {
@@ -47,6 +71,8 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [draggedPokemon, setDraggedPokemon] = useState<Pokemon | null>(null);
   const [activeDropId, setActiveDropId] = useState<string | null>(null);
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+  const [finalEvolutionOnly, setFinalEvolutionOnly] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -77,9 +103,9 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
   const teamPokemonIds = new Set(team.filter((p): p is Pokemon => p !== null).map((p) => p.id));
   const lowerSearch = searchTerm.toLowerCase();
 
-  const filteredPokemon = pokemonData.filter(
-    (p) => !teamPokemonIds.has(p.id) && p.name.toLowerCase().includes(lowerSearch)
-  );
+  const availablePokemon = pokemonData.filter((p) => !teamPokemonIds.has(p.id));
+
+  const filteredPokemon = availablePokemon.filter((p) => p.name.toLowerCase().includes(lowerSearch));
 
   const handleDragStart = useCallback((e: DragStartEvent) => setDraggedPokemon(e.active.data.current?.pokemon), []);
   const handleDragOver = useCallback((e: DragOverEvent) => setActiveDropId((e.over?.id as string) || null), []);
@@ -117,13 +143,20 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
     [persistTeam]
   );
 
-  const clearTeam = useCallback(() => {
+  const openClearDialog = useCallback(() => {
     if (team.every((slot) => slot === null)) return;
-    if (!window.confirm("Clear all 6 slots? This will remove every Pokémon from your current team.")) return;
+    setIsClearDialogOpen(true);
+  }, [team]);
 
+  const closeClearDialog = useCallback(() => {
+    setIsClearDialogOpen(false);
+  }, []);
+
+  const confirmClearTeam = useCallback(() => {
     const empty: (Pokemon | null)[] = Array(6).fill(null);
     updateTeam(empty);
-  }, [team, updateTeam]);
+    setIsClearDialogOpen(false);
+  }, [updateTeam]);
 
   const shuffleTeam = useCallback(() => {
     setTeam((prev) => {
@@ -157,18 +190,67 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
   const currentTeam = team.filter((p): p is Pokemon => p !== null);
   const defensiveCoverage = getTeamDefensiveCoverage(currentTeam);
 
-  const exposedTypes = Object.values(defensiveCoverage).filter(
-    (entry) => entry.weakPokemon.length > entry.resistPokemon.length
-  ).length;
+  const exposedTypeNames = useMemo(
+    () =>
+      Object.entries(defensiveCoverage)
+        .filter(([, entry]) => entry.weakPokemon.length > entry.resistPokemon.length)
+        .map(([type]) => type),
+    [defensiveCoverage]
+  );
+
+  const exposedTypes = exposedTypeNames.length;
 
   const stableTypes = Object.values(defensiveCoverage).filter(
     (entry) => entry.resistPokemon.length >= entry.weakPokemon.length
   ).length;
 
+  const recommendations = useMemo<Recommendation[]>(() => {
+    if (currentTeam.length === 0 || availablePokemon.length === 0) return [];
+
+    const candidatePool = finalEvolutionOnly
+      ? availablePokemon.filter((pokemon) => pokemon.isFinalEvolution)
+      : availablePokemon;
+
+    if (candidatePool.length === 0) return [];
+
+    const deficitByType = Object.entries(defensiveCoverage)
+      .map(([type, entry]) => ({ type, deficit: Math.max(0, entry.weakPokemon.length - entry.resistPokemon.length) }))
+      .filter((entry) => entry.deficit > 0);
+
+    if (deficitByType.length === 0) return [];
+
+    const ranked = candidatePool.map((pokemon) => {
+      let score = 0;
+      const covers: string[] = [];
+      const risky: string[] = [];
+
+      deficitByType.forEach(({ type, deficit }) => {
+        const effectiveness = getPokemonEffectivenessAgainstType(pokemon, type);
+
+        if (effectiveness < 1) {
+          score += effectiveness <= 0.5 ? 1.9 * deficit : 1.4 * deficit;
+          if (covers.length < 3) covers.push(type);
+        } else if (effectiveness > 1) {
+          score -= effectiveness >= 4 ? 1.9 * deficit : 1.1 * deficit;
+          if (risky.length < 2) risky.push(type);
+        } else {
+          score += 0.15 * deficit;
+        }
+      });
+
+      const bulkBonus = (pokemon.hp + pokemon.defense + pokemon.attack) / 240;
+      score += bulkBonus;
+
+      return { pokemon, score, covers, risky };
+    });
+
+    return ranked.sort((a, b) => b.score - a.score).slice(0, 3);
+  }, [availablePokemon, currentTeam.length, defensiveCoverage, finalEvolutionOnly]);
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
       <div className="min-h-screen" style={{ color: "var(--text-primary)" }}>
-        <TeamBuilderHeader game={selectedGame} onShuffle={shuffleTeam} onClear={clearTeam} teamLength={currentTeam.length} />
+        <TeamBuilderHeader game={selectedGame} onShuffle={shuffleTeam} onClear={openClearDialog} teamLength={currentTeam.length} />
 
         <main id="main-content" className="mx-auto max-w-screen-xl px-4 pb-8 pt-4 sm:px-6 sm:pb-10" role="main">
           <section className="panel mb-4 p-4 sm:mb-5 sm:p-5" aria-label="Team planning status">
@@ -203,6 +285,17 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
             </div>
           </section>
 
+          {currentTeam.length > 0 && (
+            <TeamRecommendations
+              recommendations={recommendations}
+              exposedTypes={exposedTypeNames}
+              teamFull={currentTeam.length >= 6}
+              finalEvolutionOnly={finalEvolutionOnly}
+              onToggleFinalEvolutionOnly={setFinalEvolutionOnly}
+              onAddPokemon={addPokemonToTeam}
+            />
+          )}
+
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
             <PokemonSelection
               filteredPokemon={filteredPokemon}
@@ -229,6 +322,12 @@ const TeamBuilder = ({ selectedGame, pokemonData }: TeamBuilderProps) => {
       </div>
 
       <DragOverlay>{draggedPokemon && <PokemonDragPreview pokemon={draggedPokemon} />}</DragOverlay>
+      <ClearTeamDialog
+        isOpen={isClearDialogOpen}
+        teamCount={currentTeam.length}
+        onCancel={closeClearDialog}
+        onConfirm={confirmClearTeam}
+      />
     </DndContext>
   );
 };

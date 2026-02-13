@@ -32,6 +32,7 @@ const TYPE_HEX: Record<string, string> = {
 
 const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
   const [hoveredType, setHoveredType] = useState<string | null>(null);
+  const [pinnedType, setPinnedType] = useState<string | null>(null);
 
   const typeSummaries = useMemo(
     () =>
@@ -51,8 +52,6 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
     [coverage]
   );
 
-  const hoveredData = hoveredType ? typeSummaries.find((item) => item.type === hoveredType) : null;
-
   const pressurePoints = [...typeSummaries]
     .filter((entry) => entry.weakCount > entry.resistCount)
     .sort((a, b) => a.net - b.net)
@@ -62,6 +61,10 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
     .filter((entry) => entry.resistCount >= entry.weakCount && entry.resistCount > 0)
     .sort((a, b) => b.net - a.net)
     .slice(0, 3);
+
+  const fallbackType = pressurePoints[0]?.type || safePivots[0]?.type || ALL_TYPES[0];
+  const activeType = hoveredType || pinnedType || fallbackType;
+  const activeData = typeSummaries.find((item) => item.type === activeType) || typeSummaries[0];
 
   const getCellBg = (net: number, weakCount: number, resistCount: number): string => {
     if (weakCount === 0 && resistCount === 0) return "var(--surface-2)";
@@ -90,6 +93,12 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
     return String(net);
   };
 
+  const hasCoverageData = activeData.weakCount > 0 || activeData.resistCount > 0;
+
+  const previewType = (type: string) => setHoveredType(type);
+  const clearPreview = () => setHoveredType(null);
+  const pinType = (type: string) => setPinnedType((prev) => (prev === type ? null : type));
+
   return (
     <div className="panel p-4 sm:p-5">
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -98,7 +107,7 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
             Step 3: Type Coverage
           </h3>
           <p className="mt-0.5 text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
-            Hover or focus a type to inspect which team members are weak or resistant.
+            Hover any type to preview details. Click a type to keep it selected.
           </p>
         </div>
 
@@ -116,7 +125,7 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
 
       <div className="mb-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <div className="panel-soft px-3.5 py-3">
-          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "#b91c1c" }}>
+          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "#f87171" }}>
             Pressure Points
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -125,10 +134,17 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
                 <button
                   key={item.type}
                   type="button"
-                  onMouseEnter={() => setHoveredType(item.type)}
-                  onFocus={() => setHoveredType(item.type)}
+                  onMouseEnter={() => previewType(item.type)}
+                  onMouseLeave={clearPreview}
+                  onFocus={() => previewType(item.type)}
+                  onBlur={clearPreview}
+                  onClick={() => pinType(item.type)}
                   className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold capitalize"
-                  style={{ background: "rgba(185, 28, 28, 0.12)", border: "1px solid rgba(185, 28, 28, 0.26)", color: "#991b1b" }}
+                  style={{
+                    background: "rgba(185, 28, 28, 0.12)",
+                    border: "1px solid rgba(185, 28, 28, 0.26)",
+                    color: "#fca5a5",
+                  }}
                 >
                   {item.type} ({item.weakCount} weak)
                 </button>
@@ -142,7 +158,7 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
         </div>
 
         <div className="panel-soft px-3.5 py-3">
-          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "#136f3a" }}>
+          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "#4ade80" }}>
             Safe Pivots
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -151,10 +167,17 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
                 <button
                   key={item.type}
                   type="button"
-                  onMouseEnter={() => setHoveredType(item.type)}
-                  onFocus={() => setHoveredType(item.type)}
+                  onMouseEnter={() => previewType(item.type)}
+                  onMouseLeave={clearPreview}
+                  onFocus={() => previewType(item.type)}
+                  onBlur={clearPreview}
+                  onClick={() => pinType(item.type)}
                   className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold capitalize"
-                  style={{ background: "rgba(19, 111, 58, 0.12)", border: "1px solid rgba(19, 111, 58, 0.26)", color: "#136f3a" }}
+                  style={{
+                    background: "rgba(19, 111, 58, 0.12)",
+                    border: "1px solid rgba(19, 111, 58, 0.26)",
+                    color: "#86efac",
+                  }}
                 >
                   {item.type} (+{Math.max(item.net, 0)})
                 </button>
@@ -168,107 +191,147 @@ const DefensiveCoverage = ({ coverage }: DefensiveCoverageProps) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-9 sm:gap-2" role="grid" aria-label="Type coverage heatmap">
-        {typeSummaries.map(({ type, weakCount, resistCount, net }) => (
-          <button
-            key={type}
-            type="button"
-            className="heatmap-cell relative flex aspect-square flex-col items-center justify-center rounded-lg"
-            style={{
-              background: getCellBg(net, weakCount, resistCount),
-              border: `1px solid ${getCellBorder(net, weakCount, resistCount)}`,
-            }}
-            onMouseEnter={() => setHoveredType(type)}
-            onFocus={() => setHoveredType(type)}
-            aria-label={`${type}: ${weakCount} weak, ${resistCount} resist`}
-          >
-            <div className="mb-1 h-3.5 w-3.5 rounded-full" style={{ background: TYPE_HEX[type] }} />
-            <span className="text-[0.54rem] font-bold uppercase leading-none" style={{ color: "var(--text-secondary)" }}>
-              {type.slice(0, 3)}
-            </span>
-            {(weakCount > 0 || resistCount > 0) && (
-              <span
-                className="mt-0.5 text-[0.5rem] font-bold tabular-nums"
-                style={{ color: getNetColor(net) }}
-              >
-                {formatNet(net)}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div>
+          <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-9 sm:gap-2" role="grid" aria-label="Type coverage heatmap">
+            {typeSummaries.map(({ type, weakCount, resistCount, net }) => {
+              const isActive = type === activeType;
 
-      {hoveredData && (hoveredData.weakCount > 0 || hoveredData.resistCount > 0) && (
-        <div className="panel-soft mt-4 p-3.5">
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  className="heatmap-cell relative flex aspect-square flex-col items-center justify-center rounded-lg"
+                  style={{
+                    background: getCellBg(net, weakCount, resistCount),
+                    border: `1px solid ${getCellBorder(net, weakCount, resistCount)}`,
+                    boxShadow: isActive ? "inset 0 0 0 2px rgba(31, 26, 20, 0.35)" : undefined,
+                  }}
+                  onMouseEnter={() => previewType(type)}
+                  onMouseLeave={clearPreview}
+                  onFocus={() => previewType(type)}
+                  onBlur={clearPreview}
+                  onClick={() => pinType(type)}
+                  aria-label={`${type}: ${weakCount} weak, ${resistCount} resist`}
+                >
+                  <div className="mb-1 h-3.5 w-3.5 rounded-full" style={{ background: TYPE_HEX[type] }} />
+                  <span className="text-[0.54rem] font-bold uppercase leading-none" style={{ color: "var(--text-secondary)" }}>
+                    {type.slice(0, 3)}
+                  </span>
+                  {(weakCount > 0 || resistCount > 0) && (
+                    <span className="mt-0.5 text-[0.5rem] font-bold tabular-nums" style={{ color: getNetColor(net) }}>
+                      {formatNet(net)}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <aside className="panel-soft h-fit p-3.5 lg:sticky lg:top-24" aria-live="polite">
           <div className="mb-3 flex items-center gap-2">
             <span
               className="inline-flex h-6 w-6 items-center justify-center rounded-md text-[0.6rem] font-bold text-white"
-              style={{ background: TYPE_HEX[hoveredData.type] }}
+              style={{ background: TYPE_HEX[activeData.type] }}
             >
-              {hoveredData.type.charAt(0).toUpperCase()}
+              {activeData.type.charAt(0).toUpperCase()}
             </span>
             <span className="font-display text-base capitalize" style={{ color: "var(--text-primary)" }}>
-              {hoveredData.type}
+              {activeData.type}
             </span>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-            <div>
-              <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "#991b1b" }}>
-                Weak ({hoveredData.weakCount})
+          <div className="mb-3 grid grid-cols-3 gap-1.5">
+            <div className="rounded-md px-2 py-1.5" style={{ background: "rgba(248, 113, 113, 0.12)", border: "1px solid rgba(248, 113, 113, 0.28)" }}>
+              <p className="text-[0.55rem] font-semibold uppercase" style={{ color: "#fca5a5" }}>
+                Weak
               </p>
-              <div className="flex flex-wrap gap-1">
-                {hoveredData.data.weakPokemon.length > 0 ? (
-                  hoveredData.data.weakPokemon.map((pokemon) => (
-                    <div key={pokemon.id} className="relative">
-                      <Image
-                        src={pokemon.sprite}
-                        alt={pokemon.name}
-                        width={30}
-                        height={30}
-                        className="rounded border"
-                        style={{ borderColor: "rgba(185, 28, 28, 0.35)", background: "rgba(185, 28, 28, 0.1)" }}
-                        title={`${pokemon.name} (${pokemon.effectiveness}x)`}
-                      />
-                    </div>
-                  ))
-                ) : (
-                  <span className="text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
-                    No listed weaknesses.
-                  </span>
-                )}
-              </div>
+              <p className="font-mono text-xs" style={{ color: "#fca5a5" }}>
+                {activeData.weakCount}
+              </p>
             </div>
-
-            <div>
-              <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "#136f3a" }}>
-                Resist ({hoveredData.resistCount})
+            <div className="rounded-md px-2 py-1.5" style={{ background: "rgba(74, 222, 128, 0.12)", border: "1px solid rgba(74, 222, 128, 0.28)" }}>
+              <p className="text-[0.55rem] font-semibold uppercase" style={{ color: "#86efac" }}>
+                Resist
               </p>
-              <div className="flex flex-wrap gap-1">
-                {hoveredData.data.resistPokemon.length > 0 ? (
-                  hoveredData.data.resistPokemon.map((pokemon) => (
-                    <div key={pokemon.id} className="relative">
-                      <Image
-                        src={pokemon.sprite}
-                        alt={pokemon.name}
-                        width={30}
-                        height={30}
-                        className="rounded border"
-                        style={{ borderColor: "rgba(19, 111, 58, 0.35)", background: "rgba(19, 111, 58, 0.1)" }}
-                        title={`${pokemon.name} (${pokemon.effectiveness}x)`}
-                      />
-                    </div>
-                  ))
-                ) : (
-                  <span className="text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
-                    No listed resistances.
-                  </span>
-                )}
-              </div>
+              <p className="font-mono text-xs" style={{ color: "#86efac" }}>
+                {activeData.resistCount}
+              </p>
+            </div>
+            <div className="rounded-md px-2 py-1.5" style={{ background: "var(--surface-1)", border: "1px solid var(--border)" }}>
+              <p className="text-[0.55rem] font-semibold uppercase" style={{ color: "var(--text-muted)" }}>
+                Net
+              </p>
+              <p className="font-mono text-xs" style={{ color: getNetColor(activeData.net) }}>
+                {formatNet(activeData.net)}
+              </p>
             </div>
           </div>
-        </div>
-      )}
+
+          {!hasCoverageData && (
+            <p className="text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
+              No team member is currently weak or resistant to this type.
+            </p>
+          )}
+
+          {hasCoverageData && (
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "#fca5a5" }}>
+                  Weak ({activeData.weakCount})
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {activeData.data.weakPokemon.length > 0 ? (
+                    activeData.data.weakPokemon.map((pokemon) => (
+                      <Image
+                        key={pokemon.id}
+                        src={pokemon.sprite}
+                        alt={pokemon.name}
+                        width={30}
+                        height={30}
+                        className="rounded border"
+                        style={{ borderColor: "rgba(248, 113, 113, 0.35)", background: "rgba(248, 113, 113, 0.16)" }}
+                        title={`${pokemon.name} (${pokemon.effectiveness}x)`}
+                      />
+                    ))
+                  ) : (
+                    <span className="text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
+                      No listed weaknesses.
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "#86efac" }}>
+                  Resist ({activeData.resistCount})
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {activeData.data.resistPokemon.length > 0 ? (
+                    activeData.data.resistPokemon.map((pokemon) => (
+                      <Image
+                        key={pokemon.id}
+                        src={pokemon.sprite}
+                        alt={pokemon.name}
+                        width={30}
+                        height={30}
+                        className="rounded border"
+                        style={{ borderColor: "rgba(74, 222, 128, 0.35)", background: "rgba(74, 222, 128, 0.14)" }}
+                        title={`${pokemon.name} (${pokemon.effectiveness}x)`}
+                      />
+                    ))
+                  ) : (
+                    <span className="text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
+                      No listed resistances.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </aside>
+      </div>
     </div>
   );
 };
