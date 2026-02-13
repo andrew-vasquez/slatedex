@@ -1,0 +1,172 @@
+@import "tailwindcss";
+
+/* ─── Design tokens ────────────────────────────────────────── */
+:root {
+  --surface-0: #0c0e14;
+  --surface-1: #141722;
+  --surface-2: #1c2030;
+  --surface-3: #252a3a;
+  --border: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(255, 255, 255, 0.12);
+  --accent: #e53e3e;
+  --accent-glow: rgba(229, 62, 62, 0.35);
+  --text-primary: #f0f0f5;
+  --text-secondary: #8b8fa3;
+  --text-muted: #555972;
+  --glass: rgba(20, 23, 34, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
+}
+
+/* ─── Base ─────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  background-color: var(--surface-0);
+  color: var(--text-primary);
+}
+
+/* ─── Scrollbars ───────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover { background: #3a3f54; }
+
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+/* ─── Glassmorphism utility ────────────────────────────────── */
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid var(--glass-border);
+}
+
+/* ─── Focus & accessibility ────────────────────────────────── */
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ─── Buttons ──────────────────────────────────────────────── */
+.btn-secondary {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
+         transition-all duration-200 cursor-pointer;
+  background: var(--surface-3);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover {
+  background: #2f3548;
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
+         transition-all duration-200 cursor-pointer;
+  background: rgba(229, 62, 62, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(229, 62, 62, 0.2);
+}
+.btn-danger:hover {
+  background: rgba(229, 62, 62, 0.25);
+  border-color: rgba(229, 62, 62, 0.4);
+  transform: translateY(-1px);
+}
+
+/* ─── Stat bar fill ────────────────────────────────────────── */
+.stat-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.stat-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ─── Shimmer skeleton ─────────────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 0%,
+    var(--surface-3) 40%,
+    var(--surface-2) 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* ─── Staggered fade-in for card grids ─────────────────────── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── Pokeball pulse for empty slots ───────────────────────── */
+@keyframes pokepulse {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50% { opacity: 0.25; transform: scale(1.06); }
+}
+.pokeball-pulse {
+  animation: pokepulse 3s ease-in-out infinite;
+}
+
+/* ─── Glow ring for active drop zones ──────────────────────── */
+@keyframes glowRing {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  50% { box-shadow: 0 0 0 6px transparent; }
+}
+.drop-glow {
+  animation: glowRing 1.2s ease-in-out infinite;
+}
+
+/* ─── Drag ghost ───────────────────────────────────────────── */
+.sortable-ghost {
+  opacity: 0.4;
+  transform: rotate(3deg);
+}
+
+/* ─── Mobile ───────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  button { min-height: 44px; }
+  .custom-scrollbar { -webkit-overflow-scrolling: touch; }
+  input[type="text"], input[type="search"] { font-size: 16px; }
+}
+
+/* ─── Reduced motion ───────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
