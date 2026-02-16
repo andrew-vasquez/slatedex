@@ -130,9 +130,7 @@ const UserMenu = ({ className = "" }: UserMenuProps) => {
             <span className="theme-menu-avatar" aria-hidden="true">
               <FiUser size={14} />
             </span>
-            <span className="text-[0.66rem] font-semibold">
-              {theme === "dark" ? "Dark" : "Light"}
-            </span>
+            <span className="text-[0.66rem] font-semibold">Sign In</span>
             <FiChevronDown
               size={14}
               aria-hidden="true"
