@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FiArrowLeft, FiTrash2, FiShuffle } from "react-icons/fi";
 import type { Game } from "@/lib/types";
-import ThemeMenu from "@/components/ui/ThemeMenu";
+import UserMenu from "@/components/auth/UserMenu";
 
 interface TeamBuilderHeaderProps {
   game: Game;
@@ -85,7 +85,7 @@ const TeamBuilderHeader = ({ game, generation, onShuffle, onClear, teamLength }:
               <FiTrash2 size={14} aria-hidden="true" />
               Clear Team
             </button>
-            <ThemeMenu />
+            <UserMenu />
           </div>
         </div>
       </div>

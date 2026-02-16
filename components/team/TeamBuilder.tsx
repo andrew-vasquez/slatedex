@@ -17,18 +17,16 @@ import TeamBuilderHeader from "./TeamBuilderHeader";
 import ClearTeamDialog from "./ClearTeamDialog";
 import PokemonSelection from "./PokemonSelection";
 import TeamPanel from "./TeamPanel";
+import SavedTeamsPanel from "./SavedTeamsPanel";
 import { TYPE_EFFECTIVENESS, TYPE_RESISTANCES } from "@/lib/constants";
 import { getTeamDefensiveCoverage } from "@/lib/teamAnalysis";
+import { useTeamPersistence } from "@/hooks/useTeamPersistence";
 import type { DexMode, Pokemon, PokemonPools, Game } from "@/lib/types";
 
 const DefensiveCoverage = dynamic(() => import("./DefensiveCoverage"));
 const TeamRecommendations = dynamic(() => import("./TeamRecommendations"));
 
 const STORAGE_VERSION = 1;
-
-function getStorageKey(generation: number, gameId: number): string {
-  return `team_gen_${generation}_game_${gameId}_v${STORAGE_VERSION}`;
-}
 
 function getSelectedVersionStorageKey(gameId: number): string {
   return `selected_version_game_${gameId}_v${STORAGE_VERSION}`;
@@ -75,7 +73,6 @@ interface TeamBuilderProps {
 
 const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   const [selectedGameId, setSelectedGameId] = useState<number>(games[0].id);
-  const [team, setTeam] = useState<(Pokemon | null)[]>(createEmptyTeam);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [draggedPokemon, setDraggedPokemon] = useState<Pokemon | null>(null);
@@ -90,22 +87,26 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   const selectedGame = useMemo(() => games.find((g) => g.id === selectedGameId) ?? games[0], [games, selectedGameId]);
   const pokemonPools = useMemo(() => allPools[selectedGame.id] ?? allPools[games[0].id], [allPools, selectedGame.id, games]);
 
+  // Team persistence (API for authenticated, localStorage for guests)
+  const {
+    team,
+    setTeam: persistTeam,
+    savedTeams,
+    activeTeamId,
+    saveTeamAs,
+    loadSavedTeam,
+    deleteSavedTeam,
+    renameSavedTeam,
+    isAuthenticated,
+    isSaving,
+    refreshSavedTeams,
+  } = useTeamPersistence({ generation, gameId: selectedGame.id });
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
-  );
-
-  const persistTeam = useCallback(
-    (newTeam: (Pokemon | null)[]) => {
-      try {
-        localStorage.setItem(getStorageKey(generation, selectedGame.id), JSON.stringify(newTeam));
-      } catch {
-        // ignore storage errors
-      }
-    },
-    [generation, selectedGame.id]
   );
 
   // Load persisted game selection
@@ -133,26 +134,6 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
       // ignore
     }
   }, [generation, selectedGameId]);
-
-  // Load team from localStorage
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(getStorageKey(generation, selectedGame.id));
-      if (!saved) {
-        setTeam(createEmptyTeam());
-        return;
-      }
-
-      const parsed = JSON.parse(saved) as (Pokemon | null)[];
-      if (Array.isArray(parsed) && parsed.length === 6) {
-        setTeam(parsed);
-      } else {
-        setTeam(createEmptyTeam());
-      }
-    } catch {
-      setTeam(createEmptyTeam());
-    }
-  }, [generation, selectedGame.id]);
 
   useEffect(() => {
     const canUsePointerDrag =
@@ -213,7 +194,6 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
 
   const updateTeam = useCallback(
     (newTeam: (Pokemon | null)[]) => {
-      setTeam(newTeam);
       persistTeam(newTeam);
     },
     [persistTeam]
@@ -276,27 +256,21 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
 
       const slotIndex = parseInt((over.id as string).split("-")[2]);
       if ((over.id as string).startsWith("team-slot-") && slotIndex >= 0 && slotIndex < 6) {
-        setTeam((prev) => {
-          const newTeam = [...prev];
-          newTeam[slotIndex] = active.data.current!.pokemon;
-          persistTeam(newTeam);
-          return newTeam;
-        });
+        const newTeam = [...team];
+        newTeam[slotIndex] = active.data.current!.pokemon;
+        persistTeam(newTeam);
       }
     },
-    [persistTeam]
+    [team, persistTeam]
   );
 
   const removeFromTeam = useCallback(
     (index: number) => {
-      setTeam((prev) => {
-        const newTeam = [...prev];
-        newTeam[index] = null;
-        persistTeam(newTeam);
-        return newTeam;
-      });
+      const newTeam = [...team];
+      newTeam[index] = null;
+      persistTeam(newTeam);
     },
-    [persistTeam]
+    [team, persistTeam]
   );
 
   const openClearDialog = useCallback(() => {
@@ -309,38 +283,30 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   }, []);
 
   const confirmClearTeam = useCallback(() => {
-    const empty = createEmptyTeam();
-    updateTeam(empty);
+    updateTeam(createEmptyTeam());
     setIsClearDialogOpen(false);
   }, [updateTeam]);
 
   const shuffleTeam = useCallback(() => {
-    setTeam((prev) => {
-      const currentTeam = prev.filter((p): p is Pokemon => p !== null);
-      for (let i = currentTeam.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [currentTeam[i], currentTeam[j]] = [currentTeam[j], currentTeam[i]];
-      }
-
-      const newTeam: (Pokemon | null)[] = [...currentTeam, ...Array(6 - currentTeam.length).fill(null)];
-      persistTeam(newTeam);
-      return newTeam;
-    });
-  }, [persistTeam]);
+    const currentMembers = team.filter((p): p is Pokemon => p !== null);
+    for (let i = currentMembers.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [currentMembers[i], currentMembers[j]] = [currentMembers[j], currentMembers[i]];
+    }
+    const newTeam: (Pokemon | null)[] = [...currentMembers, ...Array(6 - currentMembers.length).fill(null)];
+    persistTeam(newTeam);
+  }, [team, persistTeam]);
 
   const addPokemonToTeam = useCallback(
     (pokemon: Pokemon) => {
-      setTeam((prev) => {
-        const firstEmptySlot = prev.findIndex((slot) => slot === null);
-        if (firstEmptySlot === -1) return prev;
+      const firstEmptySlot = team.findIndex((slot) => slot === null);
+      if (firstEmptySlot === -1) return;
 
-        const newTeam = [...prev];
-        newTeam[firstEmptySlot] = pokemon;
-        persistTeam(newTeam);
-        return newTeam;
-      });
+      const newTeam = [...team];
+      newTeam[firstEmptySlot] = pokemon;
+      persistTeam(newTeam);
     },
-    [persistTeam]
+    [team, persistTeam]
   );
 
   const currentTeam = useMemo(() => team.filter((p): p is Pokemon => p !== null), [team]);
@@ -415,9 +381,16 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
 
         <main id="main-content" className="mx-auto max-w-screen-xl px-4 pb-8 pt-4 sm:px-6 sm:pb-10" role="main">
           <section className="panel mb-4 p-4 sm:mb-5 sm:p-5" aria-label="Team planning status">
-            <h2 className="font-display text-lg sm:text-xl" style={{ color: "var(--text-primary)" }}>
-              Build Order
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-lg sm:text-xl" style={{ color: "var(--text-primary)" }}>
+                Build Order
+              </h2>
+              {isSaving && (
+                <span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
+                  Saving...
+                </span>
+              )}
+            </div>
             <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
               <div className="panel-soft px-3.5 py-3">
                 <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
@@ -471,12 +444,27 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
               />
             </div>
 
-            <TeamPanel
-              team={team}
-              currentTeamLength={currentTeam.length}
-              activeDropId={activeDropId}
-              onRemove={removeFromTeam}
-            />
+            <div className="flex flex-col gap-4">
+              <TeamPanel
+                team={team}
+                currentTeamLength={currentTeam.length}
+                activeDropId={activeDropId}
+                onRemove={removeFromTeam}
+              />
+
+              {isAuthenticated && (
+                <SavedTeamsPanel
+                  savedTeams={savedTeams}
+                  activeTeamId={activeTeamId}
+                  onSaveAs={saveTeamAs}
+                  onLoad={loadSavedTeam}
+                  onDelete={deleteSavedTeam}
+                  onRename={renameSavedTeam}
+                  onRefresh={refreshSavedTeams}
+                  isSaving={isSaving}
+                />
+              )}
+            </div>
           </div>
 
           {currentTeam.length > 0 && (
