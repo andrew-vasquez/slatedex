@@ -1,0 +1,21 @@
+{
+  "name": "backend",
+  "scripts": {
+    "dev": "bun run --hot src/index.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.4.0",
+    "@prisma/client": "^7.4.0",
+    "@prisma/extension-accelerate": "^3.0.1",
+    "@types/pg": "^8.16.0",
+    "better-auth": "^1.4.18",
+    "dotenv": "^17.3.1",
+    "hono": "^4.11.9",
+    "pg": "^8.18.0",
+    "tsx": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "prisma": "^7.4.0"
+  }
+}

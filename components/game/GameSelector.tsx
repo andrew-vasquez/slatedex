@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { GENERATION_META } from "@/lib/pokemon";
 import type { GenerationMeta } from "@/lib/types";
-import ThemeMenu from "@/components/ui/ThemeMenu";
+import UserMenu from "@/components/auth/UserMenu";
 
 const SPRITE_IDS: Record<string, number> = {
   bulbasaur: 1,
@@ -88,7 +88,7 @@ const GameSelector = () => {
               <p className="font-display text-xs font-semibold uppercase tracking-[0.22em]" style={{ color: "var(--text-muted)" }}>
                 Pokedex Planning Lab
               </p>
-              <ThemeMenu />
+              <UserMenu />
             </div>
 
             <h1 className="font-display mt-3 text-4xl leading-[0.95] sm:text-6xl" style={{ textWrap: "balance" }}>

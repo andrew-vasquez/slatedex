@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Chakra_Petch, IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
 import "@/app/globals.css";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 
 const display = Chakra_Petch({
   subsets: ["latin"],
@@ -95,7 +96,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className="font-body antialiased">{children}</body>
+      <body className="font-body antialiased">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
