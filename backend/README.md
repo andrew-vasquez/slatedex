@@ -4,8 +4,7 @@
 
 - `DATABASE_URL`: Prisma runtime database URL.
 - `DIRECT_URL`: Direct database URL for Prisma migrations (`prisma migrate deploy`).
-- `FRONTEND_URL`: Frontend origin used for CORS/auth trusted origins.
-- `FRONTEND_URLS` (optional): Comma-separated list of allowed frontend origins.
+- `FRONTEND_URL`: Frontend origin(s) used for CORS/auth trusted origins. You can pass a comma-separated list.
 - `PORT` (optional): Server port; defaults to `3001`.
 
 ## Railway Notes
