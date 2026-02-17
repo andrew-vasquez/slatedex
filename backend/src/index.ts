@@ -49,11 +49,7 @@ app.get("/", (c) => {
   return c.text(`Poke Builder API running on port ${config.port}`);
 });
 
-if (typeof Bun !== "undefined") {
-  Bun.serve({
-    port: config.port,
-    fetch: app.fetch,
-  });
-}
-
-export default app;
+export default {
+  port: config.port,
+  fetch: app.fetch,
+};
