@@ -1,16 +1,50 @@
 const DEFAULT_PORT = 3001;
 const DEFAULT_FRONTEND_ORIGIN = "http://localhost:3000";
 
+function ensureProtocol(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+  return `https://${trimmed}`;
+}
+
+function normalizeAllowedOrigin(value: string): string {
+  const withProtocol = ensureProtocol(value).replace(/\/+$/, "");
+  if (withProtocol.includes("*")) return withProtocol;
+
+  try {
+    return new URL(withProtocol).origin;
+  } catch {
+    return withProtocol;
+  }
+}
+
+function normalizeRequestOrigin(value: string): string {
+  const trimmed = value.trim().replace(/\/+$/, "");
+  try {
+    return new URL(trimmed).origin;
+  } catch {
+    return trimmed;
+  }
+}
+
+function matchesAllowedOrigin(origin: string, allowedOrigin: string): boolean {
+  if (!allowedOrigin.includes("*")) return origin === allowedOrigin;
+
+  const escaped = allowedOrigin
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/\\\*/g, ".*");
+  const matcher = new RegExp(`^${escaped}$`);
+  return matcher.test(origin);
+}
+
 function validateProductionAuthEnv(): void {
   if (process.env.NODE_ENV !== "production") return;
 
-  const hasFrontendOrigins =
-    (process.env.FRONTEND_URLS?.trim().length ?? 0) > 0 ||
-    (process.env.FRONTEND_URL?.trim().length ?? 0) > 0;
+  const hasFrontendOrigin = (process.env.FRONTEND_URL?.trim().length ?? 0) > 0;
   const hasBetterAuthUrl = (process.env.BETTER_AUTH_URL?.trim().length ?? 0) > 0;
 
   const missing: string[] = [];
-  if (!hasFrontendOrigins) missing.push("FRONTEND_URL or FRONTEND_URLS");
+  if (!hasFrontendOrigin) missing.push("FRONTEND_URL");
   if (!hasBetterAuthUrl) missing.push("BETTER_AUTH_URL");
 
   if (missing.length > 0) {
@@ -25,10 +59,11 @@ function parseOrigins(raw: string | undefined): string[] {
 
   const origins = raw
     .split(",")
-    .map((value) => value.trim())
+    .map((value) => normalizeAllowedOrigin(value))
     .filter((value) => value.length > 0);
 
-  return origins.length > 0 ? origins : [DEFAULT_FRONTEND_ORIGIN];
+  const uniqueOrigins = Array.from(new Set(origins));
+  return uniqueOrigins.length > 0 ? uniqueOrigins : [DEFAULT_FRONTEND_ORIGIN];
 }
 
 function parsePort(raw: string | undefined): number {
@@ -37,7 +72,7 @@ function parsePort(raw: string | undefined): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PORT;
 }
 
-const frontendOrigins = parseOrigins(process.env.FRONTEND_URLS ?? process.env.FRONTEND_URL);
+const frontendOrigins = parseOrigins(process.env.FRONTEND_URL?.trim());
 validateProductionAuthEnv();
 
 export const config = {
@@ -48,5 +83,8 @@ export const config = {
 
 export function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return false;
-  return config.frontendOrigins.includes(origin);
+  const normalizedOrigin = normalizeRequestOrigin(origin);
+  return config.frontendOrigins.some((allowedOrigin) =>
+    matchesAllowedOrigin(normalizedOrigin, allowedOrigin)
+  );
 }
