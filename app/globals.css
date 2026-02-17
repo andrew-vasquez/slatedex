@@ -427,6 +427,14 @@ a:focus-visible {
   }
 }
 
+html[data-motion="reduced"] *,
+html[data-motion="reduced"] *::before,
+html[data-motion="reduced"] *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
 /* Auth Dialog */
 .auth-dialog {
   border: none;

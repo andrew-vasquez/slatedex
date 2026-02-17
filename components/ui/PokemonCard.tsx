@@ -111,6 +111,21 @@ const PokemonCard = ({
             </span>
           ))}
         </div>
+
+        {onInspect && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onInspect(pokemon);
+            }}
+            className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full"
+            style={{ background: "rgba(59, 130, 246, 0.14)", color: "#3b82f6", border: "1px solid rgba(59, 130, 246, 0.28)" }}
+            aria-label={`View details for ${pokemon.name}`}
+          >
+            <FiInfo size={10} />
+          </button>
+        )}
       </div>
     );
   }

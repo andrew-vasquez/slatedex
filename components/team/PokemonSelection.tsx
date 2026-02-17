@@ -4,7 +4,7 @@ import { FiSearch, FiX } from "react-icons/fi";
 import { type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PokemonCard from "@/components/ui/PokemonCard";
 import { getAvailableTypes, TYPE_COLORS } from "@/lib/constants";
-import type { DexMode, Pokemon, Game } from "@/lib/types";
+import type { CardDensity, DexMode, Pokemon, Game } from "@/lib/types";
 
 interface PokemonSelectionProps {
   filteredPokemon: Pokemon[];
@@ -29,10 +29,10 @@ interface PokemonSelectionProps {
   typeFilter?: string | null;
   onTypeFilterChange?: (type: string | null) => void;
   onInspect?: (pokemon: Pokemon) => void;
+  cardDensity?: CardDensity;
 }
 
 const GRID_GAP_PX = 10;
-const DEFAULT_ROW_HEIGHT = 190;
 const OVERSCAN_ROWS = 4;
 
 const PokemonSelection = ({
@@ -58,6 +58,7 @@ const PokemonSelection = ({
   typeFilter,
   onTypeFilterChange,
   onInspect,
+  cardDensity = "comfortable",
 }: PokemonSelectionProps) => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const rafIdRef = useRef<number | null>(null);
@@ -168,6 +169,7 @@ const PokemonSelection = ({
   }, []);
 
   const rowCount = Math.ceil(filteredPokemon.length / columns);
+  const defaultRowHeight = cardDensity === "compact" ? 122 : 190;
   const { rowOffsets, totalHeight } = useMemo(() => {
     if (rowCount === 0) return { rowOffsets: [] as number[], totalHeight: 0 };
 
@@ -176,20 +178,20 @@ const PokemonSelection = ({
 
     for (let row = 0; row < rowCount; row += 1) {
       offsets[row] = y;
-      const rowHeight = measuredRowHeights[row] ?? DEFAULT_ROW_HEIGHT;
+      const rowHeight = measuredRowHeights[row] ?? defaultRowHeight;
       y += rowHeight;
       if (row < rowCount - 1) y += GRID_GAP_PX;
     }
 
     return { rowOffsets: offsets, totalHeight: y };
-  }, [measuredRowHeights, rowCount]);
+  }, [defaultRowHeight, measuredRowHeights, rowCount]);
 
   const maxVisibleBottom = scrollTop + viewportHeight;
 
   const visibleRows = useMemo(() => {
     if (rowCount === 0) return [];
 
-    const getRowHeight = (row: number) => measuredRowHeights[row] ?? DEFAULT_ROW_HEIGHT;
+    const getRowHeight = (row: number) => measuredRowHeights[row] ?? defaultRowHeight;
 
     let firstVisibleRow = 0;
     while (firstVisibleRow < rowCount) {
@@ -218,7 +220,7 @@ const PokemonSelection = ({
       });
     }
     return rows;
-  }, [columns, filteredPokemon, maxVisibleBottom, measuredRowHeights, rowCount, rowOffsets, scrollTop]);
+  }, [cardDensity, columns, defaultRowHeight, filteredPokemon, maxVisibleBottom, measuredRowHeights, rowCount, rowOffsets, scrollTop]);
 
   return (
     <section className="panel p-4 sm:p-5" aria-labelledby="available-pokemon-heading">
@@ -494,6 +496,7 @@ const PokemonSelection = ({
                         versionLabelMap={versionLabelMap}
                         dragEnabled={dragEnabled}
                         onInspect={onInspect}
+                        isCompact={cardDensity === "compact"}
                       />
                     </div>
                   );

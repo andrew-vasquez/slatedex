@@ -5,11 +5,14 @@ import { useCallback } from "react";
 import type { Dispatch, KeyboardEvent, SetStateAction } from "react";
 import type { Pokemon } from "@/lib/types";
 
+type RecommendationRole = "all" | "bulky" | "fast" | "physical" | "special";
+
 interface Recommendation {
   pokemon: Pokemon;
   score: number;
   covers: string[];
   risky: string[];
+  reason: string;
 }
 
 interface TeamRecommendationsProps {
@@ -19,6 +22,10 @@ interface TeamRecommendationsProps {
   recommendationsEnabled: boolean;
   onToggleRecommendations: Dispatch<SetStateAction<boolean>>;
   onAddPokemon: (pokemon: Pokemon) => void;
+  role: RecommendationRole;
+  onRoleChange: (role: RecommendationRole) => void;
+  onReplaceWeakest: (pokemon: Pokemon) => void;
+  canReplaceWeakest: boolean;
 }
 
 const TeamRecommendations = ({
@@ -28,6 +35,10 @@ const TeamRecommendations = ({
   recommendationsEnabled,
   onToggleRecommendations,
   onAddPokemon,
+  role,
+  onRoleChange,
+  onReplaceWeakest,
+  canReplaceWeakest,
 }: TeamRecommendationsProps) => {
   const toggleRecommendations = useCallback(() => {
     onToggleRecommendations((prev) => !prev);
@@ -122,6 +133,38 @@ const TeamRecommendations = ({
         </div>
       )}
 
+      <div className="mt-3">
+        <p className="mb-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
+          Role Filter
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {([
+            { id: "all", label: "All" },
+            { id: "bulky", label: "Bulky" },
+            { id: "fast", label: "Fast" },
+            { id: "physical", label: "Physical" },
+            { id: "special", label: "Special" },
+          ] as const).map((entry) => {
+            const isActive = role === entry.id;
+            return (
+              <button
+                key={entry.id}
+                type="button"
+                onClick={() => onRoleChange(entry.id)}
+                className="rounded-full px-2.5 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.08em]"
+                style={{
+                  border: isActive ? "1px solid rgba(218, 44, 67, 0.36)" : "1px solid var(--border)",
+                  background: isActive ? "var(--accent-soft)" : "var(--surface-2)",
+                  color: isActive ? "var(--text-primary)" : "var(--text-muted)",
+                }}
+              >
+                {entry.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {!recommendationsEnabled ? (
         <div className="panel-soft mt-3 p-3 text-sm" style={{ color: "var(--text-secondary)" }}>
           Smart picks are currently turned off.
@@ -132,7 +175,7 @@ const TeamRecommendations = ({
         </div>
       ) : (
         <div className="mt-3 grid grid-cols-1 gap-2.5 lg:grid-cols-3">
-          {recommendations.map(({ pokemon, score, covers, risky }, index) => (
+          {recommendations.map(({ pokemon, score, covers, risky, reason }, index) => (
             <article key={pokemon.id} className="panel-soft animate-fade-in-up p-3" style={{ animationDelay: `${index * 70}ms` }}>
               <div className="flex items-start gap-2.5">
                 <div
@@ -154,6 +197,9 @@ const TeamRecommendations = ({
 
                   <p className="mt-0.5 text-[0.66rem]" style={{ color: "var(--text-secondary)" }}>
                     Fit score: <span className="font-semibold">{score.toFixed(1)}</span>
+                  </p>
+                  <p className="mt-1 text-[0.66rem] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                    {reason}
                   </p>
 
                   <div className="mt-2 flex flex-wrap gap-1">
@@ -195,6 +241,15 @@ const TeamRecommendations = ({
                 className="btn-secondary mt-3 w-full disabled:pointer-events-none disabled:opacity-50"
               >
                 Add to team
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onReplaceWeakest(pokemon)}
+                disabled={!canReplaceWeakest}
+                className="btn-secondary mt-2 w-full !border-[rgba(59,130,246,0.32)] !bg-[rgba(59,130,246,0.14)] !text-[#93c5fd] disabled:pointer-events-none disabled:opacity-50"
+              >
+                Replace weakest fit
               </button>
             </article>
           ))}

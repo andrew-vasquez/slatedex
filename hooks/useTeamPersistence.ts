@@ -3,27 +3,60 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { fetchTeams, createTeam, updateTeam, deleteTeam } from "@/lib/api";
+import { getTeamStorageKey, getTeamUpdatedAtStorageKey } from "@/lib/storageKeys";
 import type { SavedTeam } from "@/lib/api";
 import type { Pokemon } from "@/lib/types";
 
-const STORAGE_VERSION = 1;
 const DEBOUNCE_MS = 1000;
-
-function getStorageKey(generation: number, gameId: number): string {
-  return `team_gen_${generation}_game_${gameId}_v${STORAGE_VERSION}`;
-}
 
 function createEmptyTeam(): (Pokemon | null)[] {
   return Array(6).fill(null);
 }
 
+function normalizePokemon(raw: unknown): Pokemon | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const candidate = raw as Partial<Pokemon>;
+  if (
+    typeof candidate.id !== "number" ||
+    typeof candidate.name !== "string" ||
+    !Array.isArray(candidate.types) ||
+    typeof candidate.generation !== "number"
+  ) {
+    return null;
+  }
+
+  return {
+    id: candidate.id,
+    name: candidate.name,
+    types: candidate.types,
+    generation: candidate.generation,
+    isFinalEvolution: !!candidate.isFinalEvolution,
+    hp: typeof candidate.hp === "number" ? candidate.hp : 0,
+    attack: typeof candidate.attack === "number" ? candidate.attack : 0,
+    defense: typeof candidate.defense === "number" ? candidate.defense : 0,
+    specialAttack: typeof candidate.specialAttack === "number" ? candidate.specialAttack : 0,
+    specialDefense: typeof candidate.specialDefense === "number" ? candidate.specialDefense : 0,
+    speed: typeof candidate.speed === "number" ? candidate.speed : 0,
+    sprite: typeof candidate.sprite === "string" ? candidate.sprite : "",
+    gameIndexVersionIds: candidate.gameIndexVersionIds,
+    exclusiveStatus: candidate.exclusiveStatus,
+    exclusiveToVersionIds: candidate.exclusiveToVersionIds,
+  };
+}
+
+function normalizeTeam(raw: unknown): (Pokemon | null)[] {
+  if (!Array.isArray(raw)) return createEmptyTeam();
+  const normalized = raw.slice(0, 6).map((slot) => normalizePokemon(slot));
+  while (normalized.length < 6) normalized.push(null);
+  return normalized;
+}
+
 function loadLocalTeam(generation: number, gameId: number): (Pokemon | null)[] {
   try {
-    const saved = localStorage.getItem(getStorageKey(generation, gameId));
+    const saved = localStorage.getItem(getTeamStorageKey(generation, gameId));
     if (!saved) return createEmptyTeam();
-    const parsed = JSON.parse(saved) as (Pokemon | null)[];
-    if (Array.isArray(parsed) && parsed.length === 6) return parsed;
-    return createEmptyTeam();
+    return normalizeTeam(JSON.parse(saved));
   } catch {
     return createEmptyTeam();
   }
@@ -31,7 +64,8 @@ function loadLocalTeam(generation: number, gameId: number): (Pokemon | null)[] {
 
 function saveLocalTeam(generation: number, gameId: number, team: (Pokemon | null)[]): void {
   try {
-    localStorage.setItem(getStorageKey(generation, gameId), JSON.stringify(team));
+    localStorage.setItem(getTeamStorageKey(generation, gameId), JSON.stringify(team));
+    localStorage.setItem(getTeamUpdatedAtStorageKey(generation, gameId), String(Date.now()));
   } catch {
     // ignore storage errors
   }
@@ -108,7 +142,7 @@ export function useTeamPersistence({
 
         if (teams.length > 0) {
           const mostRecent = teams[0]; // already sorted by updatedAt desc
-          setTeamState(mostRecent.pokemon);
+          setTeamState(normalizeTeam(mostRecent.pokemon));
           setActiveTeamId(mostRecent.id);
         } else {
           setTeamState(createEmptyTeam());
@@ -190,9 +224,9 @@ export function useTeamPersistence({
     (teamId: string) => {
       const found = savedTeams.find((t) => t.id === teamId);
       if (!found) return;
-      setTeamState(found.pokemon);
+      setTeamState(normalizeTeam(found.pokemon));
       setActiveTeamId(found.id);
-      saveLocalTeam(generation, gameId, found.pokemon);
+      saveLocalTeam(generation, gameId, normalizeTeam(found.pokemon));
     },
     [savedTeams, generation, gameId]
   );

@@ -290,6 +290,12 @@ const CURATED_AVAILABILITY_BY_GAME: Record<number, Record<string, string[]>> = O
   ])
 );
 
+export function getCuratedExclusiveCount(gameId: number): number {
+  const availability = CURATED_AVAILABILITY_BY_GAME[gameId];
+  if (!availability) return 0;
+  return Object.keys(availability).length;
+}
+
 function classifyAvailability(availableVersionIds: string[], gameVersionIds: string[]): VersionExclusivityResult {
   const normalizedAvailable = unique(availableVersionIds.map(normalizeId)).filter((id) =>
     gameVersionIds.includes(id)

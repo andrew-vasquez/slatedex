@@ -7,6 +7,9 @@ export interface Pokemon {
   hp: number;
   attack: number;
   defense: number;
+  specialAttack: number;
+  specialDefense: number;
+  speed: number;
   sprite: string;
   // Internal metadata for version/exclusivity features.
   gameIndexVersionIds?: string[];
@@ -15,6 +18,16 @@ export interface Pokemon {
 }
 
 export type DexMode = "regional" | "national";
+export type CardDensity = "compact" | "comfortable";
+export type DragBehavior = "auto" | "on" | "off";
+
+export interface BuilderSettings {
+  defaultDexMode: DexMode;
+  defaultVersionFilter: boolean;
+  cardDensity: CardDensity;
+  reduceMotion: boolean;
+  dragBehavior: DragBehavior;
+}
 
 export interface PokemonPools {
   national: Pokemon[];

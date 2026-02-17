@@ -371,12 +371,22 @@ export const getPokemonPoolsForGeneration = cache(async (
 });
 
 function mapPokemonData(pokemon: any, generation: number, rulesGeneration: number): Omit<Pokemon, "isFinalEvolution"> {
-  const stats: { hp?: number; attack?: number; defense?: number } = {};
+  const stats: {
+    hp?: number;
+    attack?: number;
+    defense?: number;
+    specialAttack?: number;
+    specialDefense?: number;
+    speed?: number;
+  } = {};
   for (const stat of pokemon.stats) {
     const name: string = stat.stat.name;
     if (name === "hp") stats.hp = stat.base_stat;
     else if (name === "attack") stats.attack = stat.base_stat;
     else if (name === "defense") stats.defense = stat.base_stat;
+    else if (name === "special-attack") stats.specialAttack = stat.base_stat;
+    else if (name === "special-defense") stats.specialDefense = stat.base_stat;
+    else if (name === "speed") stats.speed = stat.base_stat;
   }
 
   const currentTypes: string[] = pokemon.types.map((t: any) => t.type.name);
@@ -406,6 +416,9 @@ function mapPokemonData(pokemon: any, generation: number, rulesGeneration: numbe
     hp: stats.hp || 0,
     attack: stats.attack || 0,
     defense: stats.defense || 0,
+    specialAttack: stats.specialAttack || 0,
+    specialDefense: stats.specialDefense || 0,
+    speed: stats.speed || 0,
     sprite: pokemon.sprites.front_default || "",
     gameIndexVersionIds: ((pokemon.game_indices ?? []) as Array<{ version?: { name?: string } }>)
       .map((entry) => entry.version?.name)
