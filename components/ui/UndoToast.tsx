@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface UndoToastProps {
   message: string;
@@ -11,6 +11,8 @@ interface UndoToastProps {
 
 const UndoToast = ({ message, onUndo, onDismiss, duration = 5000 }: UndoToastProps) => {
   const [progress, setProgress] = useState(100);
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
 
   useEffect(() => {
     const start = Date.now();
@@ -20,12 +22,12 @@ const UndoToast = ({ message, onUndo, onDismiss, duration = 5000 }: UndoToastPro
       setProgress(remaining);
       if (remaining <= 0) {
         clearInterval(interval);
-        onDismiss();
+        onDismissRef.current();
       }
     }, 50);
 
     return () => clearInterval(interval);
-  }, [duration, onDismiss]);
+  }, [duration]);
 
   return (
     <div className="undo-toast" role="alert">

@@ -132,6 +132,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   const [replaceMode, setReplaceMode] = useState(false);
   const [replaceTargetSlot, setReplaceTargetSlot] = useState<number | null>(null);
   const [undoToastMessage, setUndoToastMessage] = useState<string | null>(null);
+  const dismissUndoToast = useCallback(() => setUndoToastMessage(null), []);
   const [pendingImport, setPendingImport] = useState<PendingImportState | null>(null);
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
 
@@ -1095,7 +1096,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
           key={undoToastMessage}
           message={undoToastMessage}
           onUndo={handleUndo}
-          onDismiss={() => setUndoToastMessage(null)}
+          onDismiss={dismissUndoToast}
         />
       )}
     </DndContext>
