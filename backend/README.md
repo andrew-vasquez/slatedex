@@ -1,11 +1,25 @@
-To install dependencies:
-```sh
-bun install
-```
+# Backend
 
-To run:
-```sh
-bun run dev
-```
+## Required Environment Variables
 
-open http://localhost:3000
+- `DATABASE_URL`: Prisma runtime database URL.
+- `DIRECT_URL`: Direct database URL for Prisma migrations (`prisma migrate deploy`).
+- `FRONTEND_URL`: Frontend origin used for CORS/auth trusted origins.
+- `FRONTEND_URLS` (optional): Comma-separated list of allowed frontend origins.
+- `PORT` (optional): Server port; defaults to `3001`.
+
+## Railway Notes
+
+This service is configured to run directly from source in production:
+
+- Start command: `bun run src/index.ts`
+- Postinstall: `prisma generate`
+
+Suggested Railway setup:
+
+1. Set service root to `backend/`.
+2. Use Bun runtime.
+3. Keep `nixpacks.toml` in this directory so Railway uses Bun install/build/start commands.
+4. Set the environment variables above.
+5. Add a migration command before deploy:
+   - `prisma migrate deploy`

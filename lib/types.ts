@@ -7,6 +7,9 @@ export interface Pokemon {
   hp: number;
   attack: number;
   defense: number;
+  specialAttack: number;
+  specialDefense: number;
+  speed: number;
   sprite: string;
   // Internal metadata for version/exclusivity features.
   gameIndexVersionIds?: string[];
@@ -15,6 +18,16 @@ export interface Pokemon {
 }
 
 export type DexMode = "regional" | "national";
+export type CardDensity = "compact" | "comfortable";
+export type DragBehavior = "auto" | "on" | "off";
+
+export interface BuilderSettings {
+  defaultDexMode: DexMode;
+  defaultVersionFilter: boolean;
+  cardDensity: CardDensity;
+  reduceMotion: boolean;
+  dragBehavior: DragBehavior;
+}
 
 export interface PokemonPools {
   national: Pokemon[];
@@ -48,6 +61,17 @@ export interface TypeCoverage {
 }
 
 export type CoverageMap = Record<string, TypeCoverage>;
+
+export interface OffensiveCoverageEntry {
+  /** How many team members can hit this type super-effectively (via STAB) */
+  hitCount: number;
+  /** The team members that can hit this type, with their best multiplier */
+  hitters: PokemonWithEffectiveness[];
+  /** Type is not available in this generation */
+  locked?: boolean;
+}
+
+export type OffensiveCoverageMap = Record<string, OffensiveCoverageEntry>;
 
 export interface GenerationMeta {
   generation: number;

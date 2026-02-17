@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
 import { GENERATION_META } from "@/lib/pokemon";
-import type { GenerationMeta } from "@/lib/types";
+import { getCuratedExclusiveCount } from "@/lib/versionExclusives";
+import { getTeamStorageKey, getTeamUpdatedAtStorageKey } from "@/lib/storageKeys";
+import type { GenerationMeta, Game } from "@/lib/types";
 import UserMenu from "@/components/auth/UserMenu";
 
 const SPRITE_IDS: Record<string, number> = {
@@ -48,6 +53,17 @@ const SPRITE_IDS: Record<string, number> = {
   miraidon: 1008,
 };
 
+const POPULAR_GENERATIONS = [9, 3, 1];
+
+interface RecentSession {
+  generation: number;
+  gameId: number;
+  gameName: string;
+  region: string;
+  updatedAt: number;
+  filledSlots: number;
+}
+
 const getSpriteUrl = (name: string): string => {
   const id = SPRITE_IDS[name];
   return id
@@ -73,7 +89,92 @@ const STEPS = [
   "Use type coverage to patch weaknesses",
 ];
 
+function formatRelativeTime(timestamp: number): string {
+  const deltaMs = timestamp - Date.now();
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+  const minutes = Math.round(deltaMs / (60 * 1000));
+  if (Math.abs(minutes) < 60) return rtf.format(minutes, "minute");
+
+  const hours = Math.round(deltaMs / (60 * 60 * 1000));
+  if (Math.abs(hours) < 24) return rtf.format(hours, "hour");
+
+  const days = Math.round(deltaMs / (24 * 60 * 60 * 1000));
+  return rtf.format(days, "day");
+}
+
+function countFilledSlots(rawTeam: string | null): number {
+  if (!rawTeam) return 0;
+  try {
+    const parsed = JSON.parse(rawTeam) as Array<unknown>;
+    if (!Array.isArray(parsed)) return 0;
+    return parsed.filter((entry) => entry !== null).length;
+  } catch {
+    return 0;
+  }
+}
+
 const GameSelector = () => {
+  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
+
+  useEffect(() => {
+    const sessions: RecentSession[] = [];
+
+    GENERATION_META.forEach((generationMeta) => {
+      generationMeta.games.forEach((game) => {
+        const updatedAtRaw = localStorage.getItem(
+          getTeamUpdatedAtStorageKey(generationMeta.generation, game.id)
+        );
+
+        if (!updatedAtRaw) return;
+
+        const updatedAt = Number(updatedAtRaw);
+        if (!Number.isFinite(updatedAt)) return;
+
+        const rawTeam = localStorage.getItem(getTeamStorageKey(generationMeta.generation, game.id));
+        const filledSlots = countFilledSlots(rawTeam);
+
+        sessions.push({
+          generation: generationMeta.generation,
+          gameId: game.id,
+          gameName: game.name,
+          region: game.region,
+          updatedAt,
+          filledSlots,
+        });
+      });
+    });
+
+    sessions.sort((a, b) => b.updatedAt - a.updatedAt);
+    setRecentSessions(sessions.slice(0, 5));
+  }, []);
+
+  const sessionGenSet = useMemo(
+    () => new Set(recentSessions.map((session) => session.generation)),
+    [recentSessions]
+  );
+
+  const generationMetaSummary = useMemo(() => {
+    return Object.fromEntries(
+      GENERATION_META.map((meta) => {
+        const versionCount = meta.games.reduce((sum, game) => sum + game.versions.length, 0);
+        const hasRegionalDex = meta.games.some((game) => game.regionalDexCandidates.length > 0);
+        const exclusivesCount = meta.games.reduce((sum, game) => sum + getCuratedExclusiveCount(game.id), 0);
+
+        return [
+          meta.generation,
+          {
+            versionCount,
+            hasRegionalDex,
+            exclusivesCount,
+          },
+        ];
+      })
+    ) as Record<number, { versionCount: number; hasRegionalDex: boolean; exclusivesCount: number }>;
+  }, []);
+
+  const resumeSession = recentSessions[0] ?? null;
+
   return (
     <div className="min-h-screen pb-14 sm:pb-20">
       <header className="relative overflow-hidden">
@@ -101,6 +202,36 @@ const GameSelector = () => {
             <p className="mt-4 max-w-xl text-sm leading-relaxed sm:text-base" style={{ color: "var(--text-secondary)" }}>
               Choose a generation, draft your six, and instantly inspect where your team folds or holds. The flow is designed to keep strategy clear at a glance.
             </p>
+
+            {resumeSession && (
+              <div className="mt-5 rounded-2xl border p-3.5 sm:p-4" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
+                      Continue Last Session
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                      Gen {resumeSession.generation} • {resumeSession.gameName}
+                    </p>
+                    <p className="text-[0.68rem]" style={{ color: "var(--text-muted)" }}>
+                      {resumeSession.filledSlots}/6 slots filled • edited {formatRelativeTime(resumeSession.updatedAt)}
+                    </p>
+                  </div>
+
+                  <Link
+                    href={`/game/${resumeSession.generation}`}
+                    className="inline-flex items-center justify-center rounded-xl border px-3.5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.08em]"
+                    style={{
+                      borderColor: "rgba(218, 44, 67, 0.34)",
+                      background: "var(--accent-soft)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    Resume Team
+                  </Link>
+                </div>
+              </div>
+            )}
 
             <div className="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
               {STEPS.map((step, i) => (
@@ -144,9 +275,40 @@ const GameSelector = () => {
           Each card loads species from that generation and earlier.
         </p>
 
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="text-[0.58rem] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+            Popular:
+          </span>
+          {POPULAR_GENERATIONS.map((gen) => (
+            <Link
+              key={`popular-${gen}`}
+              href={`/game/${gen}`}
+              className="rounded-full border px-2.5 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.08em]"
+              style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-secondary)" }}
+            >
+              Gen {gen}
+            </Link>
+          ))}
+
+          {recentSessions.slice(0, 3).map((session) => (
+            <Link
+              key={`recent-${session.gameId}`}
+              href={`/game/${session.generation}`}
+              className="rounded-full border px-2.5 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.08em]"
+              style={{ borderColor: "rgba(59, 130, 246, 0.34)", background: "rgba(59, 130, 246, 0.12)", color: "#93c5fd" }}
+            >
+              Recent: Gen {session.generation}
+            </Link>
+          ))}
+        </div>
+
         <div className="mt-4 grid grid-cols-1 gap-3 sm:mt-5 sm:grid-cols-2">
           {GENERATION_META.map((gen: GenerationMeta, i: number) => {
             const colors = REGION_COLORS[gen.region] || REGION_COLORS.Kanto;
+            const meta = generationMetaSummary[gen.generation];
+            const isPopular = POPULAR_GENERATIONS.includes(gen.generation);
+            const isRecent = sessionGenSet.has(gen.generation);
+
             return (
               <Link
                 key={gen.generation}
@@ -168,6 +330,19 @@ const GameSelector = () => {
 
                   <div className="relative flex items-start justify-between gap-3">
                     <div>
+                      <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                        {isPopular && (
+                          <span className="rounded-full border px-2 py-0.5 text-[0.52rem] font-semibold uppercase tracking-[0.1em]" style={{ borderColor: "rgba(234, 179, 8, 0.38)", background: "rgba(234, 179, 8, 0.16)", color: "#fef08a" }}>
+                            Popular
+                          </span>
+                        )}
+                        {isRecent && (
+                          <span className="rounded-full border px-2 py-0.5 text-[0.52rem] font-semibold uppercase tracking-[0.1em]" style={{ borderColor: "rgba(59, 130, 246, 0.38)", background: "rgba(59, 130, 246, 0.16)", color: "#93c5fd" }}>
+                            Recent
+                          </span>
+                        )}
+                      </div>
+
                       <p
                         className="font-display text-[0.62rem] uppercase tracking-[0.2em]"
                         style={{ color: "var(--text-muted)" }}
@@ -180,9 +355,33 @@ const GameSelector = () => {
                       <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em]" style={{ color: colors.accent }}>
                         {gen.region}
                       </p>
+
+                      <div className="mt-2.5 flex flex-wrap gap-1.5">
+                        <span
+                          className="rounded-lg px-2 py-0.5 text-[0.55rem] font-semibold uppercase tracking-[0.08em]"
+                          style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                        >
+                          {meta.versionCount} versions
+                        </span>
+                        <span
+                          className="rounded-lg px-2 py-0.5 text-[0.55rem] font-semibold uppercase tracking-[0.08em]"
+                          style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: meta.hasRegionalDex ? "#86efac" : "var(--text-muted)" }}
+                        >
+                          {meta.hasRegionalDex ? "regional dex" : "no regional dex"}
+                        </span>
+                        {meta.exclusivesCount > 0 && (
+                          <span
+                            className="rounded-lg px-2 py-0.5 text-[0.55rem] font-semibold uppercase tracking-[0.08em]"
+                            style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "#fef08a" }}
+                          >
+                            {meta.exclusivesCount} exclusives
+                          </span>
+                        )}
+                      </div>
+
                       {gen.games.length > 1 && (
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {gen.games.map((g) => (
+                          {gen.games.map((g: Game) => (
                             <span
                               key={g.id}
                               className="rounded-lg px-2.5 py-1 text-[0.65rem] font-semibold"

@@ -3,7 +3,8 @@
 import { FiSearch, FiX } from "react-icons/fi";
 import { type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PokemonCard from "@/components/ui/PokemonCard";
-import type { DexMode, Pokemon, Game } from "@/lib/types";
+import { getAvailableTypes, TYPE_COLORS } from "@/lib/constants";
+import type { CardDensity, DexMode, Pokemon, Game } from "@/lib/types";
 
 interface PokemonSelectionProps {
   filteredPokemon: Pokemon[];
@@ -25,10 +26,13 @@ interface PokemonSelectionProps {
   games?: Game[];
   selectedGameId?: number;
   onGameChange?: (gameId: number) => void;
+  typeFilter?: string | null;
+  onTypeFilterChange?: (type: string | null) => void;
+  onInspect?: (pokemon: Pokemon) => void;
+  cardDensity?: CardDensity;
 }
 
 const GRID_GAP_PX = 10;
-const DEFAULT_ROW_HEIGHT = 190;
 const OVERSCAN_ROWS = 4;
 
 const PokemonSelection = ({
@@ -51,6 +55,10 @@ const PokemonSelection = ({
   games,
   selectedGameId,
   onGameChange,
+  typeFilter,
+  onTypeFilterChange,
+  onInspect,
+  cardDensity = "comfortable",
 }: PokemonSelectionProps) => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const rafIdRef = useRef<number | null>(null);
@@ -60,16 +68,11 @@ const PokemonSelection = ({
   const [measuredRowHeights, setMeasuredRowHeights] = useState<Record<number, number>>({});
   const [viewportHeight, setViewportHeight] = useState(0);
   const [scrollTop, setScrollTop] = useState(0);
-  const [isHydrated, setIsHydrated] = useState(false);
 
   const versionLabelMap: Record<string, string> = useMemo(
     () => Object.fromEntries(versions.map((version) => [version.id, version.label])),
     [versions]
   );
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   useEffect(() => {
     const query = window.matchMedia("(min-width: 640px)");
@@ -166,6 +169,7 @@ const PokemonSelection = ({
   }, []);
 
   const rowCount = Math.ceil(filteredPokemon.length / columns);
+  const defaultRowHeight = cardDensity === "compact" ? 122 : 190;
   const { rowOffsets, totalHeight } = useMemo(() => {
     if (rowCount === 0) return { rowOffsets: [] as number[], totalHeight: 0 };
 
@@ -174,20 +178,20 @@ const PokemonSelection = ({
 
     for (let row = 0; row < rowCount; row += 1) {
       offsets[row] = y;
-      const rowHeight = measuredRowHeights[row] ?? DEFAULT_ROW_HEIGHT;
+      const rowHeight = measuredRowHeights[row] ?? defaultRowHeight;
       y += rowHeight;
       if (row < rowCount - 1) y += GRID_GAP_PX;
     }
 
     return { rowOffsets: offsets, totalHeight: y };
-  }, [measuredRowHeights, rowCount]);
+  }, [defaultRowHeight, measuredRowHeights, rowCount]);
 
   const maxVisibleBottom = scrollTop + viewportHeight;
 
   const visibleRows = useMemo(() => {
     if (rowCount === 0) return [];
 
-    const getRowHeight = (row: number) => measuredRowHeights[row] ?? DEFAULT_ROW_HEIGHT;
+    const getRowHeight = (row: number) => measuredRowHeights[row] ?? defaultRowHeight;
 
     let firstVisibleRow = 0;
     while (firstVisibleRow < rowCount) {
@@ -216,7 +220,7 @@ const PokemonSelection = ({
       });
     }
     return rows;
-  }, [columns, filteredPokemon, maxVisibleBottom, measuredRowHeights, rowCount, rowOffsets, scrollTop]);
+  }, [cardDensity, columns, defaultRowHeight, filteredPokemon, maxVisibleBottom, measuredRowHeights, rowCount, rowOffsets, scrollTop]);
 
   return (
     <section className="panel p-4 sm:p-5" aria-labelledby="available-pokemon-heading">
@@ -342,6 +346,41 @@ const PokemonSelection = ({
             </label>
           </div>
 
+          {onTypeFilterChange && (
+            <div className="mb-2">
+              <p className="mb-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
+                Filter by Type
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {getAvailableTypes(generation).map((type) => {
+                  const isActive = typeFilter === type;
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => onTypeFilterChange(isActive ? null : type)}
+                      className={`rounded-md px-2 py-0.5 text-[0.6rem] font-semibold transition-opacity ${TYPE_COLORS[type]} ${isActive ? "ring-2 ring-white/40" : "opacity-60 hover:opacity-90"}`}
+                      style={{ color: "#fff" }}
+                      aria-pressed={isActive}
+                    >
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </button>
+                  );
+                })}
+                {typeFilter && (
+                  <button
+                    type="button"
+                    onClick={() => onTypeFilterChange(null)}
+                    className="rounded-md px-2 py-0.5 text-[0.6rem] font-semibold"
+                    style={{ background: "var(--surface-3)", color: "var(--text-muted)", border: "1px solid var(--border)" }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="relative">
             <label htmlFor="pokemon-search" className="sr-only">
               Search Pokémon
@@ -357,7 +396,7 @@ const PokemonSelection = ({
               id="pokemon-search"
               name="pokemon-search"
               type="search"
-              placeholder="Search by name"
+              placeholder="Search by name (press /)"
               value={searchTerm}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
               autoComplete="off"
@@ -424,21 +463,6 @@ const PokemonSelection = ({
           >
             No matching Pokémon found. Try a different name.
           </div>
-        ) : !isHydrated ? (
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-            {filteredPokemon.map((pokemon: Pokemon) => (
-              <div key={pokemon.id} role="listitem" className="pokemon-list-item">
-                <PokemonCard
-                  pokemon={pokemon}
-                  dragId={`available-${pokemon.id}`}
-                  onTap={onAddPokemon}
-                  canAddToTeam={currentTeamLength < 6}
-                  versionLabelMap={versionLabelMap}
-                  dragEnabled={dragEnabled}
-                />
-              </div>
-            ))}
-          </div>
         ) : (
           <div
             style={{ position: "relative", height: totalHeight, width: "100%" }}
@@ -471,6 +495,8 @@ const PokemonSelection = ({
                         canAddToTeam={currentTeamLength < 6}
                         versionLabelMap={versionLabelMap}
                         dragEnabled={dragEnabled}
+                        onInspect={onInspect}
+                        isCompact={cardDensity === "compact"}
                       />
                     </div>
                   );

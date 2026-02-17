@@ -9,9 +9,26 @@ interface TeamPanelProps {
   currentTeamLength: number;
   activeDropId: string | null;
   onRemove: (index: number) => void;
+  dragEnabled?: boolean;
+  lockedSlots: boolean[];
+  onToggleLock: (index: number) => void;
+  replaceMode: boolean;
+  selectedReplaceSlot: number | null;
+  onSelectReplaceSlot: (index: number | null) => void;
 }
 
-const TeamPanel = ({ team, currentTeamLength, activeDropId, onRemove }: TeamPanelProps) => {
+const TeamPanel = ({
+  team,
+  currentTeamLength,
+  activeDropId,
+  onRemove,
+  dragEnabled = false,
+  lockedSlots,
+  onToggleLock,
+  replaceMode,
+  selectedReplaceSlot,
+  onSelectReplaceSlot,
+}: TeamPanelProps) => {
   return (
     <section className="panel p-4 sm:p-5" aria-labelledby="team-heading">
       <div className="mb-3 flex items-start justify-between gap-3 sm:mb-5 sm:items-center">
@@ -45,11 +62,20 @@ const TeamPanel = ({ team, currentTeamLength, activeDropId, onRemove }: TeamPane
             isEmpty={!pokemon}
             isOver={activeDropId === `team-slot-${index}`}
             pokemon={pokemon}
-            onRemove={pokemon ? () => onRemove(index) : null}
+            onRemove={pokemon && !lockedSlots[index] ? () => onRemove(index) : null}
+            isLocked={lockedSlots[index]}
+            onToggleLock={() => onToggleLock(index)}
+            replaceMode={replaceMode && !!pokemon && !lockedSlots[index]}
+            isReplaceTarget={selectedReplaceSlot === index}
+            onSelectForReplace={
+              pokemon && !lockedSlots[index]
+                ? () => onSelectReplaceSlot(selectedReplaceSlot === index ? null : index)
+                : null
+            }
           >
             {pokemon ? (
               <div className="h-full w-full p-1 sm:p-0.5">
-                <PokemonCard pokemon={pokemon} isDraggable={false} isCompact={true} dragId={`team-${index}-${pokemon.id}`} />
+                <PokemonCard pokemon={pokemon} isDraggable={true} isCompact={true} dragId={`team-${index}-${pokemon.id}`} dragEnabled={dragEnabled} />
               </div>
             ) : null}
           </TeamSlot>
