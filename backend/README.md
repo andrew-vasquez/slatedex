@@ -2,8 +2,8 @@
 
 ## Required Environment Variables
 
-- `DATABASE_URL`: Prisma runtime database URL.
-- `DIRECT_URL`: Direct database URL for Prisma migrations (`prisma migrate deploy`).
+- `DATABASE_URL`: Prisma runtime database URL. Supports either `postgresql://...` (Railway) or `prisma://...` (Prisma Accelerate).
+- `DIRECT_URL` (optional): Direct database URL for Prisma migrations (`prisma migrate deploy`). If omitted, migrations fall back to `DATABASE_URL`.
 - `FRONTEND_URL`: Frontend origin(s) used for CORS/auth trusted origins. You can pass a comma-separated list.
 - `PORT` (optional): Server port; defaults to `3001`.
 
