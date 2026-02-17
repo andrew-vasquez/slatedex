@@ -11,6 +11,18 @@ interface AuthDialogProps {
   onClose: () => void;
 }
 
+function formatAuthError(error: unknown): string {
+  if (error instanceof Error) {
+    const message = error.message.trim();
+    if (/failed to fetch|networkerror|load failed/i.test(message)) {
+      return "Unable to reach the auth server. Check NEXT_PUBLIC_API_URL on Vercel and FRONTEND_URLS/BETTER_AUTH_URL on Railway.";
+    }
+    return message.length > 0 ? message : "An unexpected error occurred";
+  }
+
+  return "An unexpected error occurred";
+}
+
 const AuthDialog = ({ isOpen, onClose }: AuthDialogProps) => {
   const [tab, setTab] = useState<Tab>("sign-in");
   const [name, setName] = useState("");
@@ -52,8 +64,9 @@ const AuthDialog = ({ isOpen, onClose }: AuthDialogProps) => {
       } else {
         onClose();
       }
-    } catch {
-      setError("An unexpected error occurred");
+    } catch (error) {
+      setError(formatAuthError(error));
+      console.error("Sign-in failed", error);
     } finally {
       setLoading(false);
     }
@@ -71,8 +84,9 @@ const AuthDialog = ({ isOpen, onClose }: AuthDialogProps) => {
       } else {
         onClose();
       }
-    } catch {
-      setError("An unexpected error occurred");
+    } catch (error) {
+      setError(formatAuthError(error));
+      console.error("Sign-up failed", error);
     } finally {
       setLoading(false);
     }

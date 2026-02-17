@@ -1,6 +1,26 @@
 import type { Pokemon } from "./types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+function getApiUrl(): string {
+  const rawUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+
+  if (!rawUrl) {
+    if (process.env.NODE_ENV === "production") {
+      console.warn(
+        "NEXT_PUBLIC_API_URL is not set in production. API requests will fall back to localhost."
+      );
+    }
+    return "http://localhost:3001";
+  }
+
+  const withProtocol =
+    !rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")
+      ? `https://${rawUrl}`
+      : rawUrl;
+
+  return withProtocol.replace(/\/+$/, "");
+}
+
+const API_URL = getApiUrl();
 
 export interface SavedTeam {
   id: string;
