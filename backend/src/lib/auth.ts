@@ -1,8 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "../db";
-
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+import { config } from "./config";
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -11,5 +10,5 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
-  trustedOrigins: [FRONTEND_URL],
+  trustedOrigins: config.frontendOrigins,
 });
