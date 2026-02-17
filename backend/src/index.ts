@@ -45,6 +45,17 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 app.route("/api/teams", teams);
 
+app.onError((error, c) => {
+  const url = new URL(c.req.url);
+  console.error(`[api-error] ${c.req.method} ${url.pathname}`, error);
+
+  if (process.env.NODE_ENV !== "production") {
+    return c.json({ error: error.message }, 500);
+  }
+
+  return c.json({ error: "Internal server error" }, 500);
+});
+
 app.get("/", (c) => {
   return c.text(`Poke Builder API running on port ${config.port}`);
 });
