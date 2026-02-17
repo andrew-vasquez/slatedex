@@ -1078,7 +1078,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
               />
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 lg:h-full">
               <TeamPanel
                 team={team}
                 currentTeamLength={currentTeam.length}
@@ -1106,10 +1106,48 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
               )}
 
               <ShareImportPanel payload={sharePayload} onImport={queueImportPayload} />
+
+              {isDesktopScreen && shouldRenderEmpty && (
+                <section
+                  className={`panel hidden p-6 text-center lg:block ${isEmptyExiting ? "animate-scale-out" : "animate-fade-in-up"}`}
+                  aria-label="Getting started"
+                >
+                  <div className="mx-auto max-w-md">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="mx-auto mb-3" style={{ color: "var(--text-muted)", opacity: 0.5 }}>
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
+                      <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="1.5" />
+                      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" />
+                    </svg>
+                    <h3 className="font-display text-base" style={{ color: "var(--text-primary)" }}>
+                      Add your first Pokemon
+                    </h3>
+                    <p className="mt-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
+                      Pick a Pokemon to start building your team. Smart Picks will appear here on desktop once your team has members.
+                    </p>
+                  </div>
+                </section>
+              )}
+
+              {isDesktopScreen && shouldRenderAnalysis && (
+                <section className={`hidden lg:block ${isAnalysisExiting ? "animate-scale-out" : "animate-section-reveal"}`}>
+                  <TeamRecommendations
+                    recommendations={recommendations}
+                    exposedTypes={exposedTypeNames}
+                    teamFull={currentTeam.length >= 6}
+                    recommendationsEnabled={recommendationsEnabled}
+                    onToggleRecommendations={setRecommendationsEnabled}
+                    onAddPokemon={addPokemonToTeam}
+                    role={recommendationRole}
+                    onRoleChange={setRecommendationRole}
+                    onReplaceWeakest={handleReplaceWeakest}
+                    canReplaceWeakest={canReplaceWeakest}
+                  />
+                </section>
+              )}
             </div>
           </div>
 
-          {shouldRenderEmpty && (
+          {!isDesktopScreen && shouldRenderEmpty && (
             <section
               className={`panel mt-4 p-6 text-center sm:mt-5 sm:p-8 ${isEmptyExiting ? "animate-scale-out" : "animate-fade-in-up"}`}
               aria-label="Getting started"
@@ -1146,20 +1184,22 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 </div>
               </section>
 
-              <section className={`mt-4 sm:mt-5 ${isAnalysisExiting ? "animate-scale-out" : "animate-section-reveal"}`}>
-                <TeamRecommendations
-                  recommendations={recommendations}
-                  exposedTypes={exposedTypeNames}
-                  teamFull={currentTeam.length >= 6}
-                  recommendationsEnabled={recommendationsEnabled}
-                  onToggleRecommendations={setRecommendationsEnabled}
-                  onAddPokemon={addPokemonToTeam}
-                  role={recommendationRole}
-                  onRoleChange={setRecommendationRole}
-                  onReplaceWeakest={handleReplaceWeakest}
-                  canReplaceWeakest={canReplaceWeakest}
-                />
-              </section>
+              {!isDesktopScreen && (
+                <section className={`mt-4 sm:mt-5 ${isAnalysisExiting ? "animate-scale-out" : "animate-section-reveal"}`}>
+                  <TeamRecommendations
+                    recommendations={recommendations}
+                    exposedTypes={exposedTypeNames}
+                    teamFull={currentTeam.length >= 6}
+                    recommendationsEnabled={recommendationsEnabled}
+                    onToggleRecommendations={setRecommendationsEnabled}
+                    onAddPokemon={addPokemonToTeam}
+                    role={recommendationRole}
+                    onRoleChange={setRecommendationRole}
+                    onReplaceWeakest={handleReplaceWeakest}
+                    canReplaceWeakest={canReplaceWeakest}
+                  />
+                </section>
+              )}
 
               <section
                 className={`mt-4 sm:mt-5 ${isAnalysisExiting ? "animate-scale-out" : "animate-section-reveal"}`}
