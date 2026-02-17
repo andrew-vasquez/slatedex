@@ -67,16 +67,11 @@ const PokemonSelection = ({
   const [measuredRowHeights, setMeasuredRowHeights] = useState<Record<number, number>>({});
   const [viewportHeight, setViewportHeight] = useState(0);
   const [scrollTop, setScrollTop] = useState(0);
-  const [isHydrated, setIsHydrated] = useState(false);
 
   const versionLabelMap: Record<string, string> = useMemo(
     () => Object.fromEntries(versions.map((version) => [version.id, version.label])),
     [versions]
   );
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   useEffect(() => {
     const query = window.matchMedia("(min-width: 640px)");
@@ -466,22 +461,6 @@ const PokemonSelection = ({
           >
             No matching Pokémon found. Try a different name.
           </div>
-        ) : !isHydrated ? (
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-            {filteredPokemon.map((pokemon: Pokemon) => (
-              <div key={pokemon.id} role="listitem" className="pokemon-list-item">
-                <PokemonCard
-                  pokemon={pokemon}
-                  dragId={`available-${pokemon.id}`}
-                  onTap={onAddPokemon}
-                  canAddToTeam={currentTeamLength < 6}
-                  versionLabelMap={versionLabelMap}
-                  dragEnabled={dragEnabled}
-                  onInspect={onInspect}
-                />
-              </div>
-            ))}
-          </div>
         ) : (
           <div
             style={{ position: "relative", height: totalHeight, width: "100%" }}
@@ -514,6 +493,7 @@ const PokemonSelection = ({
                         canAddToTeam={currentTeamLength < 6}
                         versionLabelMap={versionLabelMap}
                         dragEnabled={dragEnabled}
+                        onInspect={onInspect}
                       />
                     </div>
                   );
