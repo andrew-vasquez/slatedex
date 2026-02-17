@@ -451,14 +451,47 @@ html[data-motion="reduced"] *::after {
 
 .auth-dialog::backdrop {
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
 }
 
 .auth-dialog-content {
   width: 100%;
-  max-width: 24rem;
-  padding: 1.5rem;
+  max-width: 26rem;
+  padding: 1.75rem;
   margin: 1rem;
+  animation: authDialogIn 0.22s ease-out;
+}
+
+@keyframes authDialogIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-dialog-content {
+    animation: none;
+  }
+  .auth-spinner {
+    animation: none;
+  }
+}
+
+.auth-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.auth-close-btn:hover {
+  background: var(--surface-3);
+  border-color: var(--border-hover);
 }
 
 .auth-tab {
@@ -470,13 +503,33 @@ html[data-motion="reduced"] *::after {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-muted);
+  cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.auth-tab:hover:not([data-active="true"]) {
+  color: var(--text-secondary);
 }
 
 .auth-tab[data-active="true"] {
   background: var(--surface-1);
   color: var(--text-primary);
   border-color: var(--border);
+}
+
+.auth-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  background: rgba(185, 28, 28, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(185, 28, 28, 0.25);
 }
 
 .auth-field {
@@ -502,7 +555,11 @@ html[data-motion="reduced"] *::after {
   color: var(--text-primary);
   font-size: 0.82rem;
   font-family: var(--font-body), sans-serif;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-input--has-toggle {
+  padding-right: 2.5rem;
 }
 
 .auth-input::placeholder {
@@ -510,31 +567,89 @@ html[data-motion="reduced"] *::after {
   opacity: 0.6;
 }
 
-.auth-input:focus {
+.auth-input:focus-visible {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.auth-input-wrap {
+  position: relative;
+}
+
+.auth-pw-toggle {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.4rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.auth-pw-toggle:hover {
+  color: var(--text-secondary);
+  background: var(--surface-3);
 }
 
 .auth-submit {
-  margin-top: 0.25rem;
-  padding: 0.65rem 1rem;
+  margin-top: 0.5rem;
+  padding: 0.7rem 1rem;
   border-radius: 0.65rem;
   border: 1px solid rgba(218, 44, 67, 0.3);
   background: var(--accent);
   color: #ffffff;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 600;
   font-family: var(--font-display), sans-serif;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
 }
 
 .auth-submit:hover:not(:disabled) {
   transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(218, 44, 67, 0.3);
+}
+
+.auth-submit:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .auth-submit:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+}
+
+.auth-switch-link {
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: inherit;
+  padding: 0;
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+}
+
+.auth-switch-link:hover {
+  opacity: 0.8;
+}
+
+@keyframes authSpin {
+  to { transform: rotate(360deg); }
+}
+
+.auth-spinner {
+  animation: authSpin 1s linear infinite;
 }
 
 /* Pokemon Detail Drawer */

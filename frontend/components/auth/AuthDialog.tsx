@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { signIn, signUp } from "@/lib/auth-client";
-import { FiX } from "react-icons/fi";
+import { FiX, FiEye, FiEyeOff } from "react-icons/fi";
 
 type Tab = "sign-in" | "sign-up";
 
@@ -23,11 +23,60 @@ function formatAuthError(error: unknown): string {
   return "An unexpected error occurred";
 }
 
+const PasswordInput = ({
+  value,
+  onChange,
+  placeholder,
+  autoComplete,
+  id,
+  name,
+  errorId,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  placeholder: string;
+  autoComplete: string;
+  id: string;
+  name: string;
+  errorId?: string;
+}) => {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <div className="auth-input-wrap">
+      <input
+        id={id}
+        name={name}
+        type={visible ? "text" : "password"}
+        required
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="auth-input auth-input--has-toggle"
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        minLength={8}
+        aria-describedby={errorId}
+      />
+      <button
+        type="button"
+        className="auth-pw-toggle"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? "Hide password" : "Show password"}
+        tabIndex={-1}
+      >
+        {visible ? <FiEyeOff size={15} aria-hidden="true" /> : <FiEye size={15} aria-hidden="true" />}
+      </button>
+    </div>
+  );
+};
+
 const AuthDialog = ({ isOpen, onClose }: AuthDialogProps) => {
   const [tab, setTab] = useState<Tab>("sign-in");
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const dialogRef = useRef<HTMLDialogElement | null>(null);
@@ -48,7 +97,9 @@ const AuthDialog = ({ isOpen, onClose }: AuthDialogProps) => {
       setError("");
       setEmail("");
       setPassword("");
-      setName("");
+      setConfirmPassword("");
+      setFirstName("");
+      setLastName("");
     }
   }, [isOpen, tab]);
 
@@ -75,10 +126,20 @@ const AuthDialog = ({ isOpen, onClose }: AuthDialogProps) => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
     setLoading(true);
 
+    const fullName = lastName.trim()
+      ? `${firstName.trim()} ${lastName.trim()}`
+      : firstName.trim();
+
     try {
-      const result = await signUp.email({ name, email, password });
+      const result = await signUp.email({ name: fullName, email, password });
       if (result.error) {
         setError(result.error.message ?? "Sign up failed");
       } else {
@@ -102,24 +163,31 @@ const AuthDialog = ({ isOpen, onClose }: AuthDialogProps) => {
       onClick={(e) => {
         if (e.target === dialogRef.current) onClose();
       }}
+      style={{ overscrollBehavior: "contain" }}
     >
       <div className="auth-dialog-content panel">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-lg" style={{ color: "var(--text-primary)" }}>
-            {tab === "sign-in" ? "Sign In" : "Create Account"}
-          </h2>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="font-display text-lg leading-tight" style={{ color: "var(--text-primary)" }}>
+              {tab === "sign-in" ? "Welcome Back" : "Create Account"}
+            </h2>
+            <p className="mt-0.5 text-[0.7rem]" style={{ color: "var(--text-muted)" }}>
+              {tab === "sign-in"
+                ? "Sign in to access your saved teams."
+                : "Join to save and sync your teams."}
+            </p>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg"
-            style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+            className="auth-close-btn"
             aria-label="Close dialog"
           >
             <FiX size={16} />
           </button>
         </div>
 
-        <div className="flex gap-1 mb-4 p-1 rounded-xl" style={{ background: "var(--surface-2)" }}>
+        <div className="flex gap-1 mb-5 p-1 rounded-xl" style={{ background: "var(--surface-2)" }}>
           <button
             type="button"
             className="auth-tab"
@@ -139,16 +207,21 @@ const AuthDialog = ({ isOpen, onClose }: AuthDialogProps) => {
         </div>
 
         {error && (
-          <div className="mb-3 rounded-lg px-3 py-2 text-xs font-medium" style={{ background: "rgba(185, 28, 28, 0.15)", color: "#ef4444", border: "1px solid rgba(185, 28, 28, 0.3)" }}>
-            {error}
+          <div className="auth-error" role="alert">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 mt-px">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span>{error}</span>
           </div>
         )}
 
         {tab === "sign-in" ? (
           <form onSubmit={handleSignIn} className="flex flex-col gap-3">
-            <label className="auth-field">
+            <label className="auth-field" htmlFor="signin-email">
               <span className="auth-label">Email</span>
               <input
+                id="signin-email"
+                name="email"
                 type="email"
                 required
                 value={email}
@@ -156,42 +229,71 @@ const AuthDialog = ({ isOpen, onClose }: AuthDialogProps) => {
                 className="auth-input"
                 placeholder="trainer@example.com"
                 autoComplete="email"
+                spellCheck={false}
               />
             </label>
-            <label className="auth-field">
+            <label className="auth-field" htmlFor="signin-password">
               <span className="auth-label">Password</span>
-              <input
-                type="password"
-                required
+              <PasswordInput
+                id="signin-password"
+                name="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="auth-input"
-                placeholder="••••••••"
+                onChange={setPassword}
+                placeholder="Enter your password"
                 autoComplete="current-password"
-                minLength={8}
               />
             </label>
             <button type="submit" disabled={loading} className="auth-submit">
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <svg className="auth-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><path d="M12 2v4m0 12v4m-7.07-3.93 2.83-2.83m8.48-8.48 2.83-2.83M2 12h4m12 0h4M4.93 4.93l2.83 2.83m8.48 8.48 2.83 2.83" /></svg>
+                  Signing in{"\u2026"}
+                </span>
+              ) : "Sign In"}
             </button>
+            <p className="text-center text-[0.68rem] mt-1" style={{ color: "var(--text-muted)" }}>
+              Don&apos;t have an account?{" "}
+              <button type="button" className="auth-switch-link" onClick={() => setTab("sign-up")}>
+                Sign up
+              </button>
+            </p>
           </form>
         ) : (
           <form onSubmit={handleSignUp} className="flex flex-col gap-3">
-            <label className="auth-field">
-              <span className="auth-label">Name</span>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="auth-input"
-                placeholder="Ash Ketchum"
-                autoComplete="name"
-              />
-            </label>
-            <label className="auth-field">
+            <div className="grid grid-cols-2 gap-2.5">
+              <label className="auth-field" htmlFor="signup-firstname">
+                <span className="auth-label">First Name</span>
+                <input
+                  id="signup-firstname"
+                  name="firstName"
+                  type="text"
+                  required
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="auth-input"
+                  placeholder="Ash"
+                  autoComplete="given-name"
+                />
+              </label>
+              <label className="auth-field" htmlFor="signup-lastname">
+                <span className="auth-label">Last Name</span>
+                <input
+                  id="signup-lastname"
+                  name="lastName"
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="auth-input"
+                  placeholder="Ketchum"
+                  autoComplete="family-name"
+                />
+              </label>
+            </div>
+            <label className="auth-field" htmlFor="signup-email">
               <span className="auth-label">Email</span>
               <input
+                id="signup-email"
+                name="email"
                 type="email"
                 required
                 value={email}
@@ -199,24 +301,55 @@ const AuthDialog = ({ isOpen, onClose }: AuthDialogProps) => {
                 className="auth-input"
                 placeholder="trainer@example.com"
                 autoComplete="email"
+                spellCheck={false}
               />
             </label>
-            <label className="auth-field">
+            <label className="auth-field" htmlFor="signup-password">
               <span className="auth-label">Password</span>
-              <input
-                type="password"
-                required
+              <PasswordInput
+                id="signup-password"
+                name="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="auth-input"
-                placeholder="••••••••"
+                onChange={setPassword}
+                placeholder="At least 8 characters"
                 autoComplete="new-password"
-                minLength={8}
               />
             </label>
-            <button type="submit" disabled={loading} className="auth-submit">
-              {loading ? "Creating account..." : "Create Account"}
+            <label className="auth-field" htmlFor="signup-confirm">
+              <span className="auth-label">Confirm Password</span>
+              <PasswordInput
+                id="signup-confirm"
+                name="confirmPassword"
+                value={confirmPassword}
+                onChange={setConfirmPassword}
+                placeholder="Re-enter your password"
+                autoComplete="new-password"
+                errorId="confirm-pw-error"
+              />
+              {confirmPassword.length > 0 && password !== confirmPassword && (
+                <span id="confirm-pw-error" className="text-[0.65rem] mt-0.5" role="alert" style={{ color: "#ef4444" }}>
+                  Passwords do not match
+                </span>
+              )}
+            </label>
+            <button
+              type="submit"
+              disabled={loading}
+              className="auth-submit"
+            >
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <svg className="auth-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><path d="M12 2v4m0 12v4m-7.07-3.93 2.83-2.83m8.48-8.48 2.83-2.83M2 12h4m12 0h4M4.93 4.93l2.83 2.83m8.48 8.48 2.83 2.83" /></svg>
+                  Creating account{"\u2026"}
+                </span>
+              ) : "Create Account"}
             </button>
+            <p className="text-center text-[0.68rem] mt-1" style={{ color: "var(--text-muted)" }}>
+              Already have an account?{" "}
+              <button type="button" className="auth-switch-link" onClick={() => setTab("sign-in")}>
+                Sign in
+              </button>
+            </p>
           </form>
         )}
       </div>
