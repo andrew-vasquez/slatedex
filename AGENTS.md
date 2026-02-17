@@ -1,22 +1,38 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `app/`: Next.js App Router entry points and global app shells.
-- `components/`: UI grouped by feature:
-  - `components/game/` for game/version selectors.
-  - `components/team/` for team builder, coverage, and recommendations.
-  - `components/ui/` for reusable cards, menus, and shared controls.
-- `lib/`: data and domain logic (`pokeapi.ts`, `teamAnalysis.ts`, `versionExclusives.ts`, `types.ts`).
-- `public/`: static assets.
 
-Example routes: `app/page.tsx` (home) and `app/game/[gameId]/page.tsx` (team builder).
+Monorepo with two top-level directories:
+
+### Frontend (`frontend/`)
+- `frontend/app/`: Next.js App Router entry points and global app shells.
+- `frontend/components/`: UI grouped by feature:
+  - `frontend/components/game/` for game/version selectors.
+  - `frontend/components/team/` for team builder, coverage, and recommendations.
+  - `frontend/components/ui/` for reusable cards, menus, and shared controls.
+- `frontend/lib/`: data and domain logic (`pokeapi.ts`, `teamAnalysis.ts`, `versionExclusives.ts`, `types.ts`).
+- `frontend/hooks/`: React hooks (`useTeamPersistence.ts`, `useBuilderSettings.ts`).
+- `frontend/public/`: static assets.
+
+Example routes: `frontend/app/page.tsx` (home) and `frontend/app/game/[generation]/page.tsx` (team builder).
+
+### Backend (`backend/`)
+- `backend/src/`: Hono API server source code.
+- `backend/prisma/`: Prisma schema and migrations.
 
 ## Build, Test, and Development Commands
-- `bun run dev`: start local development server.
-- `bun run build`: create production build.
-- `bun run start`: run the production server.
-- `bun run lint`: run ESLint via Next.js config.
-- `bunx tsc --noEmit --incremental false`: full type-check pass before PRs.
+
+### Frontend
+- `cd frontend && bun run dev`: start local development server.
+- `cd frontend && bun run build`: create production build.
+- `cd frontend && bun run start`: run the production server.
+- `cd frontend && bun run lint`: run ESLint via Next.js config.
+- `cd frontend && bunx tsc --noEmit --incremental false`: full type-check pass before PRs.
+
+### Backend
+- `cd backend && bun run dev`: start Hono dev server with hot reload.
+- `cd backend && bun run build`: build for production.
+- `cd backend && bun run start`: run the production build.
 
 ## Coding Style & Naming Conventions
 - Use TypeScript and React function components.
@@ -30,9 +46,9 @@ Example routes: `app/page.tsx` (home) and `app/game/[gameId]/page.tsx` (team bui
 ## Testing Guidelines
 - No dedicated unit test framework is configured yet.
 - Minimum validation before merging:
-  - `npx tsc --noEmit --incremental false`
-  - `npm run lint`
-  - `npm run build` for rendering/data-flow changes
+  - `cd frontend && bunx tsc --noEmit --incremental false`
+  - `cd frontend && bun run lint`
+  - `cd frontend && bun run build` for rendering/data-flow changes
   - Manual checks for game selection, dex mode, version filtering, and team add/remove flows.
 - If adding tests, use `*.test.ts`/`*.test.tsx` naming and colocate with the feature or in `__tests__/`.
 
