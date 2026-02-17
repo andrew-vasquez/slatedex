@@ -21,4 +21,11 @@ export const auth = betterAuth({
     enabled: true,
   },
   trustedOrigins: config.frontendOrigins,
+  advanced: {
+    useSecureCookies: process.env.NODE_ENV === "production",
+    defaultCookieAttributes: {
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: process.env.NODE_ENV === "production",
+    },
+  },
 });
