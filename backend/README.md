@@ -18,8 +18,10 @@ This service is configured to run directly from source in production:
 Suggested Railway setup:
 
 1. Set service root to `backend/`.
-2. Use Bun runtime.
-3. Keep `nixpacks.toml` in this directory so Railway uses Bun install/build/start commands.
+2. Set config file path to `/backend/railway.json` (or `/backend/nixpacks.toml`).
+3. Use Bun runtime.
 4. Set the environment variables above.
 5. Add a migration command before deploy:
    - `prisma migrate deploy`
+
+If Railway is still running `next build`, the service is building from repo root instead of `backend/`.
