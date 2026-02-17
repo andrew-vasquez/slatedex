@@ -59,6 +59,7 @@ const TeamPanel = ({
           <TeamSlot
             key={index}
             id={`team-slot-${index}`}
+            index={index}
             isEmpty={!pokemon}
             isOver={activeDropId === `team-slot-${index}`}
             pokemon={pokemon}
@@ -75,7 +76,14 @@ const TeamPanel = ({
           >
             {pokemon ? (
               <div className="h-full w-full p-1 sm:p-0.5">
-                <PokemonCard pokemon={pokemon} isDraggable={true} isCompact={true} dragId={`team-${index}-${pokemon.id}`} dragEnabled={dragEnabled} />
+                <PokemonCard
+                  pokemon={pokemon}
+                  isDraggable={true}
+                  isCompact={true}
+                  isAboveFold={true}
+                  dragId={`team-${index}-${pokemon.id}`}
+                  dragEnabled={dragEnabled}
+                />
               </div>
             ) : null}
           </TeamSlot>

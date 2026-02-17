@@ -108,14 +108,14 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
   const selectType = (type: string) => setSelectedType(type);
 
   return (
-    <div className="panel p-4 sm:p-5">
+    <div className="animate-section-reveal panel p-4 sm:p-5">
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 id="coverage-heading" className="font-display text-lg" style={{ color: "var(--text-primary)" }}>
-            Step 3: Type Coverage
+            Defensive Coverage
           </h3>
           <p className="mt-0.5 text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
-            Hover to preview, click to lock a type.
+            See where your team is safe or exposed. Hover to preview and click to lock a type.
           </p>
         </div>
 

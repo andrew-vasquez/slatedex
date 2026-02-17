@@ -12,17 +12,19 @@ import {
 import type { DragStartEvent, DragEndEvent, DragOverEvent } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import dynamic from "next/dynamic";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { FiCornerDownLeft, FiCornerDownRight, FiRepeat } from "react-icons/fi";
 import PokemonDragPreview from "@/components/ui/PokemonDragPreview";
+import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import TeamBuilderHeader from "./TeamBuilderHeader";
 import ClearTeamDialog from "./ClearTeamDialog";
 import PokemonSelection from "./PokemonSelection";
 import TeamPanel from "./TeamPanel";
-import SavedTeamsPanel from "./SavedTeamsPanel";
+const SavedTeamsPanel = dynamic(() => import("./SavedTeamsPanel"));
 import ShareImportPanel from "./ShareImportPanel";
 import UndoToast from "@/components/ui/UndoToast";
 import PokemonDetailDrawer from "@/components/ui/PokemonDetailDrawer";
+import { useAnimatedUnmount } from "@/hooks/useAnimatedUnmount";
 import { TYPE_EFFECTIVENESS, TYPE_RESISTANCES } from "@/lib/constants";
 import { getTeamDefensiveCoverage, getTeamOffensiveCoverage } from "@/lib/teamAnalysis";
 import { useTeamPersistence } from "@/hooks/useTeamPersistence";
@@ -111,7 +113,6 @@ function getRoleLabel(role: RecommendationRole): string {
 const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const importedTokenRef = useRef<string | null>(null);
 
   const [selectedGameId, setSelectedGameId] = useState<number>(games[0].id);
@@ -126,6 +127,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   const [selectedVersionId, setSelectedVersionId] = useState<string>("");
   const [versionFilterEnabled, setVersionFilterEnabled] = useState(false);
   const [canUsePointerDrag, setCanUsePointerDrag] = useState(false);
+  const [isDesktopScreen, setIsDesktopScreen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [detailPokemon, setDetailPokemon] = useState<Pokemon | null>(null);
   const [lockedSlots, setLockedSlots] = useState<boolean[]>(createEmptyLockedSlots);
@@ -166,10 +168,11 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   );
 
   const dragEnabled = useMemo(() => {
+    if (!isDesktopScreen) return false;
     if (settings.dragBehavior === "on") return true;
     if (settings.dragBehavior === "off") return false;
     return canUsePointerDrag;
-  }, [canUsePointerDrag, settings.dragBehavior]);
+  }, [canUsePointerDrag, isDesktopScreen, settings.dragBehavior]);
 
   const syncHistoryState = useCallback(() => {
     setHistoryState({
@@ -252,9 +255,22 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   }, [generation, selectedGameId]);
 
   useEffect(() => {
-    const canUseFinePointer =
-      window.matchMedia("(hover: hover) and (pointer: fine)").matches && navigator.maxTouchPoints === 0;
-    setCanUsePointerDrag(canUseFinePointer);
+    const desktopQuery = window.matchMedia("(min-width: 1024px)");
+    const pointerQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const updateCapabilities = () => {
+      const canUseFinePointer = pointerQuery.matches && navigator.maxTouchPoints === 0;
+      setCanUsePointerDrag(canUseFinePointer);
+      setIsDesktopScreen(desktopQuery.matches);
+    };
+
+    updateCapabilities();
+    desktopQuery.addEventListener("change", updateCapabilities);
+    pointerQuery.addEventListener("change", updateCapabilities);
+
+    return () => {
+      desktopQuery.removeEventListener("change", updateCapabilities);
+      pointerQuery.removeEventListener("change", updateCapabilities);
+    };
   }, []);
 
   useEffect(() => {
@@ -265,6 +281,12 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
     }
     setDexMode(preferred);
   }, [pokemonPools.regionalResolved, selectedGame.id, settings.defaultDexMode]);
+
+  useEffect(() => {
+    if (dragEnabled) return;
+    setDraggedPokemon(null);
+    setActiveDropId(null);
+  }, [dragEnabled]);
 
   useEffect(() => {
     const allowedVersionIds = new Set(selectedGame.versions.map((version) => version.id));
@@ -595,6 +617,16 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   );
 
   const currentTeam = useMemo(() => team.filter((p): p is Pokemon => p !== null), [team]);
+  const hasTeam = currentTeam.length > 0;
+  const {
+    shouldRender: shouldRenderEmpty,
+    isAnimatingOut: isEmptyExiting,
+  } = useAnimatedUnmount(!hasTeam, 200);
+  const {
+    shouldRender: shouldRenderAnalysis,
+    isAnimatingOut: isAnalysisExiting,
+  } = useAnimatedUnmount(hasTeam, 200);
+
   const defensiveCoverage = useMemo(() => getTeamDefensiveCoverage(currentTeam, generation), [currentTeam, generation]);
   const offensiveCoverage = useMemo(() => getTeamOffensiveCoverage(currentTeam, generation), [currentTeam, generation]);
 
@@ -832,7 +864,8 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   }, [commitTeam, handleDexModeChange, pendingImport, selectedGame.id, selectedGame.versions]);
 
   useEffect(() => {
-    const token = searchParams.get("team");
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("team");
     if (!token || token === importedTokenRef.current) return;
 
     importedTokenRef.current = token;
@@ -843,7 +876,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
     }
 
     router.replace(pathname, { scroll: false });
-  }, [pathname, queueImportPayload, router, searchParams]);
+  }, [pathname, queueImportPayload, router]);
 
   const sharePayload = useMemo<SharedTeamPayload>(
     () => ({
@@ -882,12 +915,17 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
           onSettingsReset={resetSettings}
         />
 
-        <main id="main-content" className="mx-auto max-w-screen-xl px-4 pb-8 pt-4 sm:px-6 sm:pb-10" role="main">
+        <main id="main-content" className="mx-auto max-w-screen-xl px-4 pb-8 pt-4 sm:px-6 sm:pb-10 lg:pt-28" role="main">
           <section className="panel mb-4 p-4 sm:mb-5 sm:p-5" aria-label="Team planning status">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-display text-lg sm:text-xl" style={{ color: "var(--text-primary)" }}>
-                Build Order
-              </h2>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-display text-lg sm:text-xl" style={{ color: "var(--text-primary)" }}>
+                  Build Flow
+                </h2>
+                <p className="mt-0.5 text-[0.7rem] sm:text-[0.74rem]" style={{ color: "var(--text-muted)" }}>
+                  Follow the steps left to right: pick Pokémon, fill team slots, then refine with analysis.
+                </p>
+              </div>
               {isSaving && (
                 <span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
                   Saving...
@@ -895,39 +933,80 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
               )}
             </div>
 
-            <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-              <div className="panel-soft px-3.5 py-3">
-                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
-                  Drafted
-                </p>
-                <p className="font-display mt-1 text-2xl" style={{ color: "var(--accent)" }}>
-                  {currentTeam.length}/6
+            <div className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+              <div className="panel-soft px-3 py-1.5">
+                <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                  1. Search & Pick
                 </p>
               </div>
-              <div className="panel-soft px-3.5 py-3">
-                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
-                  Exposed Types
-                </p>
-                <p className="font-display mt-1 text-2xl" style={{ color: exposedTypes > 0 ? "#b91c1c" : "#136f3a" }}>
-                  {exposedTypes}
+              <div className="panel-soft px-3 py-1.5">
+                <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                  2. Fill Team Slots
                 </p>
               </div>
-              <div className="panel-soft px-3.5 py-3">
-                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
-                  Stable Matchups
-                </p>
-                <p className="font-display mt-1 text-2xl" style={{ color: "var(--accent-blue)" }}>
-                  {stableTypes}
+              <div className="panel-soft px-3 py-1.5">
+                <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                  3. Analyze Coverage
                 </p>
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <div className="panel-soft px-3.5 py-3">
+                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+                  Team Slots Filled
+                </p>
+                <AnimatedNumber
+                  value={`${currentTeam.length}/6`}
+                  className="font-display mt-1 text-2xl"
+                  style={{ color: "var(--accent)" }}
+                />
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--stat-track)" }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${(currentTeam.length / 6) * 100}%`,
+                      background: "linear-gradient(90deg, var(--accent) 0%, #ef6f40 100%)",
+                      transition: "width 0.25s ease",
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="panel-soft px-3.5 py-3">
+                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+                  Coverage Snapshot
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border px-2.5 py-2" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+                    <p className="text-[0.56rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                      Risks
+                    </p>
+                    <AnimatedNumber
+                      value={exposedTypes}
+                      className="font-display mt-0.5 text-xl"
+                      style={{ color: exposedTypes > 0 ? "#b91c1c" : "#136f3a", transition: "color 0.3s ease" }}
+                    />
+                  </div>
+                  <div className="rounded-lg border px-2.5 py-2" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+                    <p className="text-[0.56rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                      Stable
+                    </p>
+                    <AnimatedNumber
+                      value={stableTypes}
+                      className="font-display mt-0.5 text-xl"
+                      style={{ color: "var(--accent-blue)" }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
               <button
                 type="button"
                 onClick={handleUndo}
                 disabled={!historyState.canUndo}
-                className="btn-secondary disabled:pointer-events-none disabled:opacity-50"
+                className="btn-secondary w-full disabled:pointer-events-none disabled:opacity-50"
               >
                 <FiCornerDownLeft size={13} />
                 Undo
@@ -937,7 +1016,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 type="button"
                 onClick={handleRedo}
                 disabled={!historyState.canRedo}
-                className="btn-secondary disabled:pointer-events-none disabled:opacity-50"
+                className="btn-secondary w-full disabled:pointer-events-none disabled:opacity-50"
               >
                 <FiCornerDownRight size={13} />
                 Redo
@@ -949,7 +1028,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                   setReplaceMode((prev) => !prev);
                   setReplaceTargetSlot(null);
                 }}
-                className="btn-secondary"
+                className="btn-secondary col-span-2 w-full lg:col-span-1"
                 style={{
                   borderColor: replaceMode ? "rgba(59, 130, 246, 0.34)" : undefined,
                   background: replaceMode ? "rgba(59, 130, 246, 0.14)" : undefined,
@@ -960,7 +1039,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 {replaceMode ? "Replace Mode On" : "Replace Mode Off"}
               </button>
 
-              <div className="rounded-xl border px-3 py-2 text-[0.66rem]" style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}>
+              <div className="col-span-2 rounded-xl border px-3 py-2 text-[0.66rem] lg:col-span-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}>
                 {replaceMode
                   ? replaceTargetSlot !== null
                     ? `Targeting slot ${replaceTargetSlot + 1}`
@@ -1030,8 +1109,11 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
             </div>
           </div>
 
-          {currentTeam.length === 0 ? (
-            <section className="panel mt-4 p-6 text-center sm:mt-5 sm:p-8" aria-label="Getting started">
+          {shouldRenderEmpty && (
+            <section
+              className={`panel mt-4 p-6 text-center sm:mt-5 sm:p-8 ${isEmptyExiting ? "animate-scale-out" : "animate-fade-in-up"}`}
+              aria-label="Getting started"
+            >
               <div className="mx-auto max-w-md">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="mx-auto mb-3" style={{ color: "var(--text-muted)", opacity: 0.5 }}>
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
@@ -1046,9 +1128,25 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 </p>
               </div>
             </section>
-          ) : (
+          )}
+
+          {shouldRenderAnalysis && (
             <>
-              <section className="mt-4 sm:mt-5">
+              <section
+                className={`mt-4 sm:mt-5 ${isAnalysisExiting ? "animate-scale-out" : "animate-section-reveal"}`}
+                aria-label="Analysis overview"
+              >
+                <div className="panel-soft px-3.5 py-3">
+                  <h2 className="font-display text-base sm:text-lg" style={{ color: "var(--text-primary)" }}>
+                    Step 3: Analyze and Refine
+                  </h2>
+                  <p className="mt-1 text-[0.7rem] sm:text-[0.74rem]" style={{ color: "var(--text-muted)" }}>
+                    Start with Smart Picks, then review defensive and offensive coverage to close remaining gaps.
+                  </p>
+                </div>
+              </section>
+
+              <section className={`mt-4 sm:mt-5 ${isAnalysisExiting ? "animate-scale-out" : "animate-section-reveal"}`}>
                 <TeamRecommendations
                   recommendations={recommendations}
                   exposedTypes={exposedTypeNames}
@@ -1063,11 +1161,19 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 />
               </section>
 
-              <section className="mt-4 sm:mt-5" aria-labelledby="coverage-heading">
+              <section
+                className={`mt-4 sm:mt-5 ${isAnalysisExiting ? "animate-scale-out" : "animate-section-reveal"}`}
+                style={{ animationDelay: isAnalysisExiting ? undefined : "100ms" }}
+                aria-labelledby="coverage-heading"
+              >
                 <DefensiveCoverage coverage={defensiveCoverage} generation={generation} />
               </section>
 
-              <section className="mt-4 sm:mt-5" aria-label="Offensive coverage">
+              <section
+                className={`mt-4 sm:mt-5 ${isAnalysisExiting ? "animate-scale-out" : "animate-section-reveal"}`}
+                style={{ animationDelay: isAnalysisExiting ? undefined : "200ms" }}
+                aria-label="Offensive coverage"
+              >
                 <OffensiveCoverage coverage={offensiveCoverage} generation={generation} />
               </section>
             </>

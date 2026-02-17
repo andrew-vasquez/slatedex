@@ -78,7 +78,7 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
   const selectType = (type: string) => setSelectedType(type);
 
   return (
-    <div className="panel p-4 sm:p-5">
+    <div className="animate-section-reveal panel p-4 sm:p-5">
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="font-display text-lg" style={{ color: "var(--text-primary)" }}>

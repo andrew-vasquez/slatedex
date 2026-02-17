@@ -62,14 +62,14 @@ const TeamRecommendations = ({
   );
 
   return (
-    <section className="panel mb-4 p-4 sm:mb-5 sm:p-5" aria-labelledby="smart-picks-heading">
+    <section className="animate-section-reveal panel mb-4 p-4 sm:mb-5 sm:p-5" aria-labelledby="smart-picks-heading">
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 id="smart-picks-heading" className="font-display text-base sm:text-lg" style={{ color: "var(--text-primary)" }}>
             Smart Picks
           </h2>
           <p className="mt-1 text-[0.68rem] leading-tight sm:mt-0.5 sm:text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
-            Ranked by how well each final-evolution or single-stage Pokémon patches your exposed matchups.
+            Suggestions ranked by how well each option patches your current weaknesses.
           </p>
         </div>
 

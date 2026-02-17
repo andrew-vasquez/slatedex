@@ -101,11 +101,17 @@ export function useTeamPersistence({
   const [isSaving, setIsSaving] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeTeamIdRef = useRef<string | null>(null);
+  const userModifiedRef = useRef(false);
 
   // Keep ref in sync
   useEffect(() => {
     activeTeamIdRef.current = activeTeamId;
   }, [activeTeamId]);
+
+  // Reset user-modified flag when game changes so the load effect can run normally
+  useEffect(() => {
+    userModifiedRef.current = false;
+  }, [generation, gameId]);
 
   const refreshSavedTeams = useCallback(async () => {
     if (!isAuthenticated) {
@@ -123,6 +129,19 @@ export function useTeamPersistence({
   // Load initial team data
   useEffect(() => {
     if (authLoading) return;
+
+    // If the user already modified the team while auth was loading,
+    // don't overwrite their changes with stale data
+    if (userModifiedRef.current) {
+      userModifiedRef.current = false;
+      if (!isAuthenticated) {
+        setSavedTeams([]);
+      } else {
+        // Still fetch saved teams list for the sidebar, but don't overwrite the active team
+        fetchTeams(generation, gameId).then(setSavedTeams).catch(() => {});
+      }
+      return;
+    }
 
     if (!isAuthenticated) {
       // Guest: load from localStorage
@@ -185,6 +204,7 @@ export function useTeamPersistence({
 
   const setTeam = useCallback(
     (newTeam: (Pokemon | null)[]) => {
+      userModifiedRef.current = true;
       setTeamState(newTeam);
 
       if (!isAuthenticated) {

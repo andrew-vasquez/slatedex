@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { FiCheck, FiChevronDown, FiLogIn, FiLogOut, FiMoon, FiSun, FiUser } from "react-icons/fi";
+import { useEffect, useId, useRef, useState } from "react";
+import { FiLogIn, FiLogOut, FiMoon, FiSun } from "react-icons/fi";
 import { signOut } from "@/lib/auth-client";
 import { useAuth } from "@/components/providers/AuthProvider";
 import AuthDialog from "./AuthDialog";
@@ -21,16 +21,24 @@ function applyTheme(theme: Theme): void {
   if (meta) meta.setAttribute("content", theme === "dark" ? DARK_THEME_COLOR : LIGHT_THEME_COLOR);
 }
 
-interface UserMenuProps {
-  className?: string;
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return (parts[0]?.[0] ?? "?").toUpperCase();
 }
 
-const UserMenu = ({ className = "" }: UserMenuProps) => {
+interface UserMenuProps {
+  className?: string;
+  compactOnMobile?: boolean;
+}
+
+const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>("dark");
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuId = useId();
 
   useEffect(() => {
     const detected = document.documentElement.dataset.theme === "light" ? "light" : "dark";
@@ -40,7 +48,7 @@ const UserMenu = ({ className = "" }: UserMenuProps) => {
   useEffect(() => {
     if (!isOpen) return;
 
-    const onPointerDown = (event: MouseEvent) => {
+    const onPointerDown = (event: PointerEvent) => {
       if (!menuRef.current) return;
       if (!menuRef.current.contains(event.target as Node)) setIsOpen(false);
     };
@@ -49,15 +57,16 @@ const UserMenu = ({ className = "" }: UserMenuProps) => {
       if (event.key === "Escape") setIsOpen(false);
     };
 
-    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onEscape);
     return () => {
-      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onEscape);
     };
   }, [isOpen]);
 
-  const setThemeMode = (next: Theme) => {
+  const toggleTheme = () => {
+    const next: Theme = theme === "dark" ? "light" : "dark";
     applyTheme(next);
     setTheme(next);
   };
@@ -67,159 +76,78 @@ const UserMenu = ({ className = "" }: UserMenuProps) => {
     setIsOpen(false);
   };
 
-  const themeButtons = (
-    <>
-      <p className="theme-menu-label">Appearance</p>
-      <button
-        type="button"
-        className="theme-menu-item"
-        role="menuitemradio"
-        aria-checked={theme === "dark"}
-        data-active={theme === "dark"}
-        onClick={() => setThemeMode("dark")}
-      >
-        <span className="inline-flex items-center gap-2">
-          <FiMoon size={14} aria-hidden="true" />
-          Dark mode
-        </span>
-        {theme === "dark" && <FiCheck size={14} aria-hidden="true" />}
-      </button>
-      <button
-        type="button"
-        className="theme-menu-item"
-        role="menuitemradio"
-        aria-checked={theme === "light"}
-        data-active={theme === "light"}
-        onClick={() => setThemeMode("light")}
-      >
-        <span className="inline-flex items-center gap-2">
-          <FiSun size={14} aria-hidden="true" />
-          Light mode
-        </span>
-        {theme === "light" && <FiCheck size={14} aria-hidden="true" />}
-      </button>
-    </>
-  );
-
-  if (isLoading) {
-    return (
-      <div className={`theme-menu-shell ${className}`.trim()}>
-        <div className="theme-menu-trigger opacity-50">
-          <span className="theme-menu-avatar" aria-hidden="true">
-            <FiUser size={14} />
-          </span>
-          <span className="text-[0.66rem] font-semibold">...</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Signed out: dropdown with theme toggle + sign in
-  if (!isAuthenticated) {
-    return (
-      <>
-        <div className={`theme-menu-shell ${className}`.trim()} ref={menuRef}>
-          <button
-            type="button"
-            className="theme-menu-trigger"
-            aria-haspopup="menu"
-            aria-expanded={isOpen}
-            aria-label="Open menu"
-            onClick={() => setIsOpen((prev) => !prev)}
-          >
-            <span className="theme-menu-avatar" aria-hidden="true">
-              <FiUser size={14} />
-            </span>
-            <span className="text-[0.66rem] font-semibold">Sign In</span>
-            <FiChevronDown
-              size={14}
-              aria-hidden="true"
-              style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }}
-            />
-          </button>
-
-          {isOpen && (
-            <div className="theme-menu-panel" role="menu" aria-label="Menu">
-              {themeButtons}
-
-              <div className="my-2" style={{ borderTop: "1px solid var(--border)" }} />
-
-              <button
-                type="button"
-                className="theme-menu-item"
-                role="menuitem"
-                onClick={() => {
-                  setIsOpen(false);
-                  setAuthDialogOpen(true);
-                }}
-              >
-                <span className="inline-flex items-center gap-2">
-                  <FiLogIn size={14} aria-hidden="true" />
-                  Sign In
-                </span>
-              </button>
-            </div>
-          )}
-        </div>
-        <AuthDialog isOpen={authDialogOpen} onClose={() => setAuthDialogOpen(false)} />
-      </>
-    );
-  }
-
-  // Signed in: dropdown with user info, theme toggle, sign out
   return (
     <>
-      <div className={`theme-menu-shell ${className}`.trim()} ref={menuRef}>
+      <div className={`user-menu-shell${compactOnMobile ? " user-menu-shell--compact-mobile" : ""} ${className}`.trim()}>
+        {/* Theme Toggle */}
         <button
           type="button"
-          className="theme-menu-trigger"
-          aria-haspopup="menu"
-          aria-expanded={isOpen}
-          aria-label="Open user menu"
-          onClick={() => setIsOpen((prev) => !prev)}
+          className="theme-toggle"
+          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          onClick={toggleTheme}
         >
-          <span className="theme-menu-avatar" aria-hidden="true">
-            <FiUser size={14} />
-          </span>
-          <span className="text-[0.66rem] font-semibold max-w-[80px] truncate">
-            {user?.name?.split(" ")[0] ?? "Account"}
-          </span>
-          <FiChevronDown
-            size={14}
-            aria-hidden="true"
-            style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }}
-          />
+          <FiSun size={15} className={`theme-toggle-icon ${theme === "dark" ? "theme-toggle-icon--visible" : ""}`} aria-hidden="true" />
+          <FiMoon size={15} className={`theme-toggle-icon ${theme === "light" ? "theme-toggle-icon--visible" : ""}`} aria-hidden="true" />
         </button>
 
-        {isOpen && (
-          <div className="theme-menu-panel" role="menu" aria-label="User menu">
-            <div className="px-3 py-2" style={{ borderBottom: "1px solid var(--border)" }}>
-              <p className="text-[0.72rem] font-semibold truncate" style={{ color: "var(--text-primary)" }}>
-                {user?.name}
-              </p>
-              <p className="text-[0.62rem] truncate" style={{ color: "var(--text-muted)" }}>
-                {user?.email}
-              </p>
-            </div>
+        {/* Auth: loading */}
+        {isLoading && (
+          <div className={`user-menu-trigger user-menu-trigger--skeleton${compactOnMobile ? " user-menu-trigger--icon" : ""}`}>
+            <span className="skeleton" style={{ width: compactOnMobile ? "1rem" : "3.5rem", height: "0.7rem", borderRadius: 4 }} />
+          </div>
+        )}
 
-            {themeButtons}
+        {/* Auth: signed out */}
+        {!isLoading && !isAuthenticated && (
+          <button
+            type="button"
+            className={`user-menu-trigger user-menu-trigger--signin${compactOnMobile ? " user-menu-trigger--icon" : ""}`}
+            aria-label="Sign in or create account"
+            onClick={() => setAuthDialogOpen(true)}
+          >
+            <FiLogIn size={14} aria-hidden="true" />
+            {!compactOnMobile && <span>Sign In</span>}
+          </button>
+        )}
 
-            <div className="my-2" style={{ borderTop: "1px solid var(--border)" }} />
-
+        {/* Auth: signed in */}
+        {!isLoading && isAuthenticated && (
+          <div ref={menuRef} style={{ position: "relative" }}>
             <button
               type="button"
-              className="theme-menu-item"
-              role="menuitem"
-              onClick={handleSignOut}
+              className="user-menu-avatar"
+              aria-haspopup="menu"
+              aria-expanded={isOpen}
+              aria-controls={menuId}
+              aria-label="Open user menu"
+              onClick={() => setIsOpen((prev) => !prev)}
             >
-              <span className="inline-flex items-center gap-2">
-                <FiLogOut size={14} aria-hidden="true" />
-                Sign Out
-              </span>
+              {getInitials(user?.name ?? "?")}
             </button>
+
+            {isOpen && (
+              <div id={menuId} className="user-menu-panel" role="menu" aria-label="User menu">
+                <div className="user-menu-info">
+                  <p className="user-menu-name">{user?.name}</p>
+                  <p className="user-menu-email">{user?.email}</p>
+                </div>
+
+                <button
+                  type="button"
+                  className="user-menu-item"
+                  role="menuitem"
+                  onClick={handleSignOut}
+                >
+                  <FiLogOut size={14} aria-hidden="true" />
+                  Sign Out
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      <AuthDialog isOpen={authDialogOpen} onClose={() => setAuthDialogOpen(false)} />
     </>
   );
 };

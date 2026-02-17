@@ -11,6 +11,7 @@ interface PokemonCardProps {
   pokemon: Pokemon;
   isDraggable?: boolean;
   isCompact?: boolean;
+  isAboveFold?: boolean;
   dragId?: string | null;
   onTap?: ((pokemon: Pokemon) => void) | null;
   canAddToTeam?: boolean;
@@ -35,6 +36,7 @@ const PokemonCard = ({
   pokemon,
   isDraggable: isDraggableProp = true,
   isCompact = false,
+  isAboveFold = false,
   dragId = null,
   onTap = null,
   canAddToTeam = false,
@@ -93,6 +95,8 @@ const PokemonCard = ({
             alt={pokemon.name}
             width={56}
             height={56}
+            loading={isAboveFold ? "eager" : "lazy"}
+            fetchPriority={isAboveFold ? "high" : "auto"}
             className="h-full w-full object-contain drop-shadow-md"
           />
         </div>
@@ -158,6 +162,8 @@ const PokemonCard = ({
             alt={pokemon.name}
             width={48}
             height={48}
+            loading={isAboveFold ? "eager" : "lazy"}
+            fetchPriority={isAboveFold ? "high" : "auto"}
             className="h-11 w-11 object-contain drop-shadow-md transition-transform duration-300 group-hover:scale-110"
           />
         </div>
