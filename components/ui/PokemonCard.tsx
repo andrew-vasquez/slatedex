@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useDraggable } from "@dnd-kit/core";
 import { memo } from "react";
+import { FiInfo } from "react-icons/fi";
 import { TYPE_COLORS } from "@/lib/constants";
 import type { Pokemon } from "@/lib/types";
 
@@ -15,6 +16,7 @@ interface PokemonCardProps {
   canAddToTeam?: boolean;
   versionLabelMap?: Record<string, string>;
   dragEnabled?: boolean;
+  onInspect?: ((pokemon: Pokemon) => void) | null;
 }
 
 const STAT_COLORS: Record<string, string> = {
@@ -38,6 +40,7 @@ const PokemonCard = ({
   canAddToTeam = false,
   versionLabelMap = {},
   dragEnabled = true,
+  onInspect = null,
 }: PokemonCardProps) => {
   const uniqueId = dragId || `pokemon-${isDraggableProp ? "available" : "team"}-${pokemon.id}`;
   const shouldEnableDrag = isDraggableProp && dragEnabled;
@@ -200,17 +203,30 @@ const PokemonCard = ({
           </div>
         </div>
 
-        {onTap && canAddToTeam && (
-          <div
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-transform duration-200 group-hover:scale-110"
-            style={{ background: "rgba(19, 111, 58, 0.12)", color: "#136f3a", border: "1px solid rgba(19, 111, 58, 0.25)" }}
-            aria-hidden="true"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M6 2.5v7M2.5 6h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          </div>
-        )}
+        <div className="flex shrink-0 flex-col gap-1.5">
+          {onInspect && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onInspect(pokemon); }}
+              className="flex h-7 w-7 items-center justify-center rounded-full transition-transform duration-200 hover:scale-110"
+              style={{ background: "rgba(59, 130, 246, 0.12)", color: "#3b82f6", border: "1px solid rgba(59, 130, 246, 0.25)" }}
+              aria-label={`View details for ${pokemon.name}`}
+            >
+              <FiInfo size={12} />
+            </button>
+          )}
+          {onTap && canAddToTeam && (
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded-full transition-transform duration-200 group-hover:scale-110"
+              style={{ background: "rgba(19, 111, 58, 0.12)", color: "#136f3a", border: "1px solid rgba(19, 111, 58, 0.25)" }}
+              aria-hidden="true"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M6 2.5v7M2.5 6h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

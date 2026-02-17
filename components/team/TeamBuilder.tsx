@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect, useDeferredValue } from "react";
+import { useState, useCallback, useMemo, useEffect, useDeferredValue, useRef } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -18,12 +18,15 @@ import ClearTeamDialog from "./ClearTeamDialog";
 import PokemonSelection from "./PokemonSelection";
 import TeamPanel from "./TeamPanel";
 import SavedTeamsPanel from "./SavedTeamsPanel";
+import UndoToast from "@/components/ui/UndoToast";
+import PokemonDetailDrawer from "@/components/ui/PokemonDetailDrawer";
 import { TYPE_EFFECTIVENESS, TYPE_RESISTANCES } from "@/lib/constants";
-import { getTeamDefensiveCoverage } from "@/lib/teamAnalysis";
+import { getTeamDefensiveCoverage, getTeamOffensiveCoverage } from "@/lib/teamAnalysis";
 import { useTeamPersistence } from "@/hooks/useTeamPersistence";
 import type { DexMode, Pokemon, PokemonPools, Game } from "@/lib/types";
 
 const DefensiveCoverage = dynamic(() => import("./DefensiveCoverage"));
+const OffensiveCoverage = dynamic(() => import("./OffensiveCoverage"));
 const TeamRecommendations = dynamic(() => import("./TeamRecommendations"));
 
 const STORAGE_VERSION = 1;
@@ -83,6 +86,10 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   const [selectedVersionId, setSelectedVersionId] = useState<string>("");
   const [versionFilterEnabled, setVersionFilterEnabled] = useState(false);
   const [dragEnabled, setDragEnabled] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [undoAction, setUndoAction] = useState<{ pokemon: Pokemon; index: number } | null>(null);
+  const undoTeamRef = useRef<(Pokemon | null)[]>(createEmptyTeam());
+  const [detailPokemon, setDetailPokemon] = useState<Pokemon | null>(null);
 
   const selectedGame = useMemo(() => games.find((g) => g.id === selectedGameId) ?? games[0], [games, selectedGameId]);
   const pokemonPools = useMemo(() => allPools[selectedGame.id] ?? allPools[games[0].id], [allPools, selectedGame.id, games]);
@@ -239,9 +246,13 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   );
 
   const filteredPokemon = useMemo(() => {
-    if (!lowerSearch) return availablePokemon;
-    return availablePokemon.filter((p) => p.name.toLowerCase().includes(lowerSearch));
-  }, [availablePokemon, lowerSearch]);
+    let pool = availablePokemon;
+    if (typeFilter) {
+      pool = pool.filter((p) => p.types.includes(typeFilter));
+    }
+    if (!lowerSearch) return pool;
+    return pool.filter((p) => p.name.toLowerCase().includes(lowerSearch));
+  }, [availablePokemon, lowerSearch, typeFilter]);
 
   const handleDragStart = useCallback((e: DragStartEvent) => setDraggedPokemon(e.active.data.current?.pokemon), []);
   const handleDragOver = useCallback((e: DragOverEvent) => setActiveDropId((e.over?.id as string) || null), []);
@@ -254,10 +265,28 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
 
       if (!over || !active.data.current?.pokemon) return;
 
-      const slotIndex = parseInt((over.id as string).split("-")[2]);
-      if ((over.id as string).startsWith("team-slot-") && slotIndex >= 0 && slotIndex < 6) {
+      const activeId = active.id as string;
+      const overId = over.id as string;
+
+      // Determine if drop target is a team slot
+      if (!overId.startsWith("team-slot-")) return;
+      const targetSlot = parseInt(overId.split("-")[2]);
+      if (targetSlot < 0 || targetSlot >= 6) return;
+
+      // Determine if drag originated from a team slot (format: "team-{index}-{pokemonId}")
+      const isFromTeam = activeId.startsWith("team-") && !activeId.startsWith("team-slot-");
+
+      if (isFromTeam) {
+        // Slot-to-slot swap
+        const sourceSlot = parseInt(activeId.split("-")[1]);
+        if (sourceSlot === targetSlot) return;
         const newTeam = [...team];
-        newTeam[slotIndex] = active.data.current!.pokemon;
+        [newTeam[sourceSlot], newTeam[targetSlot]] = [newTeam[targetSlot], newTeam[sourceSlot]];
+        persistTeam(newTeam);
+      } else {
+        // Adding from available pool to team slot
+        const newTeam = [...team];
+        newTeam[targetSlot] = active.data.current!.pokemon;
         persistTeam(newTeam);
       }
     },
@@ -266,12 +295,73 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
 
   const removeFromTeam = useCallback(
     (index: number) => {
+      const removed = team[index];
+      if (removed) {
+        undoTeamRef.current = [...team];
+        setUndoAction({ pokemon: removed, index });
+      }
       const newTeam = [...team];
       newTeam[index] = null;
       persistTeam(newTeam);
     },
     [team, persistTeam]
   );
+
+  const handleUndo = useCallback(() => {
+    if (!undoAction) return;
+    persistTeam(undoTeamRef.current);
+    setUndoAction(null);
+  }, [undoAction, persistTeam]);
+
+  const dismissUndo = useCallback(() => {
+    setUndoAction(null);
+  }, []);
+
+  // Keyboard shortcuts: / to focus search, Esc to clear, Ctrl+Z to undo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable;
+
+      // Ctrl/Cmd+Z for undo — works even when in an input
+      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
+        if (undoAction) {
+          e.preventDefault();
+          handleUndo();
+        }
+        return;
+      }
+
+      // Escape: clear search if search is focused, otherwise close type filter
+      if (e.key === "Escape") {
+        const searchInput = document.getElementById("pokemon-search") as HTMLInputElement | null;
+        if (searchInput && document.activeElement === searchInput) {
+          if (searchTerm) {
+            setSearchTerm("");
+          } else {
+            searchInput.blur();
+          }
+          e.preventDefault();
+          return;
+        }
+        if (typeFilter) {
+          setTypeFilter(null);
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // / to focus search (only when not in an input)
+      if (e.key === "/" && !isInput) {
+        e.preventDefault();
+        const searchInput = document.getElementById("pokemon-search") as HTMLInputElement | null;
+        searchInput?.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undoAction, handleUndo, searchTerm, typeFilter]);
 
   const openClearDialog = useCallback(() => {
     if (team.every((slot) => slot === null)) return;
@@ -311,6 +401,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
 
   const currentTeam = useMemo(() => team.filter((p): p is Pokemon => p !== null), [team]);
   const defensiveCoverage = useMemo(() => getTeamDefensiveCoverage(currentTeam, generation), [currentTeam, generation]);
+  const offensiveCoverage = useMemo(() => getTeamOffensiveCoverage(currentTeam, generation), [currentTeam, generation]);
 
   const exposedTypeNames = useMemo(
     () =>
@@ -441,6 +532,9 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 games={games}
                 selectedGameId={selectedGame.id}
                 onGameChange={handleGameChange}
+                typeFilter={typeFilter}
+                onTypeFilterChange={setTypeFilter}
+                onInspect={setDetailPokemon}
               />
             </div>
 
@@ -450,6 +544,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 currentTeamLength={currentTeam.length}
                 activeDropId={activeDropId}
                 onRemove={removeFromTeam}
+                dragEnabled={dragEnabled}
               />
 
               {isAuthenticated && (
@@ -467,23 +562,43 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
             </div>
           </div>
 
-          {currentTeam.length > 0 && (
-            <section className="mt-4 sm:mt-5">
-              <TeamRecommendations
-                recommendations={recommendations}
-                exposedTypes={exposedTypeNames}
-                teamFull={currentTeam.length >= 6}
-                recommendationsEnabled={recommendationsEnabled}
-                onToggleRecommendations={setRecommendationsEnabled}
-                onAddPokemon={addPokemonToTeam}
-              />
+          {currentTeam.length === 0 ? (
+            <section className="panel mt-4 p-6 sm:mt-5 sm:p-8 text-center" aria-label="Getting started">
+              <div className="mx-auto max-w-md">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="mx-auto mb-3" style={{ color: "var(--text-muted)", opacity: 0.5 }}>
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
+                  <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="1.5" />
+                  <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
+                <h3 className="font-display text-base sm:text-lg" style={{ color: "var(--text-primary)" }}>
+                  Add your first Pokemon
+                </h3>
+                <p className="mt-1.5 text-xs sm:text-sm" style={{ color: "var(--text-muted)" }}>
+                  Pick a Pokemon from the list to start building your team. Once you add members, you&apos;ll see type coverage analysis, defensive matchups, and smart recommendations here.
+                </p>
+              </div>
             </section>
-          )}
+          ) : (
+            <>
+              <section className="mt-4 sm:mt-5">
+                <TeamRecommendations
+                  recommendations={recommendations}
+                  exposedTypes={exposedTypeNames}
+                  teamFull={currentTeam.length >= 6}
+                  recommendationsEnabled={recommendationsEnabled}
+                  onToggleRecommendations={setRecommendationsEnabled}
+                  onAddPokemon={addPokemonToTeam}
+                />
+              </section>
 
-          {currentTeam.length > 0 && (
-            <section className="mt-4 sm:mt-5" aria-labelledby="coverage-heading">
-              <DefensiveCoverage coverage={defensiveCoverage} generation={generation} />
-            </section>
+              <section className="mt-4 sm:mt-5" aria-labelledby="coverage-heading">
+                <DefensiveCoverage coverage={defensiveCoverage} generation={generation} />
+              </section>
+
+              <section className="mt-4 sm:mt-5" aria-label="Offensive coverage">
+                <OffensiveCoverage coverage={offensiveCoverage} generation={generation} />
+              </section>
+            </>
           )}
         </main>
       </div>
@@ -495,6 +610,20 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
         onCancel={closeClearDialog}
         onConfirm={confirmClearTeam}
       />
+      <PokemonDetailDrawer
+        pokemon={detailPokemon}
+        onClose={() => setDetailPokemon(null)}
+        onAdd={addPokemonToTeam}
+        canAdd={currentTeam.length < 6}
+      />
+      {undoAction && (
+        <UndoToast
+          key={`${undoAction.pokemon.id}-${undoAction.index}`}
+          message={`Removed ${undoAction.pokemon.name}`}
+          onUndo={handleUndo}
+          onDismiss={dismissUndo}
+        />
+      )}
     </DndContext>
   );
 };

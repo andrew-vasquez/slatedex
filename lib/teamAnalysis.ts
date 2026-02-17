@@ -6,7 +6,7 @@
  */
 
 import { TYPE_EFFECTIVENESS, TYPE_RESISTANCES, ALL_TYPES, TYPE_INTRO_GENERATION } from '@/lib/constants';
-import type { Pokemon, PokemonWithEffectiveness, CoverageMap } from '@/lib/types';
+import type { Pokemon, PokemonWithEffectiveness, CoverageMap, OffensiveCoverageMap } from '@/lib/types';
 
 /**
  * Get detailed team defensive coverage with Pokemon details.
@@ -64,6 +64,44 @@ export const getTeamDefensiveCoverage = (team: Pokemon[], generation?: number): 
       weakPokemon,
       resistPokemon
     };
+  });
+
+  return coverage;
+};
+
+/**
+ * Get team offensive coverage — for each defending type, which team members
+ * can hit it super-effectively via STAB (same-type attack bonus).
+ *
+ * TYPE_EFFECTIVENESS[defenderType] lists the types that defenderType is weak to.
+ * So if "water" is in TYPE_EFFECTIVENESS["fire"], water-type moves hit fire super-effectively.
+ */
+export const getTeamOffensiveCoverage = (team: Pokemon[], generation?: number): OffensiveCoverageMap => {
+  const coverage: OffensiveCoverageMap = {};
+
+  ALL_TYPES.forEach((defenderType: string) => {
+    const introGen = TYPE_INTRO_GENERATION[defenderType] ?? 1;
+    if (generation !== undefined && introGen > generation) {
+      coverage[defenderType] = { hitCount: 0, hitters: [], locked: true };
+      return;
+    }
+
+    // Which attacking types hit this defender type super-effectively?
+    const weakTo: string[] = TYPE_EFFECTIVENESS[defenderType] || [];
+
+    const hitters: PokemonWithEffectiveness[] = [];
+
+    team.forEach((pokemon) => {
+      // Check if any of the pokemon's STAB types are super-effective against defenderType
+      const stabHits = pokemon.types.filter((t) => weakTo.includes(t));
+      if (stabHits.length > 0) {
+        // Effectiveness = 2x per matching STAB type (dual STAB like water/ground vs fire = still 2x,
+        // but we just track that this pokemon can hit it)
+        hitters.push({ ...pokemon, effectiveness: 2 });
+      }
+    });
+
+    coverage[defenderType] = { hitCount: hitters.length, hitters };
   });
 
   return coverage;

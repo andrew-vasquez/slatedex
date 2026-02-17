@@ -3,6 +3,7 @@
 import { FiSearch, FiX } from "react-icons/fi";
 import { type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PokemonCard from "@/components/ui/PokemonCard";
+import { getAvailableTypes, TYPE_COLORS } from "@/lib/constants";
 import type { DexMode, Pokemon, Game } from "@/lib/types";
 
 interface PokemonSelectionProps {
@@ -25,6 +26,9 @@ interface PokemonSelectionProps {
   games?: Game[];
   selectedGameId?: number;
   onGameChange?: (gameId: number) => void;
+  typeFilter?: string | null;
+  onTypeFilterChange?: (type: string | null) => void;
+  onInspect?: (pokemon: Pokemon) => void;
 }
 
 const GRID_GAP_PX = 10;
@@ -51,6 +55,9 @@ const PokemonSelection = ({
   games,
   selectedGameId,
   onGameChange,
+  typeFilter,
+  onTypeFilterChange,
+  onInspect,
 }: PokemonSelectionProps) => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const rafIdRef = useRef<number | null>(null);
@@ -342,6 +349,41 @@ const PokemonSelection = ({
             </label>
           </div>
 
+          {onTypeFilterChange && (
+            <div className="mb-2">
+              <p className="mb-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
+                Filter by Type
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {getAvailableTypes(generation).map((type) => {
+                  const isActive = typeFilter === type;
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => onTypeFilterChange(isActive ? null : type)}
+                      className={`rounded-md px-2 py-0.5 text-[0.6rem] font-semibold transition-opacity ${TYPE_COLORS[type]} ${isActive ? "ring-2 ring-white/40" : "opacity-60 hover:opacity-90"}`}
+                      style={{ color: "#fff" }}
+                      aria-pressed={isActive}
+                    >
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </button>
+                  );
+                })}
+                {typeFilter && (
+                  <button
+                    type="button"
+                    onClick={() => onTypeFilterChange(null)}
+                    className="rounded-md px-2 py-0.5 text-[0.6rem] font-semibold"
+                    style={{ background: "var(--surface-3)", color: "var(--text-muted)", border: "1px solid var(--border)" }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="relative">
             <label htmlFor="pokemon-search" className="sr-only">
               Search Pokémon
@@ -357,7 +399,7 @@ const PokemonSelection = ({
               id="pokemon-search"
               name="pokemon-search"
               type="search"
-              placeholder="Search by name"
+              placeholder="Search by name (press /)"
               value={searchTerm}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
               autoComplete="off"
@@ -435,6 +477,7 @@ const PokemonSelection = ({
                   canAddToTeam={currentTeamLength < 6}
                   versionLabelMap={versionLabelMap}
                   dragEnabled={dragEnabled}
+                  onInspect={onInspect}
                 />
               </div>
             ))}

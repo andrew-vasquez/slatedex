@@ -9,9 +9,10 @@ interface TeamPanelProps {
   currentTeamLength: number;
   activeDropId: string | null;
   onRemove: (index: number) => void;
+  dragEnabled?: boolean;
 }
 
-const TeamPanel = ({ team, currentTeamLength, activeDropId, onRemove }: TeamPanelProps) => {
+const TeamPanel = ({ team, currentTeamLength, activeDropId, onRemove, dragEnabled = false }: TeamPanelProps) => {
   return (
     <section className="panel p-4 sm:p-5" aria-labelledby="team-heading">
       <div className="mb-3 flex items-start justify-between gap-3 sm:mb-5 sm:items-center">
@@ -49,7 +50,7 @@ const TeamPanel = ({ team, currentTeamLength, activeDropId, onRemove }: TeamPane
           >
             {pokemon ? (
               <div className="h-full w-full p-1 sm:p-0.5">
-                <PokemonCard pokemon={pokemon} isDraggable={false} isCompact={true} dragId={`team-${index}-${pokemon.id}`} />
+                <PokemonCard pokemon={pokemon} isDraggable={true} isCompact={true} dragId={`team-${index}-${pokemon.id}`} dragEnabled={dragEnabled} />
               </div>
             ) : null}
           </TeamSlot>

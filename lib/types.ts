@@ -49,6 +49,17 @@ export interface TypeCoverage {
 
 export type CoverageMap = Record<string, TypeCoverage>;
 
+export interface OffensiveCoverageEntry {
+  /** How many team members can hit this type super-effectively (via STAB) */
+  hitCount: number;
+  /** The team members that can hit this type, with their best multiplier */
+  hitters: PokemonWithEffectiveness[];
+  /** Type is not available in this generation */
+  locked?: boolean;
+}
+
+export type OffensiveCoverageMap = Record<string, OffensiveCoverageEntry>;
+
 export interface GenerationMeta {
   generation: number;
   region: string;
