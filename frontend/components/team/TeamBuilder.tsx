@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect, useDeferredValue, useRef } from "react";
+import { Suspense, useState, useCallback, useMemo, useEffect, useDeferredValue, useRef } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -20,7 +20,7 @@ import TeamBuilderHeader from "./TeamBuilderHeader";
 import ClearTeamDialog from "./ClearTeamDialog";
 import PokemonSelection from "./PokemonSelection";
 import TeamPanel from "./TeamPanel";
-const SavedTeamsPanel = dynamic(() => import("./SavedTeamsPanel"));
+import SavedTeamsPanel from "./SavedTeamsPanel";
 import ShareImportPanel from "./ShareImportPanel";
 import UndoToast from "@/components/ui/UndoToast";
 import PokemonDetailDrawer from "@/components/ui/PokemonDetailDrawer";
@@ -41,9 +41,9 @@ import {
 } from "@/lib/teamShare";
 import type { DexMode, Pokemon, PokemonPools, Game } from "@/lib/types";
 
-const DefensiveCoverage = dynamic(() => import("./DefensiveCoverage"));
-const OffensiveCoverage = dynamic(() => import("./OffensiveCoverage"));
-const TeamRecommendations = dynamic(() => import("./TeamRecommendations"));
+const DefensiveCoverage = dynamic(() => import("./DefensiveCoverage"), { loading: () => null });
+const OffensiveCoverage = dynamic(() => import("./OffensiveCoverage"), { loading: () => null });
+const TeamRecommendations = dynamic(() => import("./TeamRecommendations"), { loading: () => null });
 
 const HISTORY_LIMIT = 40;
 
@@ -1006,7 +1006,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 type="button"
                 onClick={handleUndo}
                 disabled={!historyState.canUndo}
-                className="btn-secondary w-full disabled:pointer-events-none disabled:opacity-50"
+                className="btn-secondary action-btn w-full disabled:pointer-events-none disabled:opacity-50"
               >
                 <FiCornerDownLeft size={13} />
                 Undo
@@ -1016,7 +1016,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 type="button"
                 onClick={handleRedo}
                 disabled={!historyState.canRedo}
-                className="btn-secondary w-full disabled:pointer-events-none disabled:opacity-50"
+                className="btn-secondary action-btn w-full disabled:pointer-events-none disabled:opacity-50"
               >
                 <FiCornerDownRight size={13} />
                 Redo
@@ -1028,7 +1028,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                   setReplaceMode((prev) => !prev);
                   setReplaceTargetSlot(null);
                 }}
-                className="btn-secondary col-span-2 w-full lg:col-span-1"
+                className="btn-secondary action-btn col-span-2 w-full lg:col-span-1"
                 style={{
                   borderColor: replaceMode ? "rgba(59, 130, 246, 0.34)" : undefined,
                   background: replaceMode ? "rgba(59, 130, 246, 0.14)" : undefined,
@@ -1131,7 +1131,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
           )}
 
           {shouldRenderAnalysis && (
-            <>
+            <Suspense fallback={null}>
               <section
                 className={`mt-4 sm:mt-5 ${isAnalysisExiting ? "animate-scale-out" : "animate-section-reveal"}`}
                 aria-label="Analysis overview"
@@ -1176,7 +1176,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
               >
                 <OffensiveCoverage coverage={offensiveCoverage} generation={generation} />
               </section>
-            </>
+            </Suspense>
           )}
         </main>
       </div>

@@ -3,6 +3,7 @@
 import { FiChevronDown, FiSearch, FiX } from "react-icons/fi";
 import { type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PokemonCard from "@/components/ui/PokemonCard";
+import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import { getAvailableTypes, TYPE_COLORS } from "@/lib/constants";
 import type { CardDensity, DexMode, Pokemon, Game } from "@/lib/types";
 
@@ -69,6 +70,8 @@ const PokemonSelection = ({
   const [viewportHeight, setViewportHeight] = useState(0);
   const [scrollTop, setScrollTop] = useState(0);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [filterTransitionToken, setFilterTransitionToken] = useState(0);
+  const [isFilterTransitioning, setIsFilterTransitioning] = useState(false);
 
   const versionLabelMap: Record<string, string> = useMemo(
     () => Object.fromEntries(versions.map((version) => [version.id, version.label])),
@@ -123,6 +126,13 @@ const PokemonSelection = ({
       setIsAdvancedOpen(true);
     }
   }, [dexMode, typeFilter, versionFilterEnabled]);
+
+  useEffect(() => {
+    setFilterTransitionToken((token) => token + 1);
+    setIsFilterTransitioning(true);
+    const timer = setTimeout(() => setIsFilterTransitioning(false), 260);
+    return () => clearTimeout(timer);
+  }, [searchTerm, typeFilter, dexMode, versionFilterEnabled, selectedVersionId, selectedGameId]);
 
   const rowRefCallbacksRef = useRef<Map<number, (node: HTMLDivElement | null) => void>>(new Map());
 
@@ -233,243 +243,260 @@ const PokemonSelection = ({
 
   return (
     <section className="panel p-4 sm:p-5" aria-labelledby="available-pokemon-heading">
-      <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2.5">
-          <h2 id="available-pokemon-heading" className="font-display text-lg" style={{ color: "var(--text-primary)" }}>
-            Step 1: Pick Pokémon
-          </h2>
-          <span
-            className="rounded-md px-2 py-0.5 text-[0.65rem] font-semibold tabular-nums"
-            style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
-            aria-label={`${filteredPokemon.length} Pokémon available`}
-          >
-            {filteredPokemon.length}
-          </span>
-        </div>
-
-        <div className="w-full sm:w-[22.5rem]">
-          <div className="relative">
-            <label htmlFor="pokemon-search" className="sr-only">
-              Search Pokémon
-            </label>
-            <FiSearch
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
-              size={14}
-              style={{ color: "var(--text-muted)" }}
-              aria-hidden="true"
-            />
-
-            <input
-              id="pokemon-search"
-              name="pokemon-search"
-              type="search"
-              placeholder="Search by name (press /)"
-              value={searchTerm}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
-              autoComplete="off"
-              spellCheck={false}
-              className="w-full rounded-xl py-2 pl-8 pr-8 text-sm"
-              style={{
-                background: "var(--surface-2)",
-                border: "1px solid var(--border)",
-                color: "var(--text-primary)",
-              }}
-            />
-
-            {searchTerm.length > 0 && (
-              <button
-                type="button"
-                onClick={() => onSearchChange("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1"
-                style={{ color: "var(--text-muted)" }}
-                aria-label="Clear search"
-              >
-                <FiX size={14} aria-hidden="true" />
-              </button>
-            )}
+      <div className="mb-4 sm:mb-5">
+        <div className="rounded-2xl border p-3 sm:p-3.5" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+          <div className="flex items-start justify-between gap-2.5">
+            <div className="min-w-0">
+              <h2 id="available-pokemon-heading" className="font-display text-lg" style={{ color: "var(--text-primary)" }}>
+                Step 1: Pick Pokémon
+              </h2>
+              <p className="mt-1 text-[0.68rem]" style={{ color: "var(--text-muted)" }}>
+                Search, then refine with game and advanced filters.
+              </p>
+            </div>
+            <span
+              className="shrink-0 rounded-md px-2 py-0.5 text-[0.65rem] font-semibold tabular-nums"
+              style={{ background: "var(--surface-1)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
+              aria-label={`${filteredPokemon.length} Pokémon available`}
+            >
+              <AnimatedNumber value={filteredPokemon.length} />
+            </span>
           </div>
 
-          <p className="mt-1.5 text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
-            Dex: <span className="font-semibold">{dexMode === "regional" ? "Regional" : "National"}</span> • Version:{" "}
-            <span className="font-semibold">{versionLabelMap[selectedVersionId] ?? selectedVersionId}</span> •{" "}
-            <span className="font-semibold">{versionFilterEnabled ? "Filtered by version" : "All version entries"}</span>
-            {typeFilter ? <> • Type: <span className="font-semibold">{typeFilter.charAt(0).toUpperCase() + typeFilter.slice(1)}</span></> : null}
-          </p>
-
-          {hasMultipleGames && (
-            <div className="mt-2.5">
-              <p className="mb-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
-                Game
-              </p>
-              <div
-                className="inline-flex w-full rounded-xl border p-1"
-                style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
-                role="radiogroup"
-                aria-label="Select game"
-              >
-                {gameOptions.map((game) => {
-                  const isSelected = game.id === selectedGameId;
-                  return (
-                    <button
-                      key={game.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={isSelected}
-                      onClick={() => onGameChange?.(game.id)}
-                      className="flex-1 rounded-lg px-2.5 py-2 text-[0.68rem] font-semibold leading-tight"
-                      style={{
-                        background: isSelected ? "var(--accent-soft)" : "transparent",
-                        color: isSelected ? "var(--text-primary)" : "var(--text-muted)",
-                        border: isSelected ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
-                        transition: "background 0.15s ease, border-color 0.15s ease, color 0.15s ease",
-                      }}
-                    >
-                      <span className="block">{game.name}</span>
-                      <span
-                        className="mt-0.5 block text-[0.55rem] font-normal uppercase tracking-[0.12em]"
-                        style={{ color: isSelected ? "var(--accent)" : "var(--text-muted)", opacity: isSelected ? 1 : 0.7 }}
-                      >
-                        {game.region}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <div className="mt-2 rounded-xl border p-1.5" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
-            <button
-              type="button"
-              onClick={() => setIsAdvancedOpen((prev) => !prev)}
-              className="btn-secondary !w-full !justify-between !px-2.5 !py-1.5 !text-[0.62rem]"
-              aria-expanded={isAdvancedOpen}
-              aria-controls="advanced-filters-panel"
-            >
-              Advanced filters
-              <FiChevronDown
-                size={12}
+          <div className="mt-3 space-y-2.5">
+            <div className="relative">
+              <label htmlFor="pokemon-search" className="sr-only">
+                Search Pokémon
+              </label>
+              <FiSearch
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+                size={14}
+                style={{ color: "var(--text-muted)" }}
                 aria-hidden="true"
-                style={{ transform: isAdvancedOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }}
               />
-            </button>
 
-            <div
-              id="advanced-filters-panel"
-              aria-hidden={!isAdvancedOpen}
-              className={`grid overflow-hidden transition-[grid-template-rows,opacity,margin-top] duration-[180ms] ease-out ${
-                isAdvancedOpen ? "mt-2 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0 pointer-events-none"
-              }`}
-            >
-              <div className="min-h-0 overflow-hidden">
-                <div className="space-y-2.5 pb-0.5">
-                <div>
-                  <p className="mb-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
-                    Dex Mode
-                  </p>
-                  <div className="inline-flex w-full rounded-xl border p-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
-                    <button
-                      type="button"
-                      onClick={() => onDexModeChange("regional")}
-                      disabled={!regionalAvailable}
-                      aria-pressed={dexMode === "regional"}
-                      className="flex-1 rounded-lg px-2 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em] disabled:pointer-events-none disabled:opacity-45"
-                      style={{
-                        background: dexMode === "regional" ? "var(--accent-soft)" : "transparent",
-                        color: dexMode === "regional" ? "var(--text-primary)" : "var(--text-muted)",
-                        border: dexMode === "regional" ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
-                      }}
-                    >
-                      Regional
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onDexModeChange("national")}
-                      aria-pressed={dexMode === "national"}
-                      className="flex-1 rounded-lg px-2 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em]"
-                      style={{
-                        background: dexMode === "national" ? "var(--accent-soft)" : "transparent",
-                        color: dexMode === "national" ? "var(--text-primary)" : "var(--text-muted)",
-                        border: dexMode === "national" ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
-                      }}
-                    >
-                      National
-                    </button>
+              <input
+                id="pokemon-search"
+                name="pokemon-search"
+                type="search"
+                placeholder="Search by name (press /)"
+                value={searchTerm}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+                className="w-full rounded-xl py-2 pl-8 pr-8 text-sm"
+                style={{
+                  background: "var(--surface-1)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-primary)",
+                }}
+              />
+
+              {searchTerm.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onSearchChange("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1"
+                  style={{ color: "var(--text-muted)" }}
+                  aria-label="Clear search"
+                >
+                  <FiX size={14} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.09em]">
+              <span className="rounded-md border px-2 py-0.5" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
+                Dex {dexMode === "regional" ? "Regional" : "National"}
+              </span>
+              <span className="rounded-md border px-2 py-0.5" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
+                Version {versionLabelMap[selectedVersionId] ?? selectedVersionId}
+              </span>
+              <span className="rounded-md border px-2 py-0.5" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
+                {versionFilterEnabled ? "Version-only entries" : "All entries"}
+              </span>
+              {typeFilter ? (
+                <span className="rounded-md border px-2 py-0.5" style={{ borderColor: "rgba(218, 44, 67, 0.34)", color: "var(--accent)" }}>
+                  Type {typeFilter.charAt(0).toUpperCase() + typeFilter.slice(1)}
+                </span>
+              ) : null}
+            </div>
+
+            {hasMultipleGames && (
+              <div>
+                <p className="mb-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
+                  Game
+                </p>
+                <div className="custom-scrollbar -mx-0.5 overflow-x-auto pb-1">
+                  <div
+                    className="inline-flex min-w-max rounded-xl border p-1"
+                    style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+                    role="radiogroup"
+                    aria-label="Select game"
+                  >
+                    {gameOptions.map((game) => {
+                      const isSelected = game.id === selectedGameId;
+                      return (
+                        <button
+                          key={game.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={isSelected}
+                          onClick={() => onGameChange?.(game.id)}
+                          className="min-w-[8.2rem] rounded-lg px-2.5 py-2 text-[0.66rem] font-semibold leading-tight"
+                          style={{
+                            background: isSelected ? "var(--accent-soft)" : "transparent",
+                            color: isSelected ? "var(--text-primary)" : "var(--text-muted)",
+                            border: isSelected ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
+                            transition: "background 0.15s ease, border-color 0.15s ease, color 0.15s ease",
+                          }}
+                        >
+                          <span className="block">{game.name}</span>
+                          <span
+                            className="mt-0.5 block text-[0.55rem] font-normal uppercase tracking-[0.12em]"
+                            style={{ color: isSelected ? "var(--accent)" : "var(--text-muted)", opacity: isSelected ? 1 : 0.7 }}
+                          >
+                            {game.region}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
+              </div>
+            )}
 
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
-                  <label className="flex items-center gap-2 rounded-xl border px-2.5 py-2" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
-                    <span className="text-[0.65rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
-                      Version
-                    </span>
-                    <select
-                      value={selectedVersionId}
-                      onChange={(e) => onVersionChange(e.target.value)}
-                      className="min-w-0 flex-1 bg-transparent text-xs font-semibold outline-none"
-                      style={{ color: "var(--text-primary)" }}
-                      aria-label="Select game version"
-                    >
-                      {versions.map((version) => (
-                        <option key={version.id} value={version.id} style={{ color: "#111827" }}>
-                          {version.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+            <div className="rounded-xl border p-1.5" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+              <button
+                type="button"
+                onClick={() => setIsAdvancedOpen((prev) => !prev)}
+                className="btn-secondary !w-full !justify-between !px-2.5 !py-1.5 !text-[0.62rem]"
+                aria-expanded={isAdvancedOpen}
+                aria-controls="advanced-filters-panel"
+              >
+                Advanced filters
+                <FiChevronDown
+                  size={12}
+                  aria-hidden="true"
+                  style={{ transform: isAdvancedOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }}
+                />
+              </button>
 
-                  <label
-                    className="inline-flex items-center gap-2 rounded-xl border px-2.5 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.08em] md:hover:cursor-pointer"
-                    style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-muted)" }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={versionFilterEnabled}
-                      onChange={(e) => onVersionFilterChange(e.target.checked)}
-                      className="h-3.5 w-3.5 accent-[var(--accent)]"
-                      aria-label="Only show Pokemon available in selected version"
-                    />
-                    Show Pokémon from selected version
-                  </label>
-                </div>
-
-                {onTypeFilterChange && (
+              <div
+                id="advanced-filters-panel"
+                aria-hidden={!isAdvancedOpen}
+                className={`overflow-hidden transition-[max-height,opacity,transform,margin-top] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                  isAdvancedOpen ? "mt-2 max-h-[580px] translate-y-0 opacity-100" : "mt-0 max-h-0 -translate-y-1 opacity-0 pointer-events-none"
+                }`}
+              >
+                <div className="space-y-2.5 pb-0.5">
                   <div>
                     <p className="mb-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
-                      Type Filter
+                      Dex Mode
                     </p>
-                    <div className="custom-scrollbar -mx-0.5 overflow-x-auto pb-1">
-                      <div className="flex min-w-max gap-1 px-0.5">
-                        {getAvailableTypes(generation).map((type) => {
-                          const isActive = typeFilter === type;
-                          return (
-                            <button
-                              key={type}
-                              type="button"
-                              onClick={() => onTypeFilterChange(isActive ? null : type)}
-                              className={`rounded-md px-2 py-0.5 text-[0.6rem] font-semibold transition-opacity ${TYPE_COLORS[type]} ${isActive ? "ring-2 ring-white/40" : "opacity-60 hover:opacity-90"}`}
-                              style={{ color: "#fff" }}
-                              aria-pressed={isActive}
-                            >
-                              {type.charAt(0).toUpperCase() + type.slice(1)}
-                            </button>
-                          );
-                        })}
-                        {typeFilter && (
-                          <button
-                            type="button"
-                            onClick={() => onTypeFilterChange(null)}
-                            className="rounded-md px-2 py-0.5 text-[0.6rem] font-semibold"
-                            style={{ background: "var(--surface-3)", color: "var(--text-muted)", border: "1px solid var(--border)" }}
-                          >
-                            Clear
-                          </button>
-                        )}
-                      </div>
+                    <div className="inline-flex w-full rounded-xl border p-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+                      <button
+                        type="button"
+                        onClick={() => onDexModeChange("regional")}
+                        disabled={!regionalAvailable}
+                        aria-pressed={dexMode === "regional"}
+                        className="flex-1 rounded-lg px-2 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em] disabled:pointer-events-none disabled:opacity-45"
+                        style={{
+                          background: dexMode === "regional" ? "var(--accent-soft)" : "transparent",
+                          color: dexMode === "regional" ? "var(--text-primary)" : "var(--text-muted)",
+                          border: dexMode === "regional" ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
+                        }}
+                      >
+                        Regional
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDexModeChange("national")}
+                        aria-pressed={dexMode === "national"}
+                        className="flex-1 rounded-lg px-2 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em]"
+                        style={{
+                          background: dexMode === "national" ? "var(--accent-soft)" : "transparent",
+                          color: dexMode === "national" ? "var(--text-primary)" : "var(--text-muted)",
+                          border: dexMode === "national" ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
+                        }}
+                      >
+                        National
+                      </button>
                     </div>
                   </div>
-                )}
-              </div>
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
+                    <label className="flex items-center gap-2 rounded-xl border px-2.5 py-2" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+                      <span className="text-[0.65rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
+                        Version
+                      </span>
+                      <select
+                        value={selectedVersionId}
+                        onChange={(e) => onVersionChange(e.target.value)}
+                        className="min-w-0 flex-1 bg-transparent text-xs font-semibold outline-none"
+                        style={{ color: "var(--text-primary)" }}
+                        aria-label="Select game version"
+                      >
+                        {versions.map((version) => (
+                          <option key={version.id} value={version.id} style={{ color: "#111827" }}>
+                            {version.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label
+                      className="inline-flex items-center gap-2 rounded-xl border px-2.5 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.08em] md:hover:cursor-pointer"
+                      style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-muted)" }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={versionFilterEnabled}
+                        onChange={(e) => onVersionFilterChange(e.target.checked)}
+                        className="h-3.5 w-3.5 accent-[var(--accent)]"
+                        aria-label="Only show Pokemon available in selected version"
+                      />
+                      Show Pokémon from selected version
+                    </label>
+                  </div>
+
+                  {onTypeFilterChange && (
+                    <div>
+                      <p className="mb-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
+                        Type Filter
+                      </p>
+                      <div className="custom-scrollbar -mx-0.5 overflow-x-auto pb-1">
+                        <div className="flex min-w-max gap-1 px-0.5">
+                          {getAvailableTypes(generation).map((type) => {
+                            const isActive = typeFilter === type;
+                            return (
+                              <button
+                                key={type}
+                                type="button"
+                                onClick={() => onTypeFilterChange(isActive ? null : type)}
+                                className={`rounded-md px-2 py-0.5 text-[0.6rem] font-semibold transition-opacity ${TYPE_COLORS[type]} ${isActive ? "ring-2 ring-white/40" : "opacity-60 hover:opacity-90"}`}
+                                style={{ color: "#fff" }}
+                                aria-pressed={isActive}
+                              >
+                                {type.charAt(0).toUpperCase() + type.slice(1)}
+                              </button>
+                            );
+                          })}
+                          {typeFilter && (
+                            <button
+                              type="button"
+                              onClick={() => onTypeFilterChange(null)}
+                              className="rounded-md px-2 py-0.5 text-[0.6rem] font-semibold"
+                              style={{ background: "var(--surface-3)", color: "var(--text-muted)", border: "1px solid var(--border)" }}
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -510,10 +537,11 @@ const PokemonSelection = ({
           <div
             style={{ position: "relative", height: totalHeight, width: "100%" }}
           >
-            {visibleRows.map(({ row, top, items }) => (
+            {visibleRows.map(({ row, top, items }, visibleRowIndex) => (
               <div
-                key={`row-${row}`}
+                key={`row-${row}-${filterTransitionToken}`}
                 ref={getRowRef(row)}
+                className={isFilterTransitioning ? "animate-filter-row" : ""}
                 style={{
                   position: "absolute",
                   top,
@@ -522,6 +550,7 @@ const PokemonSelection = ({
                   display: "grid",
                   gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
                   columnGap: GRID_GAP_PX,
+                  animationDelay: isFilterTransitioning ? `${Math.min(visibleRowIndex * 28, 220)}ms` : undefined,
                 }}
               >
                 {items.map((pokemon: Pokemon, itemIndex: number) => {

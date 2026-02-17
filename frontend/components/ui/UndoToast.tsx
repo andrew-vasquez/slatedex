@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import type { CSSProperties } from "react";
 
 interface UndoToastProps {
   message: string;
@@ -10,23 +11,15 @@ interface UndoToastProps {
 }
 
 const UndoToast = ({ message, onUndo, onDismiss, duration = 5000 }: UndoToastProps) => {
-  const [progress, setProgress] = useState(100);
   const onDismissRef = useRef(onDismiss);
   onDismissRef.current = onDismiss;
 
   useEffect(() => {
-    const start = Date.now();
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - start;
-      const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
-      setProgress(remaining);
-      if (remaining <= 0) {
-        clearInterval(interval);
-        onDismissRef.current();
-      }
-    }, 50);
+    const timeout = setTimeout(() => {
+      onDismissRef.current();
+    }, duration);
 
-    return () => clearInterval(interval);
+    return () => clearTimeout(timeout);
   }, [duration]);
 
   return (
@@ -44,7 +37,7 @@ const UndoToast = ({ message, onUndo, onDismiss, duration = 5000 }: UndoToastPro
       <div className="undo-toast-progress">
         <div
           className="undo-toast-progress-bar"
-          style={{ width: `${progress}%` }}
+          style={{ "--undo-duration": `${duration}ms` } as CSSProperties}
         />
       </div>
     </div>

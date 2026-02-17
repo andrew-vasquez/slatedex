@@ -38,6 +38,7 @@ const TeamBuilderHeader = ({
 }: TeamBuilderHeaderProps) => {
   const completion = Math.round((teamLength / 6) * 100);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isDesktopCompact, setIsDesktopCompact] = useState(false);
   const settingsRefMobile = useRef<HTMLDivElement | null>(null);
   const settingsRefDesktop = useRef<HTMLDivElement | null>(null);
 
@@ -67,9 +68,27 @@ const TeamBuilderHeader = ({
     };
   }, [isSettingsOpen]);
 
+  useEffect(() => {
+    const desktopQuery = window.matchMedia("(min-width: 1024px)");
+    const updateCompactState = () => {
+      setIsDesktopCompact(desktopQuery.matches && window.scrollY > 56);
+    };
+
+    updateCompactState();
+    window.addEventListener("scroll", updateCompactState, { passive: true });
+    desktopQuery.addEventListener("change", updateCompactState);
+    return () => {
+      window.removeEventListener("scroll", updateCompactState);
+      desktopQuery.removeEventListener("change", updateCompactState);
+    };
+  }, []);
+
   return (
     <header className="glass sticky top-0 z-40 border-b lg:fixed lg:left-0 lg:right-0" style={{ borderColor: "var(--border)" }} role="banner">
-      <div className="mx-auto max-w-screen-xl px-4 py-3 sm:px-6">
+      <div
+        className={`mx-auto max-w-screen-xl px-4 sm:px-6 ${isDesktopCompact ? "py-2.5 lg:py-2" : "py-3 lg:py-3"}`}
+        style={{ transition: "padding 0.2s ease" }}
+      >
         <div className="lg:hidden">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -128,7 +147,7 @@ const TeamBuilderHeader = ({
               <button
                 type="button"
                 onClick={() => setIsSettingsOpen((prev) => !prev)}
-                className="btn-secondary w-full sm:w-auto"
+                className="btn-secondary action-btn w-full sm:w-auto"
                 aria-label="Open builder settings"
                 aria-expanded={isSettingsOpen}
                 aria-haspopup="dialog"
@@ -160,7 +179,7 @@ const TeamBuilderHeader = ({
             <button
               onClick={onShuffle}
               disabled={teamLength === 0}
-              className="btn-secondary col-span-1 w-full sm:w-auto disabled:pointer-events-none disabled:opacity-50"
+              className="btn-secondary action-btn col-span-1 w-full sm:w-auto disabled:pointer-events-none disabled:opacity-50"
               aria-label="Shuffle current team members"
             >
               <FiShuffle size={14} aria-hidden="true" />
@@ -169,7 +188,7 @@ const TeamBuilderHeader = ({
             <button
               onClick={onClear}
               disabled={teamLength === 0}
-              className="btn-danger col-span-2 w-full sm:w-auto disabled:pointer-events-none disabled:opacity-50"
+              className="btn-danger action-btn col-span-2 w-full sm:w-auto disabled:pointer-events-none disabled:opacity-50"
               aria-label="Clear all team members"
             >
               <FiTrash2 size={14} aria-hidden="true" />
@@ -182,7 +201,7 @@ const TeamBuilderHeader = ({
         </div>
 
         <div className="hidden items-center justify-between gap-5 lg:flex" role="toolbar" aria-label="Team management">
-          <div className="min-w-0 flex items-center gap-3.5">
+          <div className={`min-w-0 flex items-center ${isDesktopCompact ? "gap-3" : "gap-3.5"}`} style={{ transition: "gap 0.2s ease" }}>
             <Link
               href="/"
               className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
@@ -205,13 +224,16 @@ const TeamBuilderHeader = ({
                 </span>
               </div>
 
-              <div className="mt-0.5 flex items-center gap-2.5">
-                <h1 className="font-display truncate text-lg leading-tight" style={{ color: "var(--text-primary)" }}>
+              <div className={`flex items-center gap-2.5 ${isDesktopCompact ? "mt-0" : "mt-0.5"}`} style={{ transition: "margin-top 0.2s ease" }}>
+                <h1 className={`font-display truncate leading-tight ${isDesktopCompact ? "text-base" : "text-lg"}`} style={{ color: "var(--text-primary)", transition: "font-size 0.2s ease" }}>
                   {game.name}
                 </h1>
 
                 <div className="flex items-center gap-2.5">
-                  <div className="h-1.5 w-44 overflow-hidden rounded-full" style={{ background: "rgba(148, 163, 184, 0.24)" }}>
+                  <div
+                    className="h-1.5 overflow-hidden rounded-full"
+                    style={{ width: isDesktopCompact ? "8.5rem" : "11rem", background: "rgba(148, 163, 184, 0.24)", transition: "width 0.2s ease" }}
+                  >
                     <div
                       className="h-full rounded-full"
                       style={{
@@ -234,7 +256,7 @@ const TeamBuilderHeader = ({
               <button
                 type="button"
                 onClick={() => setIsSettingsOpen((prev) => !prev)}
-                className="btn-secondary"
+                className="btn-secondary action-btn"
                 aria-label="Open builder settings"
                 aria-expanded={isSettingsOpen}
                 aria-haspopup="dialog"
@@ -266,7 +288,7 @@ const TeamBuilderHeader = ({
             <button
               onClick={onShuffle}
               disabled={teamLength === 0}
-              className="btn-secondary disabled:pointer-events-none disabled:opacity-50"
+              className="btn-secondary action-btn disabled:pointer-events-none disabled:opacity-50"
               aria-label="Shuffle current team members"
             >
               <FiShuffle size={14} aria-hidden="true" />
@@ -276,7 +298,7 @@ const TeamBuilderHeader = ({
             <button
               onClick={onClear}
               disabled={teamLength === 0}
-              className="btn-danger disabled:pointer-events-none disabled:opacity-50"
+              className="btn-danger action-btn disabled:pointer-events-none disabled:opacity-50"
               aria-label="Clear all team members"
             >
               <FiTrash2 size={14} aria-hidden="true" />

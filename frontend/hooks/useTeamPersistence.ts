@@ -95,22 +95,30 @@ export function useTeamPersistence({
   gameId,
 }: UseTeamPersistenceOptions): UseTeamPersistenceReturn {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const [team, setTeamState] = useState<(Pokemon | null)[]>(createEmptyTeam);
+
+  // Initialize from localStorage immediately so the team survives component remounts.
+  // On the server (SSR), localStorage is unavailable so we fall back to empty.
+  const [team, setTeamState] = useState<(Pokemon | null)[]>(() => {
+    if (typeof window === "undefined") return createEmptyTeam();
+    return loadLocalTeam(generation, gameId);
+  });
+
   const [savedTeams, setSavedTeams] = useState<SavedTeam[]>([]);
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeTeamIdRef = useRef<string | null>(null);
-  const userModifiedRef = useRef(false);
+  const initialLoadDoneRef = useRef(false);
 
   // Keep ref in sync
   useEffect(() => {
     activeTeamIdRef.current = activeTeamId;
   }, [activeTeamId]);
 
-  // Reset user-modified flag when game changes so the load effect can run normally
+  // When gameId changes, reload team from localStorage immediately
   useEffect(() => {
-    userModifiedRef.current = false;
+    setTeamState(loadLocalTeam(generation, gameId));
+    initialLoadDoneRef.current = false;
   }, [generation, gameId]);
 
   const refreshSavedTeams = useCallback(async () => {
@@ -126,26 +134,17 @@ export function useTeamPersistence({
     }
   }, [isAuthenticated, generation, gameId]);
 
-  // Load initial team data
+  // Load team data once auth resolves (for authenticated users, fetch from server)
   useEffect(() => {
     if (authLoading) return;
 
-    // If the user already modified the team while auth was loading,
-    // don't overwrite their changes with stale data
-    if (userModifiedRef.current) {
-      userModifiedRef.current = false;
-      if (!isAuthenticated) {
-        setSavedTeams([]);
-      } else {
-        // Still fetch saved teams list for the sidebar, but don't overwrite the active team
-        fetchTeams(generation, gameId).then(setSavedTeams).catch(() => {});
-      }
-      return;
-    }
+    // Only run the initial auth-based load once per game
+    if (initialLoadDoneRef.current) return;
+    initialLoadDoneRef.current = true;
 
     if (!isAuthenticated) {
-      // Guest: load from localStorage
-      setTeamState(loadLocalTeam(generation, gameId));
+      // Guest: team is already loaded from localStorage via useState initializer.
+      // Just clear server-side state.
       setActiveTeamId(null);
       setSavedTeams([]);
       return;
@@ -164,13 +163,10 @@ export function useTeamPersistence({
           setTeamState(normalizeTeam(mostRecent.pokemon));
           setActiveTeamId(mostRecent.id);
         } else {
-          setTeamState(createEmptyTeam());
           setActiveTeamId(null);
         }
       } catch {
         if (cancelled) return;
-        // Fall back to localStorage if API fails
-        setTeamState(loadLocalTeam(generation, gameId));
         setActiveTeamId(null);
       }
     })();
@@ -204,7 +200,6 @@ export function useTeamPersistence({
 
   const setTeam = useCallback(
     (newTeam: (Pokemon | null)[]) => {
-      userModifiedRef.current = true;
       setTeamState(newTeam);
 
       if (!isAuthenticated) {

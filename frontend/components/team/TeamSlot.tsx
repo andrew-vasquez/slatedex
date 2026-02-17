@@ -48,6 +48,20 @@ const TeamSlot = ({
     shouldRender: shouldRenderEmpty,
     isAnimatingOut: isEmptyExiting,
   } = useAnimatedUnmount(!hasPokemon, 200);
+  const prevPokemonIdRef = useRef<number | null>(pokemon?.id ?? null);
+  const [slotSnapPulse, setSlotSnapPulse] = useState(false);
+
+  useEffect(() => {
+    const previousId = prevPokemonIdRef.current;
+    const currentId = pokemon?.id ?? null;
+    if (currentId !== null && currentId !== previousId) {
+      setSlotSnapPulse(true);
+      const timer = setTimeout(() => setSlotSnapPulse(false), 440);
+      prevPokemonIdRef.current = currentId;
+      return () => clearTimeout(timer);
+    }
+    prevPokemonIdRef.current = currentId;
+  }, [pokemon?.id]);
 
   // Lock/unlock pulse
   const prevLockedRef = useRef(isLocked);
@@ -88,6 +102,7 @@ const TeamSlot = ({
       className={`
         relative aspect-square rounded-xl flex items-center justify-center overflow-hidden
         ${isOver ? "drop-glow scale-[1.02]" : ""}
+        ${slotSnapPulse ? "slot-snap-pulse" : ""}
       `}
       style={{
         background: isReplaceTarget

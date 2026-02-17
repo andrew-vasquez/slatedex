@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { ALL_TYPES } from "@/lib/constants";
 import type { OffensiveCoverageMap } from "@/lib/types";
@@ -34,6 +34,8 @@ const TYPE_HEX: Record<string, string> = {
 const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
   const [hoveredType, setHoveredType] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [pulsedTypes, setPulsedTypes] = useState<Set<string>>(new Set());
+  const previousTypeSignatureRef = useRef<Record<string, string>>({});
 
   const typeSummaries = useMemo(
     () =>
@@ -76,6 +78,30 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
   const previewType = (type: string) => setHoveredType(type);
   const clearPreview = () => setHoveredType(null);
   const selectType = (type: string) => setSelectedType(type);
+
+  useEffect(() => {
+    const nextSignature: Record<string, string> = {};
+    const changedTypes: string[] = [];
+
+    typeSummaries.forEach(({ type, hitCount, isLocked }) => {
+      const signature = isLocked ? "locked" : String(hitCount);
+      nextSignature[type] = signature;
+
+      const previous = previousTypeSignatureRef.current[type];
+      if (previous !== undefined && previous !== signature) {
+        changedTypes.push(type);
+      }
+    });
+
+    if (changedTypes.length > 0) {
+      setPulsedTypes(new Set(changedTypes));
+      const timer = setTimeout(() => setPulsedTypes(new Set()), 460);
+      previousTypeSignatureRef.current = nextSignature;
+      return () => clearTimeout(timer);
+    }
+
+    previousTypeSignatureRef.current = nextSignature;
+  }, [typeSummaries]);
 
   return (
     <div className="animate-section-reveal panel p-4 sm:p-5">
@@ -216,7 +242,7 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
                 <button
                   key={type}
                   type="button"
-                  className="heatmap-cell relative flex aspect-square flex-col items-center justify-center rounded-lg"
+                  className={`heatmap-cell relative flex aspect-square flex-col items-center justify-center rounded-lg ${pulsedTypes.has(type) ? "coverage-cell-pulse" : ""}`}
                   style={{
                     background: getCellBg(hitCount),
                     border: `1px solid ${getCellBorder(hitCount)}`,
