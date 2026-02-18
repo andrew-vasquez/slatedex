@@ -3,6 +3,7 @@ const TRUSTED_AVATAR_HOSTS = new Set([
   "avatars.githubusercontent.com",
   "cdn.discordapp.com",
 ]);
+// TODO(security): replace direct third-party URLs with first-party proxy/uploaded avatars.
 
 export function isSupportedAvatarUrl(raw: string): boolean {
   const trimmed = raw.trim();

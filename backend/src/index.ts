@@ -7,6 +7,21 @@ import teams from "./routes/teams";
 import profiles from "./routes/profiles";
 
 const app = new Hono();
+const API_CSP = "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'";
+
+function applySecurityHeaders(c: {
+  header: (name: string, value: string) => void;
+}) {
+  c.header("X-Content-Type-Options", "nosniff");
+  c.header("X-Frame-Options", "DENY");
+  c.header("Referrer-Policy", "no-referrer");
+  c.header("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+  c.header("Content-Security-Policy", API_CSP);
+
+  if (process.env.NODE_ENV === "production") {
+    c.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  }
+}
 
 const getClientKey = (c: { req: { header: (name: string) => string | undefined } }) => {
   const forwardedFor = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
@@ -44,6 +59,11 @@ app.use(
     credentials: true,
   })
 );
+
+app.use("*", async (c, next) => {
+  await next();
+  applySecurityHeaders(c);
+});
 
 // Rate limiters — registered before route handlers, most specific first
 
@@ -112,6 +132,8 @@ app.route("/api/profiles", profiles);
 app.onError((error, c) => {
   const url = new URL(c.req.url);
   console.error(`[api-error] ${c.req.method} ${url.pathname}`, error);
+
+  applySecurityHeaders(c);
 
   if (process.env.NODE_ENV !== "production") {
     return c.json({ error: error.message }, 500);
