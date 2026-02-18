@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Chakra_Petch, IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
 import "@/app/globals.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import CookieConsentManager from "@/components/privacy/CookieConsentManager";
+import PrivacyScriptLoader from "@/components/privacy/PrivacyScriptLoader";
+import { METADATA_BASE, SITE_URL } from "@/lib/site";
 
 const display = Chakra_Petch({
   subsets: ["latin"],
@@ -25,6 +28,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: METADATA_BASE,
   title: "Pokémon Team Builder — Build Your Ultimate Team",
   description:
     "Create and optimize your perfect Pokémon team with our interactive team builder. Choose from all generations, analyze type coverage, and build competitive teams for any Pokémon game.",
@@ -33,12 +37,8 @@ export const metadata: Metadata = {
   authors: [{ name: "Pokémon Team Builder" }],
   robots: "index, follow",
   icons: {
-    icon: [
-      { url: "/pokeball.svg", type: "image/svg+xml" },
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-    ],
-    apple: "/apple-touch-icon.png",
+    icon: [{ url: "/pokeball.svg", type: "image/svg+xml" }],
+    shortcut: "/pokeball.svg",
   },
   manifest: "/site.webmanifest",
 };
@@ -71,6 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${display.variable} ${body.variable} ${mono.variable}`}
       style={{ colorScheme: "dark" }}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <head>
@@ -86,7 +87,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               name: "Pokémon Team Builder",
               description:
                 "Interactive Pokémon team builder for creating and optimizing competitive Pokémon teams across all generations",
-              url: "https://pokemon-team-builder.com",
+              url: SITE_URL,
               applicationCategory: "GameApplication",
               operatingSystem: "Web Browser",
               offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -98,6 +99,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="font-body antialiased">
         <AuthProvider>{children}</AuthProvider>
+        <PrivacyScriptLoader />
+        <CookieConsentManager />
       </body>
     </html>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { ALL_TYPES } from "@/lib/constants";
 import type { CoverageMap } from "@/lib/types";
@@ -34,6 +34,8 @@ const TYPE_HEX: Record<string, string> = {
 const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => {
   const [hoveredType, setHoveredType] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [pulsedTypes, setPulsedTypes] = useState<Set<string>>(new Set());
+  const previousTypeSignatureRef = useRef<Record<string, string>>({});
 
   const typeSummaries = useMemo(
     () =>
@@ -103,19 +105,43 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
 
   const hasCoverageData = activeData.weakCount > 0 || activeData.resistCount > 0;
 
+  useEffect(() => {
+    const nextSignature: Record<string, string> = {};
+    const changedTypes: string[] = [];
+
+    typeSummaries.forEach(({ type, weakCount, resistCount, isLocked }) => {
+      const signature = isLocked ? "locked" : `${weakCount}:${resistCount}`;
+      nextSignature[type] = signature;
+
+      const previous = previousTypeSignatureRef.current[type];
+      if (previous !== undefined && previous !== signature) {
+        changedTypes.push(type);
+      }
+    });
+
+    if (changedTypes.length > 0) {
+      setPulsedTypes(new Set(changedTypes));
+      const timer = setTimeout(() => setPulsedTypes(new Set()), 460);
+      previousTypeSignatureRef.current = nextSignature;
+      return () => clearTimeout(timer);
+    }
+
+    previousTypeSignatureRef.current = nextSignature;
+  }, [typeSummaries]);
+
   const previewType = (type: string) => setHoveredType(type);
   const clearPreview = () => setHoveredType(null);
   const selectType = (type: string) => setSelectedType(type);
 
   return (
-    <div className="panel p-4 sm:p-5">
+    <div className="animate-section-reveal panel p-4 sm:p-5">
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 id="coverage-heading" className="font-display text-lg" style={{ color: "var(--text-primary)" }}>
-            Step 3: Type Coverage
+            Defensive Coverage
           </h3>
           <p className="mt-0.5 text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
-            Hover to preview, click to lock a type.
+            See where your team is safe or exposed. Hover to preview and click to lock a type.
           </p>
         </div>
 
@@ -253,7 +279,7 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
                 <button
                   key={type}
                   type="button"
-                  className="heatmap-cell relative flex aspect-square flex-col items-center justify-center rounded-lg"
+                  className={`heatmap-cell relative flex aspect-square flex-col items-center justify-center rounded-lg ${pulsedTypes.has(type) ? "coverage-cell-pulse" : ""}`}
                   style={{
                     background: getCellBg(net, weakCount, resistCount),
                     border: `1px solid ${getCellBorder(net, weakCount, resistCount)}`,

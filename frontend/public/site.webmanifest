@@ -1,0 +1,22 @@
+{
+  "name": "Pokémon Team Builder",
+  "short_name": "Poke Builder",
+  "description": "Build and analyze competitive Pokémon teams across generations.",
+  "id": "/",
+  "scope": "/",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "en-US",
+  "background_color": "#060914",
+  "theme_color": "#060914",
+  "categories": ["games", "utilities", "entertainment"],
+  "icons": [
+    {
+      "src": "/pokeball.svg",
+      "sizes": "any",
+      "purpose": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

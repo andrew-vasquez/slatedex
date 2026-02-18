@@ -95,17 +95,28 @@ export function useTeamPersistence({
   gameId,
 }: UseTeamPersistenceOptions): UseTeamPersistenceReturn {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+  // Keep initial state deterministic between SSR and client hydration.
+  // Local data is loaded in an effect after mount.
   const [team, setTeamState] = useState<(Pokemon | null)[]>(createEmptyTeam);
+
   const [savedTeams, setSavedTeams] = useState<SavedTeam[]>([]);
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeTeamIdRef = useRef<string | null>(null);
+  const initialLoadDoneRef = useRef(false);
 
   // Keep ref in sync
   useEffect(() => {
     activeTeamIdRef.current = activeTeamId;
   }, [activeTeamId]);
+
+  // When gameId changes, reload team from localStorage immediately
+  useEffect(() => {
+    setTeamState(loadLocalTeam(generation, gameId));
+    initialLoadDoneRef.current = false;
+  }, [generation, gameId]);
 
   const refreshSavedTeams = useCallback(async () => {
     if (!isAuthenticated) {
@@ -120,13 +131,17 @@ export function useTeamPersistence({
     }
   }, [isAuthenticated, generation, gameId]);
 
-  // Load initial team data
+  // Load team data once auth resolves (for authenticated users, fetch from server)
   useEffect(() => {
     if (authLoading) return;
 
+    // Only run the initial auth-based load once per game
+    if (initialLoadDoneRef.current) return;
+    initialLoadDoneRef.current = true;
+
     if (!isAuthenticated) {
-      // Guest: load from localStorage
-      setTeamState(loadLocalTeam(generation, gameId));
+      // Guest: local team is handled by the gameId effect.
+      // Just clear server-side state.
       setActiveTeamId(null);
       setSavedTeams([]);
       return;
@@ -145,13 +160,10 @@ export function useTeamPersistence({
           setTeamState(normalizeTeam(mostRecent.pokemon));
           setActiveTeamId(mostRecent.id);
         } else {
-          setTeamState(createEmptyTeam());
           setActiveTeamId(null);
         }
       } catch {
         if (cancelled) return;
-        // Fall back to localStorage if API fails
-        setTeamState(loadLocalTeam(generation, gameId));
         setActiveTeamId(null);
       }
     })();

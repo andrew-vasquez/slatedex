@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect, useDeferredValue, useRef } from "react";
+import { Suspense, useState, useCallback, useMemo, useEffect, useDeferredValue, useRef } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -12,17 +12,18 @@ import {
 import type { DragStartEvent, DragEndEvent, DragOverEvent } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import dynamic from "next/dynamic";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { FiCornerDownLeft, FiCornerDownRight, FiRepeat } from "react-icons/fi";
 import PokemonDragPreview from "@/components/ui/PokemonDragPreview";
+import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import TeamBuilderHeader from "./TeamBuilderHeader";
 import ClearTeamDialog from "./ClearTeamDialog";
 import PokemonSelection from "./PokemonSelection";
 import TeamPanel from "./TeamPanel";
-import SavedTeamsPanel from "./SavedTeamsPanel";
-import ShareImportPanel from "./ShareImportPanel";
+import TeamToolsModal from "./TeamToolsModal";
 import UndoToast from "@/components/ui/UndoToast";
 import PokemonDetailDrawer from "@/components/ui/PokemonDetailDrawer";
+import { useAnimatedUnmount } from "@/hooks/useAnimatedUnmount";
 import { TYPE_EFFECTIVENESS, TYPE_RESISTANCES } from "@/lib/constants";
 import { getTeamDefensiveCoverage, getTeamOffensiveCoverage } from "@/lib/teamAnalysis";
 import { useTeamPersistence } from "@/hooks/useTeamPersistence";
@@ -39,9 +40,9 @@ import {
 } from "@/lib/teamShare";
 import type { DexMode, Pokemon, PokemonPools, Game } from "@/lib/types";
 
-const DefensiveCoverage = dynamic(() => import("./DefensiveCoverage"));
-const OffensiveCoverage = dynamic(() => import("./OffensiveCoverage"));
-const TeamRecommendations = dynamic(() => import("./TeamRecommendations"));
+const DefensiveCoverage = dynamic(() => import("./DefensiveCoverage"), { loading: () => null });
+const OffensiveCoverage = dynamic(() => import("./OffensiveCoverage"), { loading: () => null });
+const TeamRecommendations = dynamic(() => import("./TeamRecommendations"), { loading: () => null });
 
 const HISTORY_LIMIT = 40;
 
@@ -66,8 +67,15 @@ interface PendingImportState {
 interface TeamBuilderProps {
   generation: number;
   games: Game[];
-  allPools: Record<number, PokemonPools>;
+  initialPoolsByGame: Record<number, PokemonPools>;
 }
+
+const EMPTY_POOLS: PokemonPools = {
+  national: [],
+  regional: [],
+  regionalResolved: false,
+  regionalDexName: null,
+};
 
 function createEmptyTeam(): (Pokemon | null)[] {
   return Array(6).fill(null);
@@ -108,10 +116,9 @@ function getRoleLabel(role: RecommendationRole): string {
   return "Special";
 }
 
-const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
+const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const importedTokenRef = useRef<string | null>(null);
 
   const [selectedGameId, setSelectedGameId] = useState<number>(games[0].id);
@@ -126,7 +133,8 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   const [selectedVersionId, setSelectedVersionId] = useState<string>("");
   const [versionFilterEnabled, setVersionFilterEnabled] = useState(false);
   const [canUsePointerDrag, setCanUsePointerDrag] = useState(false);
-  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [isDesktopScreen, setIsDesktopScreen] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [detailPokemon, setDetailPokemon] = useState<Pokemon | null>(null);
   const [lockedSlots, setLockedSlots] = useState<boolean[]>(createEmptyLockedSlots);
   const [replaceMode, setReplaceMode] = useState(false);
@@ -135,14 +143,70 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   const dismissUndoToast = useCallback(() => setUndoToastMessage(null), []);
   const [pendingImport, setPendingImport] = useState<PendingImportState | null>(null);
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
+  const [poolsByGame, setPoolsByGame] = useState<Record<number, PokemonPools>>(initialPoolsByGame);
+  const [poolLoadErrorByGame, setPoolLoadErrorByGame] = useState<Record<number, string>>({});
+  const [isTeamToolsOpen, setIsTeamToolsOpen] = useState(false);
 
   const pastTeamsRef = useRef<(Pokemon | null)[][]>([]);
   const futureTeamsRef = useRef<(Pokemon | null)[][]>([]);
+  const poolsByGameRef = useRef<Record<number, PokemonPools>>(initialPoolsByGame);
+  const poolRequestsRef = useRef<Map<number, Promise<PokemonPools | null>>>(new Map());
 
   const { settings, updateSetting, resetSettings } = useBuilderSettings();
 
   const selectedGame = useMemo(() => games.find((g) => g.id === selectedGameId) ?? games[0], [games, selectedGameId]);
-  const pokemonPools = useMemo(() => allPools[selectedGame.id] ?? allPools[games[0].id], [allPools, selectedGame.id, games]);
+  const isSelectedGamePoolReady = Boolean(poolsByGame[selectedGame.id]);
+  const selectedGamePoolError = poolLoadErrorByGame[selectedGame.id] ?? null;
+  const pokemonPools = useMemo(() => poolsByGame[selectedGame.id] ?? EMPTY_POOLS, [poolsByGame, selectedGame.id]);
+
+  useEffect(() => {
+    poolsByGameRef.current = poolsByGame;
+  }, [poolsByGame]);
+
+  const ensureGamePool = useCallback(
+    async (gameId: number): Promise<PokemonPools | null> => {
+      const existing = poolsByGameRef.current[gameId];
+      if (existing) return existing;
+
+      const inFlight = poolRequestsRef.current.get(gameId);
+      if (inFlight) return inFlight;
+
+      const request = (async () => {
+        try {
+          const response = await fetch(`/api/pokemon-pools?generation=${generation}&gameId=${gameId}`, {
+            method: "GET",
+            cache: "force-cache",
+          });
+          if (!response.ok) {
+            throw new Error(`Failed to load Pokemon pools for game ${gameId}`);
+          }
+
+          const payload = (await response.json()) as { pools?: PokemonPools };
+          const nextPools = payload.pools;
+          if (!nextPools) throw new Error("Pokemon pool payload is missing");
+
+          setPoolsByGame((prev) => (prev[gameId] ? prev : { ...prev, [gameId]: nextPools }));
+          setPoolLoadErrorByGame((prev) => {
+            if (!(gameId in prev)) return prev;
+            const next = { ...prev };
+            delete next[gameId];
+            return next;
+          });
+
+          return nextPools;
+        } catch {
+          setPoolLoadErrorByGame((prev) => ({ ...prev, [gameId]: "Could not load Pokédex data for this game." }));
+          return null;
+        } finally {
+          poolRequestsRef.current.delete(gameId);
+        }
+      })();
+
+      poolRequestsRef.current.set(gameId, request);
+      return request;
+    },
+    [generation]
+  );
 
   const {
     team,
@@ -166,10 +230,11 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   );
 
   const dragEnabled = useMemo(() => {
+    if (!isDesktopScreen) return false;
     if (settings.dragBehavior === "on") return true;
     if (settings.dragBehavior === "off") return false;
     return canUsePointerDrag;
-  }, [canUsePointerDrag, settings.dragBehavior]);
+  }, [canUsePointerDrag, isDesktopScreen, settings.dragBehavior]);
 
   const syncHistoryState = useCallback(() => {
     setHistoryState({
@@ -252,19 +317,84 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   }, [generation, selectedGameId]);
 
   useEffect(() => {
-    const canUseFinePointer =
-      window.matchMedia("(hover: hover) and (pointer: fine)").matches && navigator.maxTouchPoints === 0;
-    setCanUsePointerDrag(canUseFinePointer);
+    void ensureGamePool(selectedGameId);
+  }, [ensureGamePool, selectedGameId]);
+
+  useEffect(() => {
+    if (!isSelectedGamePoolReady) return;
+
+    const pendingGameIds = games
+      .map((game) => game.id)
+      .filter((gameId) => gameId !== selectedGameId && !poolsByGameRef.current[gameId]);
+
+    if (pendingGameIds.length === 0) return;
+
+    let cancelled = false;
+    let timeoutId: number | null = null;
+    let idleId: number | null = null;
+
+    const startPrefetch = () => {
+      if (cancelled) return;
+      for (const gameId of pendingGameIds) {
+        if (cancelled) break;
+        void ensureGamePool(gameId);
+      }
+    };
+
+    const windowWithIdle = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    if (typeof windowWithIdle.requestIdleCallback === "function") {
+      idleId = windowWithIdle.requestIdleCallback(startPrefetch, { timeout: 1500 });
+    } else {
+      timeoutId = window.setTimeout(startPrefetch, 900);
+    }
+
+    return () => {
+      cancelled = true;
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      if (idleId !== null && typeof windowWithIdle.cancelIdleCallback === "function") {
+        windowWithIdle.cancelIdleCallback(idleId);
+      }
+    };
+  }, [ensureGamePool, games, isSelectedGamePoolReady, selectedGameId]);
+
+  useEffect(() => {
+    const desktopQuery = window.matchMedia("(min-width: 1024px)");
+    const pointerQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const updateCapabilities = () => {
+      const canUseFinePointer = pointerQuery.matches && navigator.maxTouchPoints === 0;
+      setCanUsePointerDrag(canUseFinePointer);
+      setIsDesktopScreen(desktopQuery.matches);
+    };
+
+    updateCapabilities();
+    desktopQuery.addEventListener("change", updateCapabilities);
+    pointerQuery.addEventListener("change", updateCapabilities);
+
+    return () => {
+      desktopQuery.removeEventListener("change", updateCapabilities);
+      pointerQuery.removeEventListener("change", updateCapabilities);
+    };
   }, []);
 
   useEffect(() => {
+    if (!isSelectedGamePoolReady) return;
     const preferred = settings.defaultDexMode;
     if (preferred === "regional" && !pokemonPools.regionalResolved) {
       setDexMode("national");
       return;
     }
     setDexMode(preferred);
-  }, [pokemonPools.regionalResolved, selectedGame.id, settings.defaultDexMode]);
+  }, [isSelectedGamePoolReady, pokemonPools.regionalResolved, selectedGame.id, settings.defaultDexMode]);
+
+  useEffect(() => {
+    if (dragEnabled) return;
+    setDraggedPokemon(null);
+    setActiveDropId(null);
+  }, [dragEnabled]);
 
   useEffect(() => {
     const allowedVersionIds = new Set(selectedGame.versions.map((version) => version.id));
@@ -363,8 +493,9 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   const handleGameChange = useCallback((gameId: number) => {
     setSelectedGameId(gameId);
     setSearchTerm("");
-    setTypeFilter(null);
-  }, []);
+    setTypeFilter([]);
+    void ensureGamePool(gameId);
+  }, [ensureGamePool]);
 
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const lowerSearch = deferredSearchTerm.toLowerCase();
@@ -376,6 +507,11 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
 
   const handleDexModeChange = useCallback(
     (nextMode: DexMode) => {
+      if (!isSelectedGamePoolReady) {
+        setDexMode("national");
+        return;
+      }
+
       if (nextMode === "regional" && !pokemonPools.regionalResolved) {
         setDexMode("national");
         return;
@@ -383,12 +519,15 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
 
       setDexMode(nextMode);
     },
-    [pokemonPools.regionalResolved]
+    [isSelectedGamePoolReady, pokemonPools.regionalResolved]
   );
 
   const activePokemonPool = useMemo(
-    () => (dexMode === "regional" && pokemonPools.regionalResolved ? pokemonPools.regional : pokemonPools.national),
-    [dexMode, pokemonPools.national, pokemonPools.regional, pokemonPools.regionalResolved]
+    () => {
+      if (!isSelectedGamePoolReady) return [];
+      return dexMode === "regional" && pokemonPools.regionalResolved ? pokemonPools.regional : pokemonPools.national;
+    },
+    [dexMode, isSelectedGamePoolReady, pokemonPools.national, pokemonPools.regional, pokemonPools.regionalResolved]
   );
 
   const versionScopedPokemonPool = useMemo(() => {
@@ -408,8 +547,12 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
 
   const filteredPokemon = useMemo(() => {
     let pool = availablePokemon;
-    if (typeFilter) {
-      pool = pool.filter((p) => p.types.includes(typeFilter));
+    if (typeFilter.length > 0) {
+      const selectedTypes = new Set(typeFilter);
+      pool = pool.filter((pokemon) => {
+        const pokemonTypes = new Set(pokemon.types);
+        return [...selectedTypes].every((type) => pokemonTypes.has(type));
+      });
     }
     if (!lowerSearch) return pool;
     return pool.filter((p) => p.name.toLowerCase().includes(lowerSearch));
@@ -512,8 +655,8 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
           return;
         }
 
-        if (typeFilter) {
-          setTypeFilter(null);
+        if (typeFilter.length > 0) {
+          setTypeFilter([]);
           event.preventDefault();
         }
         return;
@@ -595,6 +738,16 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   );
 
   const currentTeam = useMemo(() => team.filter((p): p is Pokemon => p !== null), [team]);
+  const hasTeam = currentTeam.length > 0;
+  const {
+    shouldRender: shouldRenderEmpty,
+    isAnimatingOut: isEmptyExiting,
+  } = useAnimatedUnmount(!hasTeam, 200);
+  const {
+    shouldRender: shouldRenderAnalysis,
+    isAnimatingOut: isAnalysisExiting,
+  } = useAnimatedUnmount(hasTeam, 200);
+
   const defensiveCoverage = useMemo(() => getTeamDefensiveCoverage(currentTeam, generation), [currentTeam, generation]);
   const offensiveCoverage = useMemo(() => getTeamOffensiveCoverage(currentTeam, generation), [currentTeam, generation]);
 
@@ -756,19 +909,32 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
     [loadSavedTeam, pushHistory, savedTeams, team]
   );
 
-  const pokemonLookupByGame = useMemo(() => {
-    const lookup: Record<number, Map<number, Pokemon>> = {};
+  const buildPendingImportState = useCallback(
+    (payload: SharedTeamPayload, gameId: number): PendingImportState | null => {
+      const pools = poolsByGameRef.current[gameId];
+      if (!pools) return null;
 
-    for (const [gameId, pools] of Object.entries(allPools)) {
-      const gameLookup = new Map<number, Pokemon>();
+      const lookup = new Map<number, Pokemon>();
       pools.national.forEach((pokemon) => {
-        gameLookup.set(pokemon.id, pokemon);
+        lookup.set(pokemon.id, pokemon);
       });
-      lookup[Number(gameId)] = gameLookup;
-    }
 
-    return lookup;
-  }, [allPools]);
+      const importedTeam = Array.from({ length: 6 }, (_, index) => {
+        const pokemonId = payload.team[index] ?? null;
+        if (pokemonId === null) return null;
+        return lookup.get(pokemonId) ?? null;
+      });
+
+      return {
+        gameId,
+        team: importedTeam,
+        lockedSlots: Array.from({ length: 6 }, (_, index) => payload.lockedSlots?.includes(index) ?? false),
+        selectedVersionId: payload.selectedVersionId ?? null,
+        dexMode: payload.dexMode ?? null,
+      };
+    },
+    []
+  );
 
   const queueImportPayload = useCallback(
     (payload: SharedTeamPayload): string => {
@@ -781,34 +947,26 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
         return "Invalid payload: game is not available in this generation.";
       }
 
-      const lookup = pokemonLookupByGame[targetGame.id];
-      if (!lookup) {
-        return "Invalid payload: Pokédex data is unavailable for that game.";
+      const immediateImport = buildPendingImportState(payload, targetGame.id);
+      if (immediateImport) {
+        setPendingImport(immediateImport);
+        if (targetGame.id !== selectedGame.id) {
+          setSelectedGameId(targetGame.id);
+        }
+        return "Imported payload. Applied to current team.";
       }
 
-      const importedTeam = Array.from({ length: 6 }, (_, index) => {
-        const pokemonId = payload.team[index] ?? null;
-        if (pokemonId === null) return null;
-        return lookup.get(pokemonId) ?? null;
-      });
-
-      const importedLocks = Array.from({ length: 6 }, (_, index) => payload.lockedSlots?.includes(index) ?? false);
-
-      setPendingImport({
-        gameId: targetGame.id,
-        team: importedTeam,
-        lockedSlots: importedLocks,
-        selectedVersionId: payload.selectedVersionId ?? null,
-        dexMode: payload.dexMode ?? null,
-      });
-
-      if (targetGame.id !== selectedGame.id) {
+      void ensureGamePool(targetGame.id).then((loaded) => {
+        if (!loaded) return;
+        const resolvedImport = buildPendingImportState(payload, targetGame.id);
+        if (!resolvedImport) return;
+        setPendingImport(resolvedImport);
         setSelectedGameId(targetGame.id);
-      }
+      });
 
-      return "Imported payload. Applied to current team.";
+      return "Loading game data for import. It will apply automatically.";
     },
-    [games, generation, pokemonLookupByGame, selectedGame.id]
+    [buildPendingImportState, ensureGamePool, games, generation, selectedGame.id]
   );
 
   useEffect(() => {
@@ -832,7 +990,8 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   }, [commitTeam, handleDexModeChange, pendingImport, selectedGame.id, selectedGame.versions]);
 
   useEffect(() => {
-    const token = searchParams.get("team");
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("team");
     if (!token || token === importedTokenRef.current) return;
 
     importedTokenRef.current = token;
@@ -843,7 +1002,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
     }
 
     router.replace(pathname, { scroll: false });
-  }, [pathname, queueImportPayload, router, searchParams]);
+  }, [pathname, queueImportPayload, router]);
 
   const sharePayload = useMemo<SharedTeamPayload>(
     () => ({
@@ -882,12 +1041,17 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
           onSettingsReset={resetSettings}
         />
 
-        <main id="main-content" className="mx-auto max-w-screen-xl px-4 pb-8 pt-4 sm:px-6 sm:pb-10" role="main">
+        <main id="main-content" className="mx-auto max-w-screen-xl px-4 pb-8 pt-4 sm:px-6 sm:pb-10 lg:pt-28" role="main">
           <section className="panel mb-4 p-4 sm:mb-5 sm:p-5" aria-label="Team planning status">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-display text-lg sm:text-xl" style={{ color: "var(--text-primary)" }}>
-                Build Order
-              </h2>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-display text-lg sm:text-xl" style={{ color: "var(--text-primary)" }}>
+                  Build Flow
+                </h2>
+                <p className="mt-0.5 text-[0.7rem] sm:text-[0.74rem]" style={{ color: "var(--text-muted)" }}>
+                  Follow the steps left to right: pick Pokémon, fill team slots, then refine with analysis.
+                </p>
+              </div>
               {isSaving && (
                 <span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
                   Saving...
@@ -895,39 +1059,80 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
               )}
             </div>
 
-            <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-              <div className="panel-soft px-3.5 py-3">
-                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
-                  Drafted
-                </p>
-                <p className="font-display mt-1 text-2xl" style={{ color: "var(--accent)" }}>
-                  {currentTeam.length}/6
+            <div className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+              <div className="panel-soft px-3 py-1.5">
+                <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                  1. Search & Pick
                 </p>
               </div>
-              <div className="panel-soft px-3.5 py-3">
-                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
-                  Exposed Types
-                </p>
-                <p className="font-display mt-1 text-2xl" style={{ color: exposedTypes > 0 ? "#b91c1c" : "#136f3a" }}>
-                  {exposedTypes}
+              <div className="panel-soft px-3 py-1.5">
+                <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                  2. Fill Team Slots
                 </p>
               </div>
-              <div className="panel-soft px-3.5 py-3">
-                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
-                  Stable Matchups
-                </p>
-                <p className="font-display mt-1 text-2xl" style={{ color: "var(--accent-blue)" }}>
-                  {stableTypes}
+              <div className="panel-soft px-3 py-1.5">
+                <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                  3. Analyze Coverage
                 </p>
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <div className="panel-soft px-3.5 py-3">
+                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+                  Team Slots Filled
+                </p>
+                <AnimatedNumber
+                  value={`${currentTeam.length}/6`}
+                  className="font-display mt-1 text-2xl"
+                  style={{ color: "var(--accent)" }}
+                />
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--stat-track)" }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${(currentTeam.length / 6) * 100}%`,
+                      background: "linear-gradient(90deg, var(--accent) 0%, #ef6f40 100%)",
+                      transition: "width 0.25s ease",
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="panel-soft px-3.5 py-3">
+                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+                  Coverage Snapshot
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border px-2.5 py-2" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+                    <p className="text-[0.56rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                      Risks
+                    </p>
+                    <AnimatedNumber
+                      value={exposedTypes}
+                      className="font-display mt-0.5 text-xl"
+                      style={{ color: exposedTypes > 0 ? "#b91c1c" : "#136f3a", transition: "color 0.3s ease" }}
+                    />
+                  </div>
+                  <div className="rounded-lg border px-2.5 py-2" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+                    <p className="text-[0.56rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                      Stable
+                    </p>
+                    <AnimatedNumber
+                      value={stableTypes}
+                      className="font-display mt-0.5 text-xl"
+                      style={{ color: "var(--accent-blue)" }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
               <button
                 type="button"
                 onClick={handleUndo}
                 disabled={!historyState.canUndo}
-                className="btn-secondary disabled:pointer-events-none disabled:opacity-50"
+                className="btn-secondary action-btn w-full disabled:pointer-events-none disabled:opacity-50"
               >
                 <FiCornerDownLeft size={13} />
                 Undo
@@ -937,7 +1142,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 type="button"
                 onClick={handleRedo}
                 disabled={!historyState.canRedo}
-                className="btn-secondary disabled:pointer-events-none disabled:opacity-50"
+                className="btn-secondary action-btn w-full disabled:pointer-events-none disabled:opacity-50"
               >
                 <FiCornerDownRight size={13} />
                 Redo
@@ -949,7 +1154,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                   setReplaceMode((prev) => !prev);
                   setReplaceTargetSlot(null);
                 }}
-                className="btn-secondary"
+                className="btn-secondary action-btn col-span-2 w-full lg:col-span-1"
                 style={{
                   borderColor: replaceMode ? "rgba(59, 130, 246, 0.34)" : undefined,
                   background: replaceMode ? "rgba(59, 130, 246, 0.14)" : undefined,
@@ -960,7 +1165,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 {replaceMode ? "Replace Mode On" : "Replace Mode Off"}
               </button>
 
-              <div className="rounded-xl border px-3 py-2 text-[0.66rem]" style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}>
+              <div className="col-span-2 rounded-xl border px-3 py-2 text-[0.66rem] lg:col-span-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}>
                 {replaceMode
                   ? replaceTargetSlot !== null
                     ? `Targeting slot ${replaceTargetSlot + 1}`
@@ -981,7 +1186,14 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 dexMode={dexMode}
                 onDexModeChange={handleDexModeChange}
                 regionalAvailable={pokemonPools.regionalResolved}
-                dexNotice={pokemonPools.regionalResolved ? null : "Regional dex unavailable; switched to National."}
+                dexNotice={
+                  selectedGamePoolError
+                  ?? (!isSelectedGamePoolReady
+                    ? "Loading Pokédex data for selected game..."
+                    : pokemonPools.regionalResolved
+                      ? null
+                      : "Regional dex unavailable; switched to National.")
+                }
                 generation={generation}
                 versions={selectedGame.versions}
                 selectedVersionId={selectedVersionId}
@@ -996,10 +1208,11 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 onTypeFilterChange={setTypeFilter}
                 onInspect={setDetailPokemon}
                 cardDensity={settings.cardDensity}
+                isLoadingData={!isSelectedGamePoolReady && !selectedGamePoolError}
               />
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 lg:h-full">
               <TeamPanel
                 team={team}
                 currentTeamLength={currentTeam.length}
@@ -1011,27 +1224,54 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 replaceMode={replaceMode}
                 selectedReplaceSlot={replaceTargetSlot}
                 onSelectReplaceSlot={setReplaceTargetSlot}
+                onOpenTeamTools={() => setIsTeamToolsOpen(true)}
               />
 
-              {isAuthenticated && (
-                <SavedTeamsPanel
-                  savedTeams={savedTeams}
-                  activeTeamId={activeTeamId}
-                  onSaveAs={saveTeamAs}
-                  onLoad={handleLoadSavedTeam}
-                  onDelete={deleteSavedTeam}
-                  onRename={renameSavedTeam}
-                  onRefresh={refreshSavedTeams}
-                  isSaving={isSaving}
-                />
+              {isDesktopScreen && shouldRenderEmpty && (
+                <section
+                  className={`panel hidden p-6 text-center lg:block ${isEmptyExiting ? "animate-scale-out" : "animate-fade-in-up"}`}
+                  aria-label="Getting started"
+                >
+                  <div className="mx-auto max-w-md">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="mx-auto mb-3" style={{ color: "var(--text-muted)", opacity: 0.5 }}>
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
+                      <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="1.5" />
+                      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" />
+                    </svg>
+                    <h3 className="font-display text-base" style={{ color: "var(--text-primary)" }}>
+                      Add your first Pokemon
+                    </h3>
+                    <p className="mt-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
+                      Pick a Pokemon to start building your team. Smart Picks will appear here on desktop once your team has members.
+                    </p>
+                  </div>
+                </section>
               )}
 
-              <ShareImportPanel payload={sharePayload} onImport={queueImportPayload} />
+              {isDesktopScreen && shouldRenderAnalysis && (
+                <section className={`hidden lg:block ${isAnalysisExiting ? "animate-scale-out" : "animate-section-reveal"}`}>
+                  <TeamRecommendations
+                    recommendations={recommendations}
+                    exposedTypes={exposedTypeNames}
+                    teamFull={currentTeam.length >= 6}
+                    recommendationsEnabled={recommendationsEnabled}
+                    onToggleRecommendations={setRecommendationsEnabled}
+                    onAddPokemon={addPokemonToTeam}
+                    role={recommendationRole}
+                    onRoleChange={setRecommendationRole}
+                    onReplaceWeakest={handleReplaceWeakest}
+                    canReplaceWeakest={canReplaceWeakest}
+                  />
+                </section>
+              )}
             </div>
           </div>
 
-          {currentTeam.length === 0 ? (
-            <section className="panel mt-4 p-6 text-center sm:mt-5 sm:p-8" aria-label="Getting started">
+          {!isDesktopScreen && shouldRenderEmpty && (
+            <section
+              className={`panel mt-4 p-6 text-center sm:mt-5 sm:p-8 ${isEmptyExiting ? "animate-scale-out" : "animate-fade-in-up"}`}
+              aria-label="Getting started"
+            >
               <div className="mx-auto max-w-md">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="mx-auto mb-3" style={{ color: "var(--text-muted)", opacity: 0.5 }}>
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
@@ -1046,31 +1286,57 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 </p>
               </div>
             </section>
-          ) : (
-            <>
-              <section className="mt-4 sm:mt-5">
-                <TeamRecommendations
-                  recommendations={recommendations}
-                  exposedTypes={exposedTypeNames}
-                  teamFull={currentTeam.length >= 6}
-                  recommendationsEnabled={recommendationsEnabled}
-                  onToggleRecommendations={setRecommendationsEnabled}
-                  onAddPokemon={addPokemonToTeam}
-                  role={recommendationRole}
-                  onRoleChange={setRecommendationRole}
-                  onReplaceWeakest={handleReplaceWeakest}
-                  canReplaceWeakest={canReplaceWeakest}
-                />
+          )}
+
+          {shouldRenderAnalysis && (
+            <Suspense fallback={null}>
+              <section
+                className={`mt-4 sm:mt-5 ${isAnalysisExiting ? "animate-scale-out" : "animate-section-reveal"}`}
+                aria-label="Analysis overview"
+              >
+                <div className="panel-soft px-3.5 py-3">
+                  <h2 className="font-display text-base sm:text-lg" style={{ color: "var(--text-primary)" }}>
+                    Step 3: Analyze and Refine
+                  </h2>
+                  <p className="mt-1 text-[0.7rem] sm:text-[0.74rem]" style={{ color: "var(--text-muted)" }}>
+                    Start with Smart Picks, then review defensive and offensive coverage to close remaining gaps.
+                  </p>
+                </div>
               </section>
 
-              <section className="mt-4 sm:mt-5" aria-labelledby="coverage-heading">
+              {!isDesktopScreen && (
+                <section className={`mt-4 sm:mt-5 ${isAnalysisExiting ? "animate-scale-out" : "animate-section-reveal"}`}>
+                  <TeamRecommendations
+                    recommendations={recommendations}
+                    exposedTypes={exposedTypeNames}
+                    teamFull={currentTeam.length >= 6}
+                    recommendationsEnabled={recommendationsEnabled}
+                    onToggleRecommendations={setRecommendationsEnabled}
+                    onAddPokemon={addPokemonToTeam}
+                    role={recommendationRole}
+                    onRoleChange={setRecommendationRole}
+                    onReplaceWeakest={handleReplaceWeakest}
+                    canReplaceWeakest={canReplaceWeakest}
+                  />
+                </section>
+              )}
+
+              <section
+                className={`mt-4 sm:mt-5 ${isAnalysisExiting ? "animate-scale-out" : "animate-section-reveal"}`}
+                style={{ animationDelay: isAnalysisExiting ? undefined : "100ms" }}
+                aria-labelledby="coverage-heading"
+              >
                 <DefensiveCoverage coverage={defensiveCoverage} generation={generation} />
               </section>
 
-              <section className="mt-4 sm:mt-5" aria-label="Offensive coverage">
+              <section
+                className={`mt-4 sm:mt-5 ${isAnalysisExiting ? "animate-scale-out" : "animate-section-reveal"}`}
+                style={{ animationDelay: isAnalysisExiting ? undefined : "200ms" }}
+                aria-label="Offensive coverage"
+              >
                 <OffensiveCoverage coverage={offensiveCoverage} generation={generation} />
               </section>
-            </>
+            </Suspense>
           )}
         </main>
       </div>
@@ -1082,6 +1348,22 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
         teamCount={clearableCount}
         onCancel={closeClearDialog}
         onConfirm={confirmClearTeam}
+      />
+
+      <TeamToolsModal
+        isOpen={isTeamToolsOpen}
+        onClose={() => setIsTeamToolsOpen(false)}
+        isAuthenticated={isAuthenticated}
+        savedTeams={savedTeams}
+        activeTeamId={activeTeamId}
+        onSaveAs={saveTeamAs}
+        onLoadSavedTeam={handleLoadSavedTeam}
+        onDeleteSavedTeam={deleteSavedTeam}
+        onRenameSavedTeam={renameSavedTeam}
+        onRefreshSavedTeams={refreshSavedTeams}
+        isSaving={isSaving}
+        payload={sharePayload}
+        onImport={queueImportPayload}
       />
 
       <PokemonDetailDrawer
