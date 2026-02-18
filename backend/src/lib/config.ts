@@ -1,5 +1,13 @@
 const DEFAULT_PORT = 3001;
 const DEFAULT_FRONTEND_ORIGIN = "http://localhost:3000";
+const DEV_FALLBACK_ORIGINS = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:4173",
+  "http://127.0.0.1:4173",
+];
 
 function ensureProtocol(value: string): string {
   const trimmed = value.trim();
@@ -37,6 +45,28 @@ function matchesAllowedOrigin(origin: string, allowedOrigin: string): boolean {
   return matcher.test(origin);
 }
 
+function isPrivateIpv4Host(hostname: string): boolean {
+  if (/^10\./.test(hostname)) return true;
+  if (/^192\.168\./.test(hostname)) return true;
+
+  const match = hostname.match(/^172\.(\d{1,3})\./);
+  if (!match) return false;
+
+  const octet = Number(match[1]);
+  return Number.isInteger(octet) && octet >= 16 && octet <= 31;
+}
+
+function isDevelopmentOrigin(origin: string): boolean {
+  try {
+    const parsed = new URL(origin);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") return true;
+    return isPrivateIpv4Host(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
 function validateProductionAuthEnv(): void {
   if (process.env.NODE_ENV !== "production") return;
 
@@ -62,6 +92,10 @@ function parseOrigins(raw: string | undefined): string[] {
     .map((value) => normalizeAllowedOrigin(value))
     .filter((value) => value.length > 0);
 
+  if (process.env.NODE_ENV !== "production") {
+    origins.push(...DEV_FALLBACK_ORIGINS);
+  }
+
   const uniqueOrigins = Array.from(new Set(origins));
   return uniqueOrigins.length > 0 ? uniqueOrigins : [DEFAULT_FRONTEND_ORIGIN];
 }
@@ -84,7 +118,15 @@ export const config = {
 export function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return false;
   const normalizedOrigin = normalizeRequestOrigin(origin);
-  return config.frontendOrigins.some((allowedOrigin) =>
+
+  const matched = config.frontendOrigins.some((allowedOrigin) =>
     matchesAllowedOrigin(normalizedOrigin, allowedOrigin)
   );
+  if (matched) return true;
+
+  if (process.env.NODE_ENV !== "production" && isDevelopmentOrigin(normalizedOrigin)) {
+    return true;
+  }
+
+  return false;
 }

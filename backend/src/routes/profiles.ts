@@ -311,14 +311,25 @@ profiles.post("/login", async (c) => {
     email = found.email;
   }
 
-  // Forward to Better Auth's email sign-in handler with a synthetic Request.
-  // Using a placeholder origin — Better Auth routes by path, not host.
-  const authReq = new Request("http://slatedex.internal/api/auth/sign-in/email", {
+  const configuredAuthBase = process.env.BETTER_AUTH_URL?.trim();
+  const authBase = configuredAuthBase
+    ? (configuredAuthBase.startsWith("http://") || configuredAuthBase.startsWith("https://")
+      ? configuredAuthBase
+      : `https://${configuredAuthBase}`)
+    : new URL(c.req.url).origin;
+
+  // Forward to Better Auth's email sign-in handler with request context headers preserved.
+  const authReq = new Request(new URL("/api/auth/sign-in/email", authBase), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Cookie: c.req.header("Cookie") ?? "",
       "x-forwarded-for": c.req.header("x-forwarded-for") ?? c.req.header("cf-connecting-ip") ?? "",
+      "x-forwarded-host": c.req.header("x-forwarded-host") ?? "",
+      "x-forwarded-proto": c.req.header("x-forwarded-proto") ?? "",
+      Origin: c.req.header("Origin") ?? "",
+      Referer: c.req.header("Referer") ?? "",
+      "User-Agent": c.req.header("User-Agent") ?? "",
     },
     body: JSON.stringify({ email, password: body.password }),
   });

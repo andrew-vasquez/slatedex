@@ -98,6 +98,7 @@ export default function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
   const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const usernameCheckCache = useRef<Map<string, boolean>>(new Map());
 
   const isEmailIdentifier = identifier.includes("@");
 
@@ -127,18 +128,28 @@ export default function AuthPage() {
       return;
     }
 
+    const cachedAvailability = usernameCheckCache.current.get(trimmed);
+    if (cachedAvailability != null) {
+      setUsernameStatus(cachedAvailability ? "available" : "taken");
+      return;
+    }
+
+    const controller = new AbortController();
     setUsernameStatus("checking");
     checkTimer.current = setTimeout(async () => {
       try {
-        const result = await checkUsernameAvailable(trimmed);
+        const result = await checkUsernameAvailable(trimmed, controller.signal);
+        usernameCheckCache.current.set(trimmed, result.available);
         setUsernameStatus(result.available ? "available" : "taken");
-      } catch {
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
         setUsernameStatus("idle");
       }
     }, 450);
 
     return () => {
       if (checkTimer.current) clearTimeout(checkTimer.current);
+      controller.abort();
     };
   }, [tab, username]);
 
@@ -153,6 +164,7 @@ export default function AuthPage() {
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     setError("");
     setSubmitting(true);
 
@@ -173,6 +185,7 @@ export default function AuthPage() {
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     setError("");
 
     if (signUpPassword !== confirmPassword) {
