@@ -144,6 +144,34 @@ export function deleteTeam(id: string): Promise<{ success: boolean }> {
   });
 }
 
+export async function checkUsernameAvailable(
+  username: string
+): Promise<{ available: boolean; reason?: string }> {
+  const res = await fetch(
+    `${API_URL}/api/profiles/check-username?q=${encodeURIComponent(username)}`,
+    { credentials: "include" }
+  );
+  if (!res.ok) return { available: false };
+  return res.json();
+}
+
+export async function loginWithIdentifier(
+  identifier: string,
+  password: string
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${API_URL}/api/profiles/login`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier, password }),
+  });
+
+  if (res.ok) return { ok: true };
+
+  const body = await res.json().catch(() => ({}));
+  return { ok: false, error: body.error ?? "Invalid credentials" };
+}
+
 export function fetchPublicProfile(username: string): Promise<PublicProfile> {
   return apiFetch(`/api/profiles/${encodeURIComponent(username)}`);
 }

@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { FiChevronUp } from "react-icons/fi";
 import Image from "next/image";
 import TeamPanel from "./TeamPanel";
+import TeamCaptureGuide from "./TeamCaptureGuide";
 import type { Pokemon } from "@/lib/types";
 
 const PEEK_HEIGHT = 72;
@@ -20,6 +21,9 @@ interface MobileTeamSheetProps {
   selectedReplaceSlot: number | null;
   onSelectReplaceSlot: (index: number | null) => void;
   onOpenTeamTools?: () => void;
+  selectedVersionId: string;
+  selectedVersionLabel: string;
+  captureGuideCompact: boolean;
 }
 
 export default function MobileTeamSheet({
@@ -34,6 +38,9 @@ export default function MobileTeamSheet({
   selectedReplaceSlot,
   onSelectReplaceSlot,
   onOpenTeamTools,
+  selectedVersionId,
+  selectedVersionLabel,
+  captureGuideCompact,
 }: MobileTeamSheetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -321,6 +328,13 @@ export default function MobileTeamSheet({
               selectedReplaceSlot={selectedReplaceSlot}
               onSelectReplaceSlot={onSelectReplaceSlot}
               onOpenTeamTools={onOpenTeamTools}
+            />
+
+            <TeamCaptureGuide
+              team={team}
+              selectedVersionId={selectedVersionId}
+              selectedVersionLabel={selectedVersionLabel}
+              compactMode={captureGuideCompact}
             />
           </div>
         </div>

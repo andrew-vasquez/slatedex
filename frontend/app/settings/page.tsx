@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { FiArrowLeft, FiUser, FiShield, FiFileText, FiChevronRight } from "react-icons/fi";
 import { useAuth } from "@/components/providers/AuthProvider";
 import UserMenu from "@/components/auth/UserMenu";
@@ -48,14 +47,13 @@ const SETTINGS_SECTIONS: { title: string; items: SettingsItem[] }[] = [
 ];
 
 export default function SettingsPage() {
-  const router = useRouter();
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, openAuthDialog } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace("/login");
+      openAuthDialog();
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, openAuthDialog]);
 
   if (isLoading || !isAuthenticated) return null;
 

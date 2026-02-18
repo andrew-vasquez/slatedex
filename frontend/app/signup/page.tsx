@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FiEye, FiEyeOff, FiCheck } from "react-icons/fi";
+import { FiCheck, FiEye, FiEyeOff, FiLoader, FiX } from "react-icons/fi";
 import { signUp } from "@/lib/auth-client";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { checkUsernameAvailable, updateMyProfile } from "@/lib/api";
+import { USERNAME_REGEX } from "@/lib/profile";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 
 function formatAuthError(error: unknown): string {
@@ -63,16 +65,21 @@ const PasswordInput = ({
   );
 };
 
+type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid";
+
 export default function SignupPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
+  const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -80,24 +87,76 @@ export default function SignupPage() {
     }
   }, [isAuthenticated, isLoading, router]);
 
+  useEffect(() => {
+    if (checkTimer.current) clearTimeout(checkTimer.current);
+    const trimmed = username.trim().toLowerCase();
+
+    if (!trimmed) {
+      setUsernameStatus("idle");
+      return;
+    }
+
+    if (!USERNAME_REGEX.test(trimmed)) {
+      setUsernameStatus("invalid");
+      return;
+    }
+
+    setUsernameStatus("checking");
+    checkTimer.current = setTimeout(async () => {
+      try {
+        const result = await checkUsernameAvailable(trimmed);
+        setUsernameStatus(result.available ? "available" : "taken");
+      } catch {
+        setUsernameStatus("idle");
+      }
+    }, 450);
+
+    return () => {
+      if (checkTimer.current) clearTimeout(checkTimer.current);
+    };
+  }, [username]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
+
+    const trimmedUsername = username.trim().toLowerCase();
+    if (trimmedUsername && usernameStatus === "taken") {
+      setError("That username is already taken. Please choose another.");
+      return;
+    }
+    if (trimmedUsername && usernameStatus === "invalid") {
+      setError("Username must be 3–30 characters: lowercase letters, numbers, and underscores only.");
+      return;
+    }
+
     setSubmitting(true);
     const fullName = lastName.trim()
       ? `${firstName.trim()} ${lastName.trim()}`
       : firstName.trim();
+
     try {
       const result = await signUp.email({ name: fullName, email, password });
       if (result.error) {
         setError(result.error.message ?? "Sign up failed");
-      } else {
-        router.push("/teams");
+        return;
       }
+
+      // If user picked a username, set it immediately — first-ever change is free.
+      if (trimmedUsername) {
+        try {
+          await updateMyProfile({ username: trimmedUsername });
+        } catch {
+          // Non-fatal: profile was created, username can be set later in settings.
+        }
+      }
+
+      router.push("/teams");
     } catch (err) {
       setError(formatAuthError(err));
     } finally {
@@ -120,9 +179,23 @@ export default function SignupPage() {
   }
   if (isAuthenticated) return null;
 
+  const usernameHint = (() => {
+    switch (usernameStatus) {
+      case "checking":
+        return { icon: <FiLoader size={12} className="animate-spin" />, text: "Checking…", color: "var(--text-muted)" };
+      case "available":
+        return { icon: <FiCheck size={12} strokeWidth={3} />, text: "Available", color: "#34d399" };
+      case "taken":
+        return { icon: <FiX size={12} strokeWidth={3} />, text: "Already taken", color: "#f87171" };
+      case "invalid":
+        return { icon: <FiX size={12} strokeWidth={3} />, text: "3–30 chars, lowercase letters, numbers, underscores", color: "#f87171" };
+      default:
+        return null;
+    }
+  })();
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12" style={{ background: "var(--bg-gradient)" }}>
-      {/* Back link */}
       <Breadcrumb
         items={[{ label: "Slatedex", href: "/" }, { label: "Create Account" }]}
         className="w-full max-w-sm mb-6"
@@ -217,6 +290,50 @@ export default function SignupPage() {
               />
             </label>
 
+            <div className="auth-field">
+              <label htmlFor="username" className="auth-label flex items-center gap-1.5">
+                Username
+                <span className="rounded-full px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.1em]" style={{ background: "rgba(148,163,184,0.1)", color: "var(--text-muted)" }}>
+                  optional
+                </span>
+              </label>
+              <div className="relative">
+                <span
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-xs select-none"
+                  style={{ color: "var(--text-muted)" }}
+                  aria-hidden="true"
+                >
+                  @
+                </span>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="auth-input"
+                  style={{ paddingLeft: "1.625rem" }}
+                  placeholder="ash_ketchum"
+                  autoComplete="username"
+                  spellCheck={false}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  maxLength={30}
+                />
+              </div>
+              {usernameHint && (
+                <div className="mt-0.5 flex items-center gap-1" style={{ color: usernameHint.color }}>
+                  {usernameHint.icon}
+                  <span className="text-[0.62rem]">{usernameHint.text}</span>
+                </div>
+              )}
+              {!usernameHint && (
+                <p className="mt-0.5 text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
+                  Your public profile URL — you can set or change this later.
+                </p>
+              )}
+            </div>
+
             <label className="auth-field" htmlFor="password">
               <span className="auth-label">Password</span>
               <PasswordInput
@@ -252,7 +369,11 @@ export default function SignupPage() {
               )}
             </div>
 
-            <button type="submit" disabled={submitting} className="auth-submit mt-1">
+            <button
+              type="submit"
+              disabled={submitting || usernameStatus === "taken" || usernameStatus === "invalid"}
+              className="auth-submit mt-1"
+            >
               {submitting ? (
                 <span className="inline-flex items-center gap-2">
                   <svg className="auth-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">

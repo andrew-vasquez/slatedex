@@ -21,7 +21,7 @@ export function LandingNav() {
 }
 
 export function HeroAuthButtons() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, openAuthDialog } = useAuth();
 
   if (isLoading) return <div style={{ height: 44 }} aria-hidden="true" />;
 
@@ -46,15 +46,19 @@ export function HeroAuthButtons() {
         Start Building
         <FiArrowRight size={15} aria-hidden="true" />
       </Link>
-      <Link href="/signup" className="landing-cta-secondary inline-flex items-center gap-2 rounded-2xl border px-6 py-3 text-sm font-semibold sm:text-base">
+      <button
+        type="button"
+        onClick={openAuthDialog}
+        className="landing-cta-secondary inline-flex items-center gap-2 rounded-2xl border px-6 py-3 text-sm font-semibold sm:text-base"
+      >
         Create Free Account
-      </Link>
+      </button>
     </div>
   );
 }
 
 export function AuthCTASection() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, openAuthDialog } = useAuth();
 
   if (isLoading) return null;
 
@@ -113,12 +117,20 @@ export function AuthCTASection() {
               Create a free account to sync teams across devices, get a public trainer profile, and never lose your builds.
             </p>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-              <Link href="/signup" className="landing-cta-primary inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold">
+              <button
+                type="button"
+                onClick={openAuthDialog}
+                className="landing-cta-primary inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold"
+              >
                 Create Free Account
-              </Link>
-              <Link href="/login" className="landing-cta-secondary inline-flex items-center gap-2 rounded-2xl border px-5 py-2.5 text-sm font-semibold">
+              </button>
+              <button
+                type="button"
+                onClick={openAuthDialog}
+                className="landing-cta-secondary inline-flex items-center gap-2 rounded-2xl border px-5 py-2.5 text-sm font-semibold"
+              >
                 Sign In
-              </Link>
+              </button>
             </div>
           </div>
         </div>
@@ -128,12 +140,12 @@ export function AuthCTASection() {
 }
 
 export function FooterAuthLinks() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, openAuthDialog } = useAuth();
   if (isLoading || isAuthenticated) return null;
   return (
     <>
-      <Link href="/login" className="landing-footer-link text-[0.72rem] font-medium">Sign In</Link>
-      <Link href="/signup" className="landing-footer-link text-[0.72rem] font-medium">Sign Up</Link>
+      <button type="button" onClick={openAuthDialog} className="landing-footer-link text-[0.72rem] font-medium">Sign In</button>
+      <button type="button" onClick={openAuthDialog} className="landing-footer-link text-[0.72rem] font-medium">Sign Up</button>
     </>
   );
 }

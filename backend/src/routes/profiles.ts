@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { prisma } from "../db";
+import { auth } from "../lib/auth";
 import { authMiddleware } from "../middleware/auth";
 
 type AuthEnv = {
@@ -269,6 +270,59 @@ async function ensureUsernameForUser(user: { id: string; name: string; username:
   throw new Error("Failed to generate a unique username");
 }
 
+// ── Check username availability (unauthenticated) ─────────────
+profiles.get("/check-username", async (c) => {
+  const q = normalizeUsername(c.req.query("q") ?? "");
+  if (!USERNAME_REGEX.test(q)) {
+    return c.json({ available: false, reason: "invalid" });
+  }
+  const existing = await prisma.user.findUnique({
+    where: { username: q },
+    select: { id: true },
+  });
+  return c.json({ available: !existing });
+});
+
+// ── Login with email or username (proxy to Better Auth) ────────
+// Resolves username → email server-side so the client never sees the mapping.
+profiles.post("/login", async (c) => {
+  const body = await c.req.json().catch(() => null);
+  if (!body || typeof body.identifier !== "string" || typeof body.password !== "string") {
+    return c.json({ error: "identifier and password are required" }, 400);
+  }
+
+  let email = body.identifier.trim();
+
+  if (!email.includes("@")) {
+    const username = normalizeUsername(email);
+    if (!USERNAME_REGEX.test(username)) {
+      return c.json({ error: "Invalid credentials" }, 401);
+    }
+    const found = await prisma.user.findUnique({
+      where: { username },
+      select: { email: true },
+    });
+    if (!found) {
+      return c.json({ error: "Invalid credentials" }, 401);
+    }
+    email = found.email;
+  }
+
+  // Forward to Better Auth's email sign-in handler with a synthetic Request.
+  // Using a placeholder origin — Better Auth routes by path, not host.
+  const authReq = new Request("http://slatedex.internal/api/auth/sign-in/email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: c.req.header("Cookie") ?? "",
+      "x-forwarded-for": c.req.header("x-forwarded-for") ?? c.req.header("cf-connecting-ip") ?? "",
+    },
+    body: JSON.stringify({ email, password: body.password }),
+  });
+
+  return auth.handler(authReq);
+});
+
 profiles.get("/me", authMiddleware, async (c) => {
   const authUser = c.get("user");
 
@@ -414,23 +468,31 @@ profiles.put("/me", authMiddleware, async (c) => {
     }
 
     if (normalized !== currentUsername) {
-      const since = new Date();
-      since.setDate(since.getDate() - USERNAME_WINDOW_DAYS);
-
-      const usedChanges = await prisma.profileUsernameChange.count({
-        where: {
-          userId: user.id,
-          createdAt: { gte: since },
-        },
+      // First-ever intentional username change is free — counts as initial claim,
+      // not against the rolling window (auto-generated usernames leave no record).
+      const totalEverChanged = await prisma.profileUsernameChange.count({
+        where: { userId: user.id },
       });
 
-      if (usedChanges >= USERNAME_CHANGE_LIMIT) {
-        return c.json(
-          {
-            error: `username can only be changed ${USERNAME_CHANGE_LIMIT} times every ${USERNAME_WINDOW_DAYS} days`,
+      if (totalEverChanged > 0) {
+        const since = new Date();
+        since.setDate(since.getDate() - USERNAME_WINDOW_DAYS);
+
+        const usedChanges = await prisma.profileUsernameChange.count({
+          where: {
+            userId: user.id,
+            createdAt: { gte: since },
           },
-          429
-        );
+        });
+
+        if (usedChanges >= USERNAME_CHANGE_LIMIT) {
+          return c.json(
+            {
+              error: `username can only be changed ${USERNAME_CHANGE_LIMIT} times every ${USERNAME_WINDOW_DAYS} days`,
+            },
+            429
+          );
+        }
       }
 
       const taken = await prisma.user.findUnique({

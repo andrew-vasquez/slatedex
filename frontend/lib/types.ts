@@ -15,6 +15,10 @@ export interface Pokemon {
   gameIndexVersionIds?: string[];
   exclusiveStatus?: "exclusive" | "shared" | "unknown";
   exclusiveToVersionIds?: string[] | null;
+  // Internal metadata for recommendation filtering.
+  isLegendary?: boolean;
+  isMythical?: boolean;
+  isStarterLine?: boolean;
 }
 
 export type DexMode = "regional" | "national";

@@ -4,9 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FiEye, FiEyeOff } from "react-icons/fi";
-import { signIn } from "@/lib/auth-client";
 import { useAuth } from "@/components/providers/AuthProvider";
-import type { Metadata } from "next";
+import { loginWithIdentifier } from "@/lib/api";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 
 function formatAuthError(error: unknown): string {
@@ -64,10 +63,12 @@ const PasswordInput = ({
 export default function LoginPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const isEmail = identifier.includes("@");
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -80,9 +81,9 @@ export default function LoginPage() {
     setError("");
     setSubmitting(true);
     try {
-      const result = await signIn.email({ email, password });
-      if (result.error) {
-        setError(result.error.message ?? "Sign in failed");
+      const result = await loginWithIdentifier(identifier.trim(), password);
+      if (!result.ok) {
+        setError(result.error ?? "Sign in failed");
       } else {
         router.push("/teams");
       }
@@ -136,20 +137,27 @@ export default function LoginPage() {
           )}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <label className="auth-field" htmlFor="email">
-              <span className="auth-label">Email</span>
+            <label className="auth-field" htmlFor="identifier">
+              <span className="auth-label">Email or Username</span>
               <input
-                id="email"
-                name="email"
-                type="email"
+                id="identifier"
+                name="identifier"
+                type="text"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 className="auth-input"
-                placeholder="trainer@example.com"
-                autoComplete="email"
+                placeholder={isEmail ? "trainer@example.com" : "ash_ketchum"}
+                autoComplete="username email"
                 spellCheck={false}
+                autoCapitalize="none"
+                autoCorrect="off"
               />
+              {identifier.length > 0 && (
+                <p className="mt-0.5 text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
+                  Signing in with {isEmail ? "email address" : "username"}
+                </p>
+              )}
             </label>
 
             <label className="auth-field" htmlFor="password">

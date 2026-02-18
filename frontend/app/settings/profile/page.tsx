@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { FiCheck, FiCopy, FiExternalLink, FiImage, FiSave, FiStar } from "react-icons/fi";
 import { fetchMyProfile, updateMyProfile, type MyProfile, type ProfileSavedTeam } from "@/lib/api";
 import {
   AVATAR_FRAME_OPTIONS,
   getAvatarFrameStyles,
-  formatPokemonList,
   GAME_OPTIONS,
   getGameDecoration,
   MAX_BIO_LENGTH,
@@ -19,6 +18,7 @@ import {
 } from "@/lib/profile";
 import { useAuth } from "@/components/providers/AuthProvider";
 import AvatarPickerModal from "@/components/profile/AvatarPickerModal";
+import FavoritePokemonPicker from "@/components/profile/FavoritePokemonPicker";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -117,16 +117,11 @@ export default function ProfileSettingsPage() {
   const [avatarFrame, setAvatarFrame] = useState<AvatarFrameKey>("classic");
   const [favoriteTeamId, setFavoriteTeamId] = useState<string | null>(null);
   const [favoriteGameIds, setFavoriteGameIds] = useState<number[]>([]);
-  const [favoritePokemonInput, setFavoritePokemonInput] = useState("");
+  const [favoritePokemonNames, setFavoritePokemonNames] = useState<string[]>([]);
 
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
-
-  const favoritePokemonNames = useMemo(
-    () => formatPokemonList(favoritePokemonInput),
-    [favoritePokemonInput]
-  );
 
   const publicPath = toPublicProfilePath(username || profile?.username || "username");
   const publicUrl = origin ? `${origin}${publicPath}` : publicPath;
@@ -148,7 +143,7 @@ export default function ProfileSettingsPage() {
         setAvatarFrame(toAvatarFrame(data.avatarFrame));
         setFavoriteTeamId(data.favoriteTeamId);
         setFavoriteGameIds(data.favoriteGameIds);
-        setFavoritePokemonInput(data.favoritePokemonNames.join(", "));
+        setFavoritePokemonNames(data.favoritePokemonNames);
       })
       .catch((error: unknown) => {
         if (cancelled) return;
@@ -230,7 +225,7 @@ export default function ProfileSettingsPage() {
       setAvatarFrame(toAvatarFrame(refreshed.avatarFrame));
       setFavoriteTeamId(refreshed.favoriteTeamId);
       setFavoriteGameIds(refreshed.favoriteGameIds);
-      setFavoritePokemonInput(refreshed.favoritePokemonNames.join(", "));
+      setFavoritePokemonNames(refreshed.favoritePokemonNames);
       window.dispatchEvent(
         new CustomEvent("profile-appearance-updated", {
           detail: {
@@ -468,23 +463,13 @@ export default function ProfileSettingsPage() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
-                  Favorite Pokemon ({favoritePokemonNames.length}/{MAX_FAVORITE_POKEMON})
-                </label>
-                <input
-                  value={favoritePokemonInput}
-                  onChange={(event) => setFavoritePokemonInput(event.target.value)}
-                  className="w-full rounded-xl border px-3 py-2 text-sm outline-none"
-                  style={{
-                    borderColor: "var(--border)",
-                    background: "var(--surface-2)",
-                    color: "var(--text-primary)",
-                  }}
-                  placeholder="charizard, pikachu, dragapult"
-                />
-                <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-                  Enter comma-separated names.
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                  Favorite Pokémon ({favoritePokemonNames.length}/{MAX_FAVORITE_POKEMON})
                 </p>
+                <FavoritePokemonPicker
+                  value={favoritePokemonNames}
+                  onChange={setFavoritePokemonNames}
+                />
               </div>
 
               <div>

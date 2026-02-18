@@ -4,6 +4,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { FiArrowLeft } from "react-icons/fi";
 import { AVATAR_FRAME_OPTIONS, getAvatarFrameStyles, getGameDecoration, type AvatarFrameKey } from "@/lib/profile";
+import FavoritePokemonDisplay from "@/components/profile/FavoritePokemonDisplay";
 
 type ProfilePokemonPreview = {
   id: number | null;
@@ -233,26 +234,8 @@ export default async function PublicProfilePage({
           {profile.bio || "No bio added yet."}
         </p>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {profile.favoritePokemonNames.length > 0 ? (
-            profile.favoritePokemonNames.map((name) => (
-              <span
-                key={name}
-                className="rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em]"
-                style={{
-                  borderColor: "var(--border)",
-                  background: "rgba(11, 20, 44, 0.76)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                {name}
-              </span>
-            ))
-          ) : (
-            <span className="text-sm" style={{ color: "var(--text-muted)" }}>
-              No favorite Pokemon listed.
-            </span>
-          )}
+        <div className="mt-4">
+          <FavoritePokemonDisplay names={profile.favoritePokemonNames} />
         </div>
       </section>
 

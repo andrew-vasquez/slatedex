@@ -11,7 +11,6 @@ import {
   type AvatarFrameKey,
 } from "@/lib/profile";
 import { useAuth } from "@/components/providers/AuthProvider";
-import AuthDialog from "./AuthDialog";
 
 type Theme = "dark" | "light";
 
@@ -45,9 +44,8 @@ function toAvatarFrame(value: string | null | undefined): AvatarFrameKey {
 }
 
 const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) => {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, openAuthDialog } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>("dark");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarFrame, setAvatarFrame] = useState<AvatarFrameKey>("classic");
@@ -134,8 +132,7 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
   const effectiveAvatarUrl = avatarUrl?.trim() || user?.image || "";
 
   return (
-    <>
-      <div className={`user-menu-shell${compactOnMobile ? " user-menu-shell--compact-mobile" : ""} ${className}`.trim()}>
+    <div className={`user-menu-shell${compactOnMobile ? " user-menu-shell--compact-mobile" : ""} ${className}`.trim()}>
         {/* Theme Toggle */}
         <button
           type="button"
@@ -160,7 +157,7 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
             type="button"
             className={`user-menu-trigger user-menu-trigger--signin${compactOnMobile ? " user-menu-trigger--icon" : ""}`}
             aria-label="Sign in or create account"
-            onClick={() => setAuthDialogOpen(true)}
+            onClick={openAuthDialog}
           >
             <FiLogIn size={14} aria-hidden="true" />
             {!compactOnMobile && <span>Sign In</span>}
@@ -245,10 +242,7 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
             )}
           </div>
         )}
-      </div>
-
-      <AuthDialog isOpen={authDialogOpen} onClose={() => setAuthDialogOpen(false)} />
-    </>
+    </div>
   );
 };
 
