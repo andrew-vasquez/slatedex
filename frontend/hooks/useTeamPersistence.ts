@@ -214,6 +214,9 @@ export function useTeamPersistence({
   const saveTeamAs = useCallback(
     async (name: string, versionIds?: string[]) => {
       if (!isAuthenticated) return;
+      if (!team.some((slot) => slot !== null)) {
+        throw new Error("Add at least one Pokemon before saving a team.");
+      }
 
       setIsSaving(true);
       try {

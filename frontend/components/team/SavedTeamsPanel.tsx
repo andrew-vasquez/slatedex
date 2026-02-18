@@ -11,6 +11,7 @@ interface VersionOption {
 }
 
 interface SavedTeamsPanelProps {
+  teamHasPokemon: boolean;
   savedTeams: SavedTeam[];
   activeTeamId: string | null;
   onSaveAs: (name: string, versionIds?: string[]) => Promise<void>;
@@ -28,6 +29,7 @@ type SaveStep = "name" | "version";
 const DELETE_ANIMATION_MS = 180;
 
 const SavedTeamsPanel = ({
+  teamHasPokemon,
   savedTeams,
   activeTeamId,
   onSaveAs,
@@ -46,6 +48,7 @@ const SavedTeamsPanel = ({
   const [editName, setEditName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [deletingTeamIds, setDeletingTeamIds] = useState<string[]>([]);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const hasMultipleVersions = gameVersions.length > 1;
 
@@ -54,39 +57,57 @@ const SavedTeamsPanel = ({
     : null;
 
   const handleNameSubmit = useCallback(
-    (e: React.FormEvent) => {
+    async (e: React.FormEvent) => {
       e.preventDefault();
       const name = newTeamName.trim();
       if (!name) return;
+      if (!teamHasPokemon) {
+        setSaveError("Add at least one Pokemon before saving a team.");
+        return;
+      }
+      setSaveError(null);
 
       if (hasMultipleVersions) {
         setSaveStep("version");
       } else {
         setIsCreating(true);
-        onSaveAs(name, selectedVersionId ? [selectedVersionId] : undefined).finally(() => {
+        try {
+          await onSaveAs(name, selectedVersionId ? [selectedVersionId] : undefined);
           setIsCreating(false);
           setNewTeamName("");
-        });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Could not save team.";
+          setSaveError(message);
+          setIsCreating(false);
+        }
       }
     },
-    [newTeamName, hasMultipleVersions, onSaveAs, selectedVersionId]
+    [newTeamName, hasMultipleVersions, onSaveAs, selectedVersionId, teamHasPokemon]
   );
 
   const handleVersionSave = useCallback(
     async (versionIds: string[]) => {
       const name = newTeamName.trim();
       if (!name) return;
+      if (!teamHasPokemon) {
+        setSaveError("Add at least one Pokemon before saving a team.");
+        return;
+      }
+      setSaveError(null);
 
       setIsCreating(true);
       try {
         await onSaveAs(name, versionIds);
         setNewTeamName("");
         setSaveStep("name");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Could not save team.";
+        setSaveError(message);
       } finally {
         setIsCreating(false);
       }
     },
-    [newTeamName, onSaveAs]
+    [newTeamName, onSaveAs, teamHasPokemon]
   );
 
   const startRename = useCallback((team: SavedTeam) => {
@@ -151,14 +172,17 @@ const SavedTeamsPanel = ({
           <input
             type="text"
             value={newTeamName}
-            onChange={(e) => setNewTeamName(e.target.value)}
+            onChange={(e) => {
+              setNewTeamName(e.target.value);
+              if (saveError) setSaveError(null);
+            }}
             placeholder="Team name..."
             className="auth-input flex-1 !py-1.5 !text-xs"
             maxLength={50}
           />
           <button
             type="submit"
-            disabled={!newTeamName.trim() || isCreating || isSaving}
+            disabled={!newTeamName.trim() || !teamHasPokemon || isCreating || isSaving}
             className="btn-secondary !py-1.5 !px-3 disabled:opacity-50 disabled:pointer-events-none"
           >
             <FiSave size={12} />
@@ -179,7 +203,7 @@ const SavedTeamsPanel = ({
             {currentVersionLabel && (
               <button
                 type="button"
-                disabled={isCreating || isSaving}
+                disabled={!teamHasPokemon || isCreating || isSaving}
                 onClick={() => handleVersionSave([selectedVersionId!])}
                 className="flex-1 rounded-lg border px-3 py-2.5 text-center text-[0.68rem] font-semibold transition-all active:scale-[0.97] disabled:opacity-50"
                 style={{
@@ -195,7 +219,7 @@ const SavedTeamsPanel = ({
             {/* All versions */}
             <button
               type="button"
-              disabled={isCreating || isSaving}
+              disabled={!teamHasPokemon || isCreating || isSaving}
               onClick={() => handleVersionSave(gameVersions.map((v) => v.id))}
               className="flex-1 rounded-lg border px-3 py-2.5 text-center text-[0.68rem] font-semibold transition-all active:scale-[0.97] disabled:opacity-50"
               style={{
@@ -210,7 +234,10 @@ const SavedTeamsPanel = ({
 
           <button
             type="button"
-            onClick={() => setSaveStep("name")}
+            onClick={() => {
+              setSaveStep("name");
+              setSaveError(null);
+            }}
             className="mt-2 text-[0.62rem] transition-colors"
             style={{ color: "var(--text-muted)" }}
           >
@@ -218,6 +245,12 @@ const SavedTeamsPanel = ({
           </button>
         </div>
       )}
+
+      {saveError ? (
+        <p className="-mt-1 mb-3 text-[0.66rem]" style={{ color: "#fca5a5" }}>
+          {saveError}
+        </p>
+      ) : null}
 
       {/* List of saved teams */}
       {savedTeams.length === 0 ? (

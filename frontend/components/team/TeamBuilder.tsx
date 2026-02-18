@@ -1528,6 +1528,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       <TeamToolsModal
         isOpen={isTeamToolsOpen}
         onClose={() => setIsTeamToolsOpen(false)}
+        teamHasPokemon={currentTeam.length > 0}
         isAuthenticated={isAuthenticated}
         savedTeams={savedTeams}
         activeTeamId={activeTeamId}

@@ -17,6 +17,7 @@ interface VersionOption {
 interface TeamToolsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  teamHasPokemon: boolean;
   isAuthenticated: boolean;
   savedTeams: SavedTeam[];
   activeTeamId: string | null;
@@ -35,6 +36,7 @@ interface TeamToolsModalProps {
 const TeamToolsModal = ({
   isOpen,
   onClose,
+  teamHasPokemon,
   isAuthenticated,
   savedTeams,
   activeTeamId,
@@ -197,6 +199,7 @@ const TeamToolsModal = ({
             isAuthenticated ? (
               <SavedTeamsPanel
                 variant="embedded"
+                teamHasPokemon={teamHasPokemon}
                 savedTeams={savedTeams}
                 activeTeamId={activeTeamId}
                 onSaveAs={onSaveAs}
