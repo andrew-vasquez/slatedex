@@ -31,6 +31,7 @@ interface PokemonSelectionProps {
   onTypeFilterChange?: (type: string | null) => void;
   onInspect?: (pokemon: Pokemon) => void;
   cardDensity?: CardDensity;
+  isLoadingData?: boolean;
 }
 
 const GRID_GAP_PX = 10;
@@ -60,6 +61,7 @@ const PokemonSelection = ({
   onTypeFilterChange,
   onInspect,
   cardDensity = "comfortable",
+  isLoadingData = false,
 }: PokemonSelectionProps) => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const rafIdRef = useRef<number | null>(null);
@@ -526,7 +528,14 @@ const PokemonSelection = ({
         role="list"
         aria-label="Available Pokémon"
       >
-        {filteredPokemon.length === 0 ? (
+        {isLoadingData ? (
+          <div
+            className="rounded-xl px-4 py-6 text-center text-sm"
+            style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+          >
+            Loading Pokédex data...
+          </div>
+        ) : filteredPokemon.length === 0 ? (
           <div
             className="rounded-xl px-4 py-6 text-center text-sm"
             style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}

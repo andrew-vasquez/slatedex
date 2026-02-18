@@ -176,7 +176,11 @@ const TeamRecommendations = ({
       ) : (
         <div className="mt-3 grid grid-cols-1 gap-2.5 lg:grid-cols-3">
           {recommendations.map(({ pokemon, score, covers, risky, reason }, index) => (
-            <article key={pokemon.id} className="panel-soft animate-fade-in-up p-3" style={{ animationDelay: `${index * 70}ms` }}>
+            <article
+              key={pokemon.id}
+              className="panel-soft animate-fade-in-up flex h-[20rem] flex-col p-3"
+              style={{ animationDelay: `${index * 70}ms` }}
+            >
               <div className="flex items-start gap-2.5">
                 <div
                   className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg"
@@ -198,12 +202,21 @@ const TeamRecommendations = ({
                   <p className="mt-0.5 text-[0.66rem]" style={{ color: "var(--text-secondary)" }}>
                     Fit score: <span className="font-semibold">{score.toFixed(1)}</span>
                   </p>
-                  <p className="mt-1 text-[0.66rem] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                  <p
+                    className="mt-1 min-h-[2rem] text-[0.66rem] leading-relaxed"
+                    style={{
+                      color: "var(--text-muted)",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                  >
                     {reason}
                   </p>
 
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {covers.map((type) => (
+                  <div className="mt-2 flex min-h-[4.25rem] flex-wrap content-start gap-1 overflow-hidden">
+                    {covers.slice(0, 3).map((type) => (
                       <span
                         key={`${pokemon.id}-cover-${type}`}
                         className="rounded-full px-2 py-0.5 text-[0.56rem] font-semibold uppercase"
@@ -216,6 +229,18 @@ const TeamRecommendations = ({
                         covers {type}
                       </span>
                     ))}
+                    {covers.length > 3 && (
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[0.56rem] font-semibold uppercase"
+                        style={{
+                          background: "rgba(148, 163, 184, 0.16)",
+                          border: "1px solid rgba(148, 163, 184, 0.3)",
+                          color: "var(--text-muted)",
+                        }}
+                      >
+                        +{covers.length - 3} more
+                      </span>
+                    )}
 
                     {risky.slice(0, 1).map((type) => (
                       <span
@@ -234,23 +259,25 @@ const TeamRecommendations = ({
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => onAddPokemon(pokemon)}
-                disabled={teamFull}
-                className="btn-secondary mt-3 w-full disabled:pointer-events-none disabled:opacity-50"
-              >
-                Add to team
-              </button>
+              <div className="mt-auto pt-3">
+                <button
+                  type="button"
+                  onClick={() => onAddPokemon(pokemon)}
+                  disabled={teamFull}
+                  className="btn-secondary w-full disabled:pointer-events-none disabled:opacity-50"
+                >
+                  Add to team
+                </button>
 
-              <button
-                type="button"
-                onClick={() => onReplaceWeakest(pokemon)}
-                disabled={!canReplaceWeakest}
-                className="btn-secondary mt-2 w-full !border-[rgba(59,130,246,0.32)] !bg-[rgba(59,130,246,0.14)] !text-[#93c5fd] disabled:pointer-events-none disabled:opacity-50"
-              >
-                Replace weakest fit
-              </button>
+                <button
+                  type="button"
+                  onClick={() => onReplaceWeakest(pokemon)}
+                  disabled={!canReplaceWeakest}
+                  className="btn-secondary mt-2 w-full !border-[rgba(59,130,246,0.32)] !bg-[rgba(59,130,246,0.14)] !text-[#93c5fd] disabled:pointer-events-none disabled:opacity-50"
+                >
+                  Replace weakest fit
+                </button>
+              </div>
             </article>
           ))}
         </div>

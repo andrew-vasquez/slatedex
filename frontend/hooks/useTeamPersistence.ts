@@ -96,12 +96,9 @@ export function useTeamPersistence({
 }: UseTeamPersistenceOptions): UseTeamPersistenceReturn {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-  // Initialize from localStorage immediately so the team survives component remounts.
-  // On the server (SSR), localStorage is unavailable so we fall back to empty.
-  const [team, setTeamState] = useState<(Pokemon | null)[]>(() => {
-    if (typeof window === "undefined") return createEmptyTeam();
-    return loadLocalTeam(generation, gameId);
-  });
+  // Keep initial state deterministic between SSR and client hydration.
+  // Local data is loaded in an effect after mount.
+  const [team, setTeamState] = useState<(Pokemon | null)[]>(createEmptyTeam);
 
   const [savedTeams, setSavedTeams] = useState<SavedTeam[]>([]);
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
@@ -143,7 +140,7 @@ export function useTeamPersistence({
     initialLoadDoneRef.current = true;
 
     if (!isAuthenticated) {
-      // Guest: team is already loaded from localStorage via useState initializer.
+      // Guest: local team is handled by the gameId effect.
       // Just clear server-side state.
       setActiveTeamId(null);
       setSavedTeams([]);

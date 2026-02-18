@@ -68,8 +68,15 @@ interface PendingImportState {
 interface TeamBuilderProps {
   generation: number;
   games: Game[];
-  allPools: Record<number, PokemonPools>;
+  initialPoolsByGame: Record<number, PokemonPools>;
 }
+
+const EMPTY_POOLS: PokemonPools = {
+  national: [],
+  regional: [],
+  regionalResolved: false,
+  regionalDexName: null,
+};
 
 function createEmptyTeam(): (Pokemon | null)[] {
   return Array(6).fill(null);
@@ -110,7 +117,7 @@ function getRoleLabel(role: RecommendationRole): string {
   return "Special";
 }
 
-const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
+const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const importedTokenRef = useRef<string | null>(null);
@@ -137,14 +144,69 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   const dismissUndoToast = useCallback(() => setUndoToastMessage(null), []);
   const [pendingImport, setPendingImport] = useState<PendingImportState | null>(null);
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
+  const [poolsByGame, setPoolsByGame] = useState<Record<number, PokemonPools>>(initialPoolsByGame);
+  const [poolLoadErrorByGame, setPoolLoadErrorByGame] = useState<Record<number, string>>({});
 
   const pastTeamsRef = useRef<(Pokemon | null)[][]>([]);
   const futureTeamsRef = useRef<(Pokemon | null)[][]>([]);
+  const poolsByGameRef = useRef<Record<number, PokemonPools>>(initialPoolsByGame);
+  const poolRequestsRef = useRef<Map<number, Promise<PokemonPools | null>>>(new Map());
 
   const { settings, updateSetting, resetSettings } = useBuilderSettings();
 
   const selectedGame = useMemo(() => games.find((g) => g.id === selectedGameId) ?? games[0], [games, selectedGameId]);
-  const pokemonPools = useMemo(() => allPools[selectedGame.id] ?? allPools[games[0].id], [allPools, selectedGame.id, games]);
+  const isSelectedGamePoolReady = Boolean(poolsByGame[selectedGame.id]);
+  const selectedGamePoolError = poolLoadErrorByGame[selectedGame.id] ?? null;
+  const pokemonPools = useMemo(() => poolsByGame[selectedGame.id] ?? EMPTY_POOLS, [poolsByGame, selectedGame.id]);
+
+  useEffect(() => {
+    poolsByGameRef.current = poolsByGame;
+  }, [poolsByGame]);
+
+  const ensureGamePool = useCallback(
+    async (gameId: number): Promise<PokemonPools | null> => {
+      const existing = poolsByGameRef.current[gameId];
+      if (existing) return existing;
+
+      const inFlight = poolRequestsRef.current.get(gameId);
+      if (inFlight) return inFlight;
+
+      const request = (async () => {
+        try {
+          const response = await fetch(`/api/pokemon-pools?generation=${generation}&gameId=${gameId}`, {
+            method: "GET",
+            cache: "force-cache",
+          });
+          if (!response.ok) {
+            throw new Error(`Failed to load Pokemon pools for game ${gameId}`);
+          }
+
+          const payload = (await response.json()) as { pools?: PokemonPools };
+          const nextPools = payload.pools;
+          if (!nextPools) throw new Error("Pokemon pool payload is missing");
+
+          setPoolsByGame((prev) => (prev[gameId] ? prev : { ...prev, [gameId]: nextPools }));
+          setPoolLoadErrorByGame((prev) => {
+            if (!(gameId in prev)) return prev;
+            const next = { ...prev };
+            delete next[gameId];
+            return next;
+          });
+
+          return nextPools;
+        } catch {
+          setPoolLoadErrorByGame((prev) => ({ ...prev, [gameId]: "Could not load Pokédex data for this game." }));
+          return null;
+        } finally {
+          poolRequestsRef.current.delete(gameId);
+        }
+      })();
+
+      poolRequestsRef.current.set(gameId, request);
+      return request;
+    },
+    [generation]
+  );
 
   const {
     team,
@@ -255,6 +317,51 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   }, [generation, selectedGameId]);
 
   useEffect(() => {
+    void ensureGamePool(selectedGameId);
+  }, [ensureGamePool, selectedGameId]);
+
+  useEffect(() => {
+    if (!isSelectedGamePoolReady) return;
+
+    const pendingGameIds = games
+      .map((game) => game.id)
+      .filter((gameId) => gameId !== selectedGameId && !poolsByGameRef.current[gameId]);
+
+    if (pendingGameIds.length === 0) return;
+
+    let cancelled = false;
+    let timeoutId: number | null = null;
+    let idleId: number | null = null;
+
+    const startPrefetch = () => {
+      if (cancelled) return;
+      for (const gameId of pendingGameIds) {
+        if (cancelled) break;
+        void ensureGamePool(gameId);
+      }
+    };
+
+    const windowWithIdle = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    if (typeof windowWithIdle.requestIdleCallback === "function") {
+      idleId = windowWithIdle.requestIdleCallback(startPrefetch, { timeout: 1500 });
+    } else {
+      timeoutId = window.setTimeout(startPrefetch, 900);
+    }
+
+    return () => {
+      cancelled = true;
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      if (idleId !== null && typeof windowWithIdle.cancelIdleCallback === "function") {
+        windowWithIdle.cancelIdleCallback(idleId);
+      }
+    };
+  }, [ensureGamePool, games, isSelectedGamePoolReady, selectedGameId]);
+
+  useEffect(() => {
     const desktopQuery = window.matchMedia("(min-width: 1024px)");
     const pointerQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
     const updateCapabilities = () => {
@@ -274,13 +381,14 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
   }, []);
 
   useEffect(() => {
+    if (!isSelectedGamePoolReady) return;
     const preferred = settings.defaultDexMode;
     if (preferred === "regional" && !pokemonPools.regionalResolved) {
       setDexMode("national");
       return;
     }
     setDexMode(preferred);
-  }, [pokemonPools.regionalResolved, selectedGame.id, settings.defaultDexMode]);
+  }, [isSelectedGamePoolReady, pokemonPools.regionalResolved, selectedGame.id, settings.defaultDexMode]);
 
   useEffect(() => {
     if (dragEnabled) return;
@@ -386,7 +494,8 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
     setSelectedGameId(gameId);
     setSearchTerm("");
     setTypeFilter(null);
-  }, []);
+    void ensureGamePool(gameId);
+  }, [ensureGamePool]);
 
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const lowerSearch = deferredSearchTerm.toLowerCase();
@@ -398,6 +507,11 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
 
   const handleDexModeChange = useCallback(
     (nextMode: DexMode) => {
+      if (!isSelectedGamePoolReady) {
+        setDexMode("national");
+        return;
+      }
+
       if (nextMode === "regional" && !pokemonPools.regionalResolved) {
         setDexMode("national");
         return;
@@ -405,12 +519,15 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
 
       setDexMode(nextMode);
     },
-    [pokemonPools.regionalResolved]
+    [isSelectedGamePoolReady, pokemonPools.regionalResolved]
   );
 
   const activePokemonPool = useMemo(
-    () => (dexMode === "regional" && pokemonPools.regionalResolved ? pokemonPools.regional : pokemonPools.national),
-    [dexMode, pokemonPools.national, pokemonPools.regional, pokemonPools.regionalResolved]
+    () => {
+      if (!isSelectedGamePoolReady) return [];
+      return dexMode === "regional" && pokemonPools.regionalResolved ? pokemonPools.regional : pokemonPools.national;
+    },
+    [dexMode, isSelectedGamePoolReady, pokemonPools.national, pokemonPools.regional, pokemonPools.regionalResolved]
   );
 
   const versionScopedPokemonPool = useMemo(() => {
@@ -788,19 +905,32 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
     [loadSavedTeam, pushHistory, savedTeams, team]
   );
 
-  const pokemonLookupByGame = useMemo(() => {
-    const lookup: Record<number, Map<number, Pokemon>> = {};
+  const buildPendingImportState = useCallback(
+    (payload: SharedTeamPayload, gameId: number): PendingImportState | null => {
+      const pools = poolsByGameRef.current[gameId];
+      if (!pools) return null;
 
-    for (const [gameId, pools] of Object.entries(allPools)) {
-      const gameLookup = new Map<number, Pokemon>();
+      const lookup = new Map<number, Pokemon>();
       pools.national.forEach((pokemon) => {
-        gameLookup.set(pokemon.id, pokemon);
+        lookup.set(pokemon.id, pokemon);
       });
-      lookup[Number(gameId)] = gameLookup;
-    }
 
-    return lookup;
-  }, [allPools]);
+      const importedTeam = Array.from({ length: 6 }, (_, index) => {
+        const pokemonId = payload.team[index] ?? null;
+        if (pokemonId === null) return null;
+        return lookup.get(pokemonId) ?? null;
+      });
+
+      return {
+        gameId,
+        team: importedTeam,
+        lockedSlots: Array.from({ length: 6 }, (_, index) => payload.lockedSlots?.includes(index) ?? false),
+        selectedVersionId: payload.selectedVersionId ?? null,
+        dexMode: payload.dexMode ?? null,
+      };
+    },
+    []
+  );
 
   const queueImportPayload = useCallback(
     (payload: SharedTeamPayload): string => {
@@ -813,34 +943,26 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
         return "Invalid payload: game is not available in this generation.";
       }
 
-      const lookup = pokemonLookupByGame[targetGame.id];
-      if (!lookup) {
-        return "Invalid payload: Pokédex data is unavailable for that game.";
+      const immediateImport = buildPendingImportState(payload, targetGame.id);
+      if (immediateImport) {
+        setPendingImport(immediateImport);
+        if (targetGame.id !== selectedGame.id) {
+          setSelectedGameId(targetGame.id);
+        }
+        return "Imported payload. Applied to current team.";
       }
 
-      const importedTeam = Array.from({ length: 6 }, (_, index) => {
-        const pokemonId = payload.team[index] ?? null;
-        if (pokemonId === null) return null;
-        return lookup.get(pokemonId) ?? null;
-      });
-
-      const importedLocks = Array.from({ length: 6 }, (_, index) => payload.lockedSlots?.includes(index) ?? false);
-
-      setPendingImport({
-        gameId: targetGame.id,
-        team: importedTeam,
-        lockedSlots: importedLocks,
-        selectedVersionId: payload.selectedVersionId ?? null,
-        dexMode: payload.dexMode ?? null,
-      });
-
-      if (targetGame.id !== selectedGame.id) {
+      void ensureGamePool(targetGame.id).then((loaded) => {
+        if (!loaded) return;
+        const resolvedImport = buildPendingImportState(payload, targetGame.id);
+        if (!resolvedImport) return;
+        setPendingImport(resolvedImport);
         setSelectedGameId(targetGame.id);
-      }
+      });
 
-      return "Imported payload. Applied to current team.";
+      return "Loading game data for import. It will apply automatically.";
     },
-    [games, generation, pokemonLookupByGame, selectedGame.id]
+    [buildPendingImportState, ensureGamePool, games, generation, selectedGame.id]
   );
 
   useEffect(() => {
@@ -1060,7 +1182,14 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 dexMode={dexMode}
                 onDexModeChange={handleDexModeChange}
                 regionalAvailable={pokemonPools.regionalResolved}
-                dexNotice={pokemonPools.regionalResolved ? null : "Regional dex unavailable; switched to National."}
+                dexNotice={
+                  selectedGamePoolError
+                  ?? (!isSelectedGamePoolReady
+                    ? "Loading Pokédex data for selected game..."
+                    : pokemonPools.regionalResolved
+                      ? null
+                      : "Regional dex unavailable; switched to National.")
+                }
                 generation={generation}
                 versions={selectedGame.versions}
                 selectedVersionId={selectedVersionId}
@@ -1075,6 +1204,7 @@ const TeamBuilder = ({ generation, games, allPools }: TeamBuilderProps) => {
                 onTypeFilterChange={setTypeFilter}
                 onInspect={setDetailPokemon}
                 cardDensity={settings.cardDensity}
+                isLoadingData={!isSelectedGamePoolReady && !selectedGamePoolError}
               />
             </div>
 
