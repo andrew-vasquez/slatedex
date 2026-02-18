@@ -27,8 +27,8 @@ interface PokemonSelectionProps {
   games?: Game[];
   selectedGameId?: number;
   onGameChange?: (gameId: number) => void;
-  typeFilter?: string | null;
-  onTypeFilterChange?: (type: string | null) => void;
+  typeFilter?: string[];
+  onTypeFilterChange?: (types: string[]) => void;
   onInspect?: (pokemon: Pokemon) => void;
   cardDensity?: CardDensity;
   isLoadingData?: boolean;
@@ -36,6 +36,7 @@ interface PokemonSelectionProps {
 
 const GRID_GAP_PX = 10;
 const OVERSCAN_ROWS = 4;
+const STEP_ONE_TIP_DISMISSED_KEY = "poke-builder:step-one-tip-dismissed";
 
 const PokemonSelection = ({
   filteredPokemon,
@@ -74,11 +75,13 @@ const PokemonSelection = ({
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [filterTransitionToken, setFilterTransitionToken] = useState(0);
   const [isFilterTransitioning, setIsFilterTransitioning] = useState(false);
+  const [isStepOneTipDismissed, setIsStepOneTipDismissed] = useState(false);
 
   const versionLabelMap: Record<string, string> = useMemo(
     () => Object.fromEntries(versions.map((version) => [version.id, version.label])),
     [versions]
   );
+  const activeTypeFilters = typeFilter ?? [];
   const hasMultipleGames = Boolean(games && games.length > 1 && onGameChange);
   const gameOptions = hasMultipleGames ? games ?? [] : [];
 
@@ -124,17 +127,22 @@ const PokemonSelection = ({
   }, []);
 
   useEffect(() => {
-    if (typeFilter || versionFilterEnabled || dexMode === "regional") {
-      setIsAdvancedOpen(true);
-    }
-  }, [dexMode, typeFilter, versionFilterEnabled]);
-
-  useEffect(() => {
     setFilterTransitionToken((token) => token + 1);
     setIsFilterTransitioning(true);
     const timer = setTimeout(() => setIsFilterTransitioning(false), 260);
     return () => clearTimeout(timer);
   }, [searchTerm, typeFilter, dexMode, versionFilterEnabled, selectedVersionId, selectedGameId]);
+
+  useEffect(() => {
+    try {
+      const dismissed = window.localStorage.getItem(STEP_ONE_TIP_DISMISSED_KEY);
+      if (dismissed === "1") {
+        setIsStepOneTipDismissed(true);
+      }
+    } catch {
+      // Ignore localStorage access errors (private mode, disabled storage, etc.)
+    }
+  }, []);
 
   const rowRefCallbacksRef = useRef<Map<number, (node: HTMLDivElement | null) => void>>(new Map());
 
@@ -187,6 +195,15 @@ const PokemonSelection = ({
       rafIdRef.current = null;
       setScrollTop(pendingScrollTopRef.current);
     });
+  }, []);
+
+  const dismissStepOneTip = useCallback(() => {
+    setIsStepOneTipDismissed(true);
+    try {
+      window.localStorage.setItem(STEP_ONE_TIP_DISMISSED_KEY, "1");
+    } catch {
+      // Ignore localStorage access errors.
+    }
   }, []);
 
   const rowCount = Math.ceil(filteredPokemon.length / columns);
@@ -317,9 +334,10 @@ const PokemonSelection = ({
               <span className="rounded-md border px-2 py-0.5" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
                 {versionFilterEnabled ? "Version-only entries" : "All entries"}
               </span>
-              {typeFilter ? (
+              {activeTypeFilters.length > 0 ? (
                 <span className="rounded-md border px-2 py-0.5" style={{ borderColor: "rgba(218, 44, 67, 0.34)", color: "var(--accent)" }}>
-                  Type {typeFilter.charAt(0).toUpperCase() + typeFilter.slice(1)}
+                  Types {activeTypeFilters.slice(0, 2).map((type) => type.charAt(0).toUpperCase() + type.slice(1)).join(", ")}
+                  {activeTypeFilters.length > 2 ? ` +${activeTypeFilters.length - 2}` : ""}
                 </span>
               ) : null}
             </div>
@@ -467,27 +485,42 @@ const PokemonSelection = ({
                       <p className="mb-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
                         Type Filter
                       </p>
-                      <div className="custom-scrollbar -mx-0.5 overflow-x-auto pb-1">
-                        <div className="flex min-w-max gap-1 px-0.5">
+                      <p className="mb-1 text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
+                        Select multiple types to match Pokémon that have all selected types.
+                      </p>
+                      <div className="custom-scrollbar -mx-0.5 overflow-x-auto pb-1 sm:mx-0 sm:overflow-visible sm:pb-0">
+                        <div className="flex min-w-max gap-1 px-0.5 sm:min-w-0 sm:flex-wrap sm:gap-1.5 sm:px-0">
                           {getAvailableTypes(generation).map((type) => {
-                            const isActive = typeFilter === type;
+                            const isActive = activeTypeFilters.includes(type);
                             return (
                               <button
                                 key={type}
                                 type="button"
-                                onClick={() => onTypeFilterChange(isActive ? null : type)}
-                                className={`rounded-md px-2 py-0.5 text-[0.6rem] font-semibold transition-opacity ${TYPE_COLORS[type]} ${isActive ? "ring-2 ring-white/40" : "opacity-60 hover:opacity-90"}`}
-                                style={{ color: "#fff" }}
+                                onClick={() => {
+                                  if (isActive) {
+                                    onTypeFilterChange(activeTypeFilters.filter((entry) => entry !== type));
+                                    return;
+                                  }
+                                  onTypeFilterChange([...activeTypeFilters, type]);
+                                }}
+                                className={`rounded-md px-2 py-0.5 text-[0.6rem] font-semibold transition-all duration-150 sm:px-2.5 sm:py-1 sm:text-[0.62rem] ${TYPE_COLORS[type]} ${isActive ? "" : "hover:opacity-90"}`}
+                                style={{
+                                  color: "#fff",
+                                  border: isActive ? "1px solid rgba(255, 255, 255, 0.6)" : "1px solid transparent",
+                                  boxShadow: isActive ? "0 0 0 1px rgba(255, 255, 255, 0.22) inset" : "none",
+                                  opacity: isActive ? 1 : 0.68,
+                                  transform: isActive ? "translateY(-1px)" : "none",
+                                }}
                                 aria-pressed={isActive}
                               >
                                 {type.charAt(0).toUpperCase() + type.slice(1)}
                               </button>
                             );
                           })}
-                          {typeFilter && (
+                          {activeTypeFilters.length > 0 && (
                             <button
                               type="button"
-                              onClick={() => onTypeFilterChange(null)}
+                              onClick={() => onTypeFilterChange([])}
                               className="rounded-md px-2 py-0.5 text-[0.6rem] font-semibold"
                               style={{ background: "var(--surface-3)", color: "var(--text-muted)", border: "1px solid var(--border)" }}
                             >
@@ -511,20 +544,35 @@ const PokemonSelection = ({
         </p>
       )}
 
-      <div className="mb-3 rounded-xl border px-3 py-2 text-[0.7rem]" style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}>
-        <span className="font-semibold">Tip:</span> Search first, then use Advanced filters for dex, version, or type.
-        {" "}
-        {currentTeamLength < 6
-          ? dragEnabled
-            ? "Tap or drag a card to add it to your team."
-            : "Tap a card to add it to your team."
-          : "Your team is full. Remove a member to add another Pokémon."}
-      </div>
+      {!isStepOneTipDismissed && (
+        <div className="mb-3 rounded-xl border px-3 py-2 text-[0.7rem]" style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}>
+          <div className="flex items-start justify-between gap-2">
+            <p className="pr-2">
+              <span className="font-semibold">Tip:</span> Search first, then use Advanced filters for dex, version, or type.
+              {" "}
+              {currentTeamLength < 6
+                ? dragEnabled
+                  ? "Tap or drag a card to add it to your team."
+                  : "Tap a card to add it to your team."
+                : "Your team is full. Remove a member to add another Pokémon."}
+            </p>
+            <button
+              type="button"
+              onClick={dismissStepOneTip}
+              className="shrink-0 rounded-md p-1 transition-colors"
+              style={{ color: "var(--text-muted)" }}
+              aria-label="Dismiss tip"
+            >
+              <FiX size={12} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="max-h-[50vh] overflow-y-auto pr-1 custom-scrollbar sm:max-h-[calc(100vh-360px)]"
+        className="max-h-[54vh] overflow-y-auto pr-1 custom-scrollbar sm:max-h-[calc(100vh-330px)]"
         role="list"
         aria-label="Available Pokémon"
       >

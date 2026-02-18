@@ -20,8 +20,7 @@ import TeamBuilderHeader from "./TeamBuilderHeader";
 import ClearTeamDialog from "./ClearTeamDialog";
 import PokemonSelection from "./PokemonSelection";
 import TeamPanel from "./TeamPanel";
-import SavedTeamsPanel from "./SavedTeamsPanel";
-import ShareImportPanel from "./ShareImportPanel";
+import TeamToolsModal from "./TeamToolsModal";
 import UndoToast from "@/components/ui/UndoToast";
 import PokemonDetailDrawer from "@/components/ui/PokemonDetailDrawer";
 import { useAnimatedUnmount } from "@/hooks/useAnimatedUnmount";
@@ -135,7 +134,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const [versionFilterEnabled, setVersionFilterEnabled] = useState(false);
   const [canUsePointerDrag, setCanUsePointerDrag] = useState(false);
   const [isDesktopScreen, setIsDesktopScreen] = useState(false);
-  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [detailPokemon, setDetailPokemon] = useState<Pokemon | null>(null);
   const [lockedSlots, setLockedSlots] = useState<boolean[]>(createEmptyLockedSlots);
   const [replaceMode, setReplaceMode] = useState(false);
@@ -146,6 +145,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
   const [poolsByGame, setPoolsByGame] = useState<Record<number, PokemonPools>>(initialPoolsByGame);
   const [poolLoadErrorByGame, setPoolLoadErrorByGame] = useState<Record<number, string>>({});
+  const [isTeamToolsOpen, setIsTeamToolsOpen] = useState(false);
 
   const pastTeamsRef = useRef<(Pokemon | null)[][]>([]);
   const futureTeamsRef = useRef<(Pokemon | null)[][]>([]);
@@ -493,7 +493,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const handleGameChange = useCallback((gameId: number) => {
     setSelectedGameId(gameId);
     setSearchTerm("");
-    setTypeFilter(null);
+    setTypeFilter([]);
     void ensureGamePool(gameId);
   }, [ensureGamePool]);
 
@@ -547,8 +547,12 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
   const filteredPokemon = useMemo(() => {
     let pool = availablePokemon;
-    if (typeFilter) {
-      pool = pool.filter((p) => p.types.includes(typeFilter));
+    if (typeFilter.length > 0) {
+      const selectedTypes = new Set(typeFilter);
+      pool = pool.filter((pokemon) => {
+        const pokemonTypes = new Set(pokemon.types);
+        return [...selectedTypes].every((type) => pokemonTypes.has(type));
+      });
     }
     if (!lowerSearch) return pool;
     return pool.filter((p) => p.name.toLowerCase().includes(lowerSearch));
@@ -651,8 +655,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           return;
         }
 
-        if (typeFilter) {
-          setTypeFilter(null);
+        if (typeFilter.length > 0) {
+          setTypeFilter([]);
           event.preventDefault();
         }
         return;
@@ -1220,22 +1224,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                 replaceMode={replaceMode}
                 selectedReplaceSlot={replaceTargetSlot}
                 onSelectReplaceSlot={setReplaceTargetSlot}
+                onOpenTeamTools={() => setIsTeamToolsOpen(true)}
               />
-
-              {isAuthenticated && (
-                <SavedTeamsPanel
-                  savedTeams={savedTeams}
-                  activeTeamId={activeTeamId}
-                  onSaveAs={saveTeamAs}
-                  onLoad={handleLoadSavedTeam}
-                  onDelete={deleteSavedTeam}
-                  onRename={renameSavedTeam}
-                  onRefresh={refreshSavedTeams}
-                  isSaving={isSaving}
-                />
-              )}
-
-              <ShareImportPanel payload={sharePayload} onImport={queueImportPayload} />
 
               {isDesktopScreen && shouldRenderEmpty && (
                 <section
@@ -1358,6 +1348,22 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
         teamCount={clearableCount}
         onCancel={closeClearDialog}
         onConfirm={confirmClearTeam}
+      />
+
+      <TeamToolsModal
+        isOpen={isTeamToolsOpen}
+        onClose={() => setIsTeamToolsOpen(false)}
+        isAuthenticated={isAuthenticated}
+        savedTeams={savedTeams}
+        activeTeamId={activeTeamId}
+        onSaveAs={saveTeamAs}
+        onLoadSavedTeam={handleLoadSavedTeam}
+        onDeleteSavedTeam={deleteSavedTeam}
+        onRenameSavedTeam={renameSavedTeam}
+        onRefreshSavedTeams={refreshSavedTeams}
+        isSaving={isSaving}
+        payload={sharePayload}
+        onImport={queueImportPayload}
       />
 
       <PokemonDetailDrawer

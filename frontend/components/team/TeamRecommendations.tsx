@@ -40,6 +40,8 @@ const TeamRecommendations = ({
   onReplaceWeakest,
   canReplaceWeakest,
 }: TeamRecommendationsProps) => {
+  const isSmartPicksOn = recommendationsEnabled;
+
   const toggleRecommendations = useCallback(() => {
     onToggleRecommendations((prev) => !prev);
   }, [onToggleRecommendations]);
@@ -80,35 +82,55 @@ const TeamRecommendations = ({
           aria-label="Toggle smart picks"
           onClick={handleToggleClick}
           onKeyDown={handleToggleKeyDown}
-          className="inline-flex w-full items-center justify-between gap-2 rounded-xl border px-2.5 py-1.5 text-left sm:w-auto sm:justify-normal sm:rounded-full"
+          className="inline-flex w-full items-center justify-between gap-2 rounded-full border px-3 py-1.5 text-left transition-all duration-300 sm:w-auto"
           style={{
-            borderColor: "var(--border)",
-            background: "var(--surface-2)",
+            borderColor: isSmartPicksOn ? "rgba(74, 222, 128, 0.42)" : "var(--border)",
+            background: isSmartPicksOn
+              ? "linear-gradient(145deg, rgba(15, 58, 39, 0.9), rgba(13, 30, 27, 0.95))"
+              : "linear-gradient(145deg, rgba(20, 30, 52, 0.86), rgba(12, 18, 34, 0.94))",
+            boxShadow: isSmartPicksOn
+              ? "inset 0 1px 0 rgba(134, 239, 172, 0.16), 0 8px 18px rgba(2, 6, 20, 0.32)"
+              : "inset 0 1px 0 rgba(148, 163, 184, 0.1), 0 6px 16px rgba(2, 6, 20, 0.26)",
           }}
         >
-          <span className="text-[0.64rem] font-semibold tracking-[0.02em]" style={{ color: "var(--text-secondary)" }}>
+          <span
+            className="text-[0.64rem] font-semibold tracking-[0.03em]"
+            style={{ color: "var(--text-secondary)" }}
+          >
             Smart picks
           </span>
           <span
-            className="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5"
+            className="relative inline-flex h-6 w-12 shrink-0 items-center overflow-hidden rounded-full border transition-all duration-300"
             style={{
-              background: recommendationsEnabled ? "rgba(19, 111, 58, 0.25)" : "rgba(148, 163, 184, 0.14)",
-              border: `1px solid ${recommendationsEnabled ? "rgba(19, 111, 58, 0.4)" : "rgba(148, 163, 184, 0.3)"}`,
-              transition: "background 0.2s ease, border-color 0.2s ease",
+              borderColor: isSmartPicksOn ? "rgba(74, 222, 128, 0.45)" : "rgba(148, 163, 184, 0.34)",
+              background: isSmartPicksOn
+                ? "linear-gradient(155deg, rgba(25, 95, 56, 0.56), rgba(16, 79, 43, 0.74))"
+                : "linear-gradient(160deg, rgba(65, 76, 102, 0.32), rgba(42, 50, 72, 0.64))",
+              boxShadow: isSmartPicksOn
+                ? "inset 0 0 0 1px rgba(134, 239, 172, 0.14), 0 0 0 1px rgba(74, 222, 128, 0.16)"
+                : "inset 0 0 0 1px rgba(148, 163, 184, 0.08)",
             }}
+            aria-hidden="true"
           >
             <span
-              className="h-[22px] w-[22px] rounded-full"
+              className="absolute left-0.5 top-0.5 h-[1.1rem] w-[1.1rem] rounded-full transition-all duration-300"
               style={{
-                background: recommendationsEnabled ? "#136f3a" : "#94a3b8",
-                transform: recommendationsEnabled ? "translateX(22px)" : "translateX(0)",
-                transition: "transform 0.2s ease, background 0.2s ease",
+                transform: isSmartPicksOn ? "translateX(1.35rem)" : "translateX(0)",
+                background: isSmartPicksOn
+                  ? "linear-gradient(180deg, #8ff5bd 0%, #32b56d 100%)"
+                  : "linear-gradient(180deg, #b8c3dd 0%, #8492b6 100%)",
+                boxShadow: isSmartPicksOn
+                  ? "0 2px 9px rgba(6, 95, 70, 0.5), inset 0 1px 1px rgba(230, 255, 244, 0.52)"
+                  : "0 2px 8px rgba(2, 6, 20, 0.42), inset 0 1px 1px rgba(255, 255, 255, 0.4)",
               }}
             />
           </span>
           <span
-            className="w-8 shrink-0 text-right text-[0.62rem] font-semibold uppercase tracking-[0.06em]"
-            style={{ color: recommendationsEnabled ? "#86efac" : "var(--text-muted)" }}
+            className="w-8 text-right text-[0.62rem] font-semibold uppercase tracking-[0.08em]"
+            style={{
+              color: isSmartPicksOn ? "#86efac" : "var(--text-muted)",
+              textShadow: isSmartPicksOn ? "0 0 14px rgba(74, 222, 128, 0.28)" : "none",
+            }}
           >
             {recommendationsEnabled ? "On" : "Off"}
           </span>

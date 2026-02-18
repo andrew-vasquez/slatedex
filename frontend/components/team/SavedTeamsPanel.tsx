@@ -13,6 +13,7 @@ interface SavedTeamsPanelProps {
   onRename: (teamId: string, name: string) => Promise<void>;
   onRefresh: () => Promise<void>;
   isSaving: boolean;
+  variant?: "panel" | "embedded";
 }
 
 const SavedTeamsPanel = ({
@@ -24,6 +25,7 @@ const SavedTeamsPanel = ({
   onRename,
   onRefresh,
   isSaving,
+  variant = "panel",
 }: SavedTeamsPanelProps) => {
   const [newTeamName, setNewTeamName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -68,8 +70,10 @@ const SavedTeamsPanel = ({
     return team.pokemon.filter((p) => p !== null).length;
   };
 
+  const wrapperClassName = variant === "panel" ? "panel p-4" : "";
+
   return (
-    <section className="panel p-4" aria-label="Saved teams">
+    <section className={wrapperClassName} aria-label="Saved teams">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-display text-sm" style={{ color: "var(--text-primary)" }}>
           <FiFolder size={14} className="inline mr-1.5" style={{ verticalAlign: "-2px" }} />
