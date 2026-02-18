@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { FiCheck, FiImage, FiX } from "react-icons/fi";
 import {
   AVATAR_FRAME_OPTIONS,
@@ -8,6 +9,7 @@ import {
   getAvatarFrameStyles,
   type AvatarFrameKey,
 } from "@/lib/profile";
+import { normalizeAvatarUrl } from "@/lib/avatar";
 
 interface AvatarPickerModalProps {
   isOpen: boolean;
@@ -43,6 +45,7 @@ const AvatarPickerModal = ({
   }, [isOpen, onClose, selectedAvatarUrl, selectedFrame]);
 
   const frameStyles = useMemo(() => getAvatarFrameStyles(draftFrame), [draftFrame]);
+  const previewAvatar = normalizeAvatarUrl(draftAvatarUrl.trim());
 
   if (!isOpen) return null;
 
@@ -89,7 +92,15 @@ const AvatarPickerModal = ({
                     color: "var(--text-secondary)",
                   }}
                 >
-                  <img src={preset.url} alt={preset.label} className="mx-auto h-14 w-14 rounded-lg object-cover" />
+                  <Image
+                    src={preset.url}
+                    alt={preset.label}
+                    width={56}
+                    height={56}
+                    sizes="56px"
+                    unoptimized
+                    className="mx-auto h-14 w-14 rounded-lg object-cover"
+                  />
                   <span className="mt-1 block">{preset.label}</span>
                 </button>
               ))}
@@ -149,8 +160,16 @@ const AvatarPickerModal = ({
                     background: "rgba(10, 16, 34, 0.72)",
                   }}
                 >
-                  {draftAvatarUrl.trim() ? (
-                    <img src={draftAvatarUrl.trim()} alt="Avatar preview" className="h-14 w-14 rounded-xl object-cover" />
+                  {previewAvatar ? (
+                    <Image
+                      src={previewAvatar}
+                      alt="Avatar preview"
+                      width={56}
+                      height={56}
+                      sizes="56px"
+                      unoptimized
+                      className="h-14 w-14 rounded-xl object-cover"
+                    />
                   ) : (
                     <span className="text-xs font-semibold uppercase" style={{ color: "var(--text-muted)" }}>
                       {fallbackInitials}

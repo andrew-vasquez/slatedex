@@ -6,6 +6,7 @@ import { FiArrowLeft } from "react-icons/fi";
 import { AVATAR_FRAME_OPTIONS, getAvatarFrameStyles, getGameDecoration, type AvatarFrameKey } from "@/lib/profile";
 import FavoritePokemonDisplay from "@/components/profile/FavoritePokemonDisplay";
 import { getVersionLabel } from "@/lib/pokemon";
+import { normalizeAvatarUrl } from "@/lib/avatar";
 
 type ProfilePokemonPreview = {
   id: number | null;
@@ -104,7 +105,15 @@ function PokemonSpriteStrip({ team }: { team: ProfileSavedTeam }) {
             title={pokemon.name}
           >
             {pokemon.sprite ? (
-              <img src={pokemon.sprite} alt={pokemon.name} className="h-7 w-7 object-contain" />
+              <Image
+                src={pokemon.sprite}
+                alt={pokemon.name}
+                width={28}
+                height={28}
+                sizes="28px"
+                unoptimized
+                className="h-7 w-7 object-contain"
+              />
             ) : (
               <span className="text-[0.62rem] uppercase" style={{ color: "var(--text-muted)" }}>
                 {pokemon.name.slice(0, 2)}
@@ -138,7 +147,7 @@ export default async function PublicProfilePage({
     year: "numeric",
     month: "short",
   });
-  const avatar = profile.avatarUrl || profile.image || "";
+  const avatar = normalizeAvatarUrl(profile.avatarUrl || profile.image || "");
   const avatarFrame = toAvatarFrame(profile.avatarFrame);
   const avatarFrameStyles = getAvatarFrameStyles(avatarFrame);
 

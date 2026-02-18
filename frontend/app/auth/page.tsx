@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FiCheck, FiEye, FiEyeOff, FiLoader, FiX } from "react-icons/fi";
@@ -76,7 +76,7 @@ const PasswordInput = ({
   );
 };
 
-export default function AuthPage() {
+function AuthPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading } = useAuth();
@@ -535,5 +535,24 @@ export default function AuthPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+function AuthPageFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg-gradient)" }}>
+      <div className="flex flex-col items-center gap-3">
+        <div className="skeleton h-7 w-24 rounded-xl" />
+        <div className="skeleton h-4 w-40 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<AuthPageFallback />}>
+      <AuthPageContent />
+    </Suspense>
   );
 }

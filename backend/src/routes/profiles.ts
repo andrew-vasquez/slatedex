@@ -17,6 +17,8 @@ const MAX_FAVORITE_POKEMON = 6;
 const USERNAME_CHANGE_LIMIT = 2;
 const USERNAME_WINDOW_DAYS = 30;
 const USERNAME_REGEX = /^[a-z0-9](?:[a-z0-9_]{1,28}[a-z0-9])?$/;
+const MAX_ME_SAVED_TEAMS = 24;
+const MAX_PUBLIC_SAVED_TEAMS = 12;
 const AVATAR_FRAMES = new Set([
   "classic",
   "fire",
@@ -25,6 +27,11 @@ const AVATAR_FRAMES = new Set([
   "grass",
   "psychic",
   "dragon",
+]);
+const TRUSTED_AVATAR_HOSTS = new Set([
+  "lh3.googleusercontent.com",
+  "avatars.githubusercontent.com",
+  "cdn.discordapp.com",
 ]);
 
 type TeamSummary = {
@@ -59,6 +66,13 @@ type TeamQueryRow = {
   selectedVersionId: string | null;
   updatedAt: Date;
   pokemon: unknown;
+};
+
+type TeamSummaryRow = {
+  generation: number;
+  gameId: number;
+  updatedAt: Date;
+  name: string;
 };
 
 const profiles = new Hono<AuthEnv>();
@@ -148,6 +162,14 @@ function parseAvatarUrl(raw: unknown): { value?: string | null; error?: string }
     return { error: "avatarUrl must use http or https" };
   }
 
+  const host = parsed.hostname.toLowerCase();
+  const isLocalhost = host === "localhost" || host === "127.0.0.1";
+  const isTrustedHost = TRUSTED_AVATAR_HOSTS.has(host);
+  const allowHost = isTrustedHost || (process.env.NODE_ENV !== "production" && isLocalhost);
+  if (!allowHost) {
+    return { error: "avatarUrl host is not allowed" };
+  }
+
   return { value: trimmed };
 }
 
@@ -172,7 +194,7 @@ function parseFavoriteTeamId(raw: unknown): { value?: string | null; error?: str
   return { value: trimmed ? trimmed : null };
 }
 
-function getTeamSummaries(teams: TeamQueryRow[]): TeamSummary[] {
+function getTeamSummaries(teams: TeamSummaryRow[]): TeamSummary[] {
   const summaryMap = new Map<string, TeamSummary>();
 
   for (const team of teams) {
@@ -237,14 +259,11 @@ function toTeamCards(teams: TeamQueryRow[]): TeamCard[] {
   }));
 }
 
-function clampTeamCards(cards: TeamCard[], favoriteTeamId: string | null, max: number): TeamCard[] {
+function clampTeamCards(cards: TeamCard[], favoriteTeam: TeamCard | null, max: number): TeamCard[] {
   if (cards.length <= max) return cards;
   const top = cards.slice(0, max);
-  if (!favoriteTeamId) return top;
-  if (top.some((team) => team.id === favoriteTeamId)) return top;
-
-  const favoriteTeam = cards.find((team) => team.id === favoriteTeamId);
   if (!favoriteTeam) return top;
+  if (top.some((team) => team.id === favoriteTeam.id)) return top;
   return [favoriteTeam, ...top.slice(0, max - 1)];
 }
 
@@ -358,18 +377,6 @@ profiles.get("/me", authMiddleware, async (c) => {
           favoritePokemonNames: true,
         },
       },
-      teams: {
-        select: {
-          id: true,
-          generation: true,
-          gameId: true,
-          selectedVersionId: true,
-          updatedAt: true,
-          name: true,
-          pokemon: true,
-        },
-        orderBy: { updatedAt: "desc" },
-      },
     },
   });
 
@@ -406,12 +413,58 @@ profiles.get("/me", authMiddleware, async (c) => {
       createdAt: { gte: since },
     },
   });
+  const [summaryRows, totalTeams, topTeamRows, favoriteTeamRow] = await Promise.all([
+    prisma.team.findMany({
+      where: { userId: user.id },
+      select: {
+        generation: true,
+        gameId: true,
+        updatedAt: true,
+        name: true,
+      },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.team.count({
+      where: { userId: user.id },
+    }),
+    prisma.team.findMany({
+      where: { userId: user.id },
+      select: {
+        id: true,
+        generation: true,
+        gameId: true,
+        selectedVersionId: true,
+        updatedAt: true,
+        name: true,
+        pokemon: true,
+      },
+      orderBy: { updatedAt: "desc" },
+      take: MAX_ME_SAVED_TEAMS,
+    }),
+    profile.favoriteTeamId
+      ? prisma.team.findFirst({
+          where: { id: profile.favoriteTeamId, userId: user.id },
+          select: {
+            id: true,
+            generation: true,
+            gameId: true,
+            selectedVersionId: true,
+            updatedAt: true,
+            name: true,
+            pokemon: true,
+          },
+        })
+      : Promise.resolve(null),
+  ]);
 
-  const allSavedTeams = toTeamCards(user.teams);
-  const favoriteTeam = profile.favoriteTeamId
-    ? allSavedTeams.find((team) => team.id === profile.favoriteTeamId) ?? null
+  const allSavedTeams = toTeamCards(topTeamRows);
+  const favoriteTeamFromTop = favoriteTeamRow
+    ? allSavedTeams.find((team) => team.id === favoriteTeamRow.id) ?? null
     : null;
-  const savedTeams = clampTeamCards(allSavedTeams, profile.favoriteTeamId ?? null, 24);
+  const favoriteTeam =
+    favoriteTeamFromTop ??
+    (favoriteTeamRow ? (toTeamCards([favoriteTeamRow])[0] ?? null) : null);
+  const savedTeams = clampTeamCards(allSavedTeams, favoriteTeam, MAX_ME_SAVED_TEAMS);
 
   return c.json({
     username,
@@ -427,8 +480,8 @@ profiles.get("/me", authMiddleware, async (c) => {
     savedTeams,
     favoriteTeam,
     teamStats: {
-      totalTeams: user.teams.length,
-      summaries: getTeamSummaries(user.teams),
+      totalTeams,
+      summaries: getTeamSummaries(summaryRows),
     },
     usernameChangeWindow: {
       max: USERNAME_CHANGE_LIMIT,
@@ -622,6 +675,7 @@ profiles.get("/:username", async (c) => {
   const user = await prisma.user.findUnique({
     where: { username },
     select: {
+      id: true,
       username: true,
       name: true,
       image: true,
@@ -636,18 +690,6 @@ profiles.get("/:username", async (c) => {
           favoritePokemonNames: true,
         },
       },
-      teams: {
-        select: {
-          id: true,
-          generation: true,
-          gameId: true,
-          selectedVersionId: true,
-          updatedAt: true,
-          name: true,
-          pokemon: true,
-        },
-        orderBy: { updatedAt: "desc" },
-      },
     },
   });
 
@@ -655,11 +697,58 @@ profiles.get("/:username", async (c) => {
     return c.json({ error: "Profile not found" }, 404);
   }
 
-  const allSavedTeams = toTeamCards(user.teams);
-  const favoriteTeam = user.profile?.favoriteTeamId
-    ? allSavedTeams.find((team) => team.id === user.profile.favoriteTeamId) ?? null
+  const [summaryRows, totalTeams, topTeamRows, favoriteTeamRow] = await Promise.all([
+    prisma.team.findMany({
+      where: { userId: user.id },
+      select: {
+        generation: true,
+        gameId: true,
+        updatedAt: true,
+        name: true,
+      },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.team.count({
+      where: { userId: user.id },
+    }),
+    prisma.team.findMany({
+      where: { userId: user.id },
+      select: {
+        id: true,
+        generation: true,
+        gameId: true,
+        selectedVersionId: true,
+        updatedAt: true,
+        name: true,
+        pokemon: true,
+      },
+      orderBy: { updatedAt: "desc" },
+      take: MAX_PUBLIC_SAVED_TEAMS,
+    }),
+    user.profile?.favoriteTeamId
+      ? prisma.team.findFirst({
+          where: { id: user.profile.favoriteTeamId, userId: user.id },
+          select: {
+            id: true,
+            generation: true,
+            gameId: true,
+            selectedVersionId: true,
+            updatedAt: true,
+            name: true,
+            pokemon: true,
+          },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const allSavedTeams = toTeamCards(topTeamRows);
+  const favoriteTeamFromTop = favoriteTeamRow
+    ? allSavedTeams.find((team) => team.id === favoriteTeamRow.id) ?? null
     : null;
-  const savedTeams = clampTeamCards(allSavedTeams, user.profile?.favoriteTeamId ?? null, 12);
+  const favoriteTeam =
+    favoriteTeamFromTop ??
+    (favoriteTeamRow ? (toTeamCards([favoriteTeamRow])[0] ?? null) : null);
+  const savedTeams = clampTeamCards(allSavedTeams, favoriteTeam, MAX_PUBLIC_SAVED_TEAMS);
 
   return c.json({
     username: user.username,
@@ -675,8 +764,8 @@ profiles.get("/:username", async (c) => {
     savedTeams,
     favoriteTeam,
     teamStats: {
-      totalTeams: user.teams.length,
-      summaries: getTeamSummaries(user.teams),
+      totalTeams,
+      summaries: getTeamSummaries(summaryRows),
     },
   });
 });

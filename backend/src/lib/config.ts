@@ -84,6 +84,20 @@ function validateProductionAuthEnv(): void {
   }
 }
 
+function validateBetterAuthSecret(): void {
+  const secret = process.env.BETTER_AUTH_SECRET?.trim();
+
+  if (process.env.NODE_ENV !== "production") return;
+
+  if (!secret) {
+    throw new Error("Missing required production auth env var: BETTER_AUTH_SECRET");
+  }
+
+  if (secret.length < 32) {
+    throw new Error("BETTER_AUTH_SECRET must be at least 32 characters in production.");
+  }
+}
+
 function parseOrigins(raw: string | undefined): string[] {
   if (!raw) return [DEFAULT_FRONTEND_ORIGIN];
 
@@ -108,6 +122,7 @@ function parsePort(raw: string | undefined): number {
 
 const frontendOrigins = parseOrigins(process.env.FRONTEND_URL?.trim());
 validateProductionAuthEnv();
+validateBetterAuthSecret();
 
 export const config = {
   port: parsePort(process.env.PORT),

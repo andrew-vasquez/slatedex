@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { FiCheck, FiCopy, FiExternalLink, FiImage, FiSave, FiStar } from "react-icons/fi";
 import { fetchMyProfile, updateMyProfile, type MyProfile, type ProfileSavedTeam } from "@/lib/api";
@@ -16,6 +17,7 @@ import {
   USERNAME_REGEX,
   type AvatarFrameKey,
 } from "@/lib/profile";
+import { normalizeAvatarUrl } from "@/lib/avatar";
 import { useAuth } from "@/components/providers/AuthProvider";
 import AvatarPickerModal from "@/components/profile/AvatarPickerModal";
 import FavoritePokemonPicker from "@/components/profile/FavoritePokemonPicker";
@@ -82,7 +84,15 @@ function TeamPreviewCard({
               title={pokemon.name}
             >
               {pokemon.sprite ? (
-                <img src={pokemon.sprite} alt={pokemon.name} className="h-7 w-7 object-contain" />
+                <Image
+                  src={pokemon.sprite}
+                  alt={pokemon.name}
+                  width={28}
+                  height={28}
+                  sizes="28px"
+                  unoptimized
+                  className="h-7 w-7 object-contain"
+                />
               ) : (
                 <span className="text-[0.62rem] uppercase" style={{ color: "var(--text-muted)" }}>
                   {pokemon.name.slice(0, 2)}
@@ -273,7 +283,7 @@ export default function ProfileSettingsPage() {
     );
   }
 
-  const previewAvatar = avatarUrl.trim() || profile?.image || "";
+  const previewAvatar = normalizeAvatarUrl(avatarUrl.trim() || profile?.image || "");
   const avatarFrameStyles = getAvatarFrameStyles(avatarFrame);
 
   return (
@@ -354,7 +364,15 @@ export default function ProfileSettingsPage() {
                       }}
                     >
                       {previewAvatar ? (
-                        <img src={previewAvatar} alt="Profile avatar preview" className="h-14 w-14 rounded-xl object-cover" />
+                        <Image
+                          src={previewAvatar}
+                          alt="Profile avatar preview"
+                          width={56}
+                          height={56}
+                          sizes="56px"
+                          unoptimized
+                          className="h-14 w-14 rounded-xl object-cover"
+                        />
                       ) : (
                         <span className="text-xs font-semibold uppercase" style={{ color: "var(--text-muted)" }}>
                           {user?.name?.slice(0, 2) || "PK"}
@@ -551,7 +569,15 @@ export default function ProfileSettingsPage() {
                 }}
               >
                 {previewAvatar ? (
-                  <img src={previewAvatar} alt="avatar" className="h-12 w-12 rounded-lg object-cover" />
+                  <Image
+                    src={previewAvatar}
+                    alt="avatar"
+                    width={48}
+                    height={48}
+                    sizes="48px"
+                    unoptimized
+                    className="h-12 w-12 rounded-lg object-cover"
+                  />
                 ) : (
                   <span className="text-xs font-semibold uppercase" style={{ color: "var(--text-muted)" }}>
                     {user?.name?.slice(0, 2) || "PK"}

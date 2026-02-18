@@ -2,9 +2,11 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { FiLogIn, FiLogOut, FiMoon, FiSettings, FiSun, FiUser, FiGrid } from "react-icons/fi";
 import { signOut } from "@/lib/auth-client";
 import { fetchMyProfile } from "@/lib/api";
+import { normalizeAvatarUrl } from "@/lib/avatar";
 import {
   AVATAR_FRAME_OPTIONS,
   getAvatarFrameStyles,
@@ -129,7 +131,7 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
   };
 
   const frameStyles = getAvatarFrameStyles(avatarFrame);
-  const effectiveAvatarUrl = avatarUrl?.trim() || user?.image || "";
+  const effectiveAvatarUrl = normalizeAvatarUrl(avatarUrl?.trim() || user?.image || "");
 
   return (
     <div className={`user-menu-shell${compactOnMobile ? " user-menu-shell--compact-mobile" : ""} ${className}`.trim()}>
@@ -182,9 +184,13 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
               onClick={() => setIsOpen((prev) => !prev)}
             >
               {effectiveAvatarUrl ? (
-                <img
+                <Image
                   src={effectiveAvatarUrl}
                   alt={user?.name ? `${user.name} avatar` : "User avatar"}
+                  width={40}
+                  height={40}
+                  sizes="40px"
+                  unoptimized
                   className="h-full w-full rounded-full object-cover"
                 />
               ) : (
