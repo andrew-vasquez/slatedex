@@ -1,5 +1,5 @@
 {
-  "name": "slatedex backend",
+  "name": "slatedex-backend",
   "version": "0.6.0",
   "scripts": {
     "dev": "bun run --hot src/index.ts",

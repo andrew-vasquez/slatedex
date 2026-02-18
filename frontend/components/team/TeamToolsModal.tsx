@@ -129,7 +129,7 @@ const TeamToolsModal = ({
   if (!shouldRender) return null;
 
   return (
-    <div className="fixed inset-0 z-[95] flex items-center justify-center overflow-hidden p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="team-tools-modal-title">
+    <div className="fixed inset-0 z-[95] grid place-items-center overflow-hidden p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="team-tools-modal-title">
       <button
         type="button"
         onClick={onClose}
@@ -139,7 +139,7 @@ const TeamToolsModal = ({
       />
 
       <section
-        className={`panel relative w-full max-w-3xl overflow-hidden p-5 lg:max-h-[min(88dvh,52rem)] ${isAnimatingOut ? "animate-scale-out" : "animate-scale-in"}`}
+        className={`panel relative w-full max-w-3xl overflow-hidden p-5 max-h-[min(88dvh,52rem)] ${isAnimatingOut ? "animate-scale-out" : "animate-scale-in"}`}
         onAnimationEnd={onAnimationEnd}
         aria-labelledby="team-tools-modal-title"
       >
@@ -192,7 +192,7 @@ const TeamToolsModal = ({
           </button>
         </div>
 
-        <div key={tabTransitionKey} className="mt-4 animate-accordion-down lg:max-h-[min(68dvh,36rem)] lg:overflow-y-auto lg:pr-1 lg:custom-scrollbar">
+        <div key={tabTransitionKey} className="mt-4 animate-accordion-down max-h-[min(68dvh,36rem)] overflow-y-auto pr-1 custom-scrollbar">
           {activeTab === "saved" ? (
             isAuthenticated ? (
               <SavedTeamsPanel

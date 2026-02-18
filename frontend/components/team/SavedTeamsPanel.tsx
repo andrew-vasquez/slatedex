@@ -25,6 +25,7 @@ interface SavedTeamsPanelProps {
 }
 
 type SaveStep = "name" | "version";
+const DELETE_ANIMATION_MS = 180;
 
 const SavedTeamsPanel = ({
   savedTeams,
@@ -44,6 +45,7 @@ const SavedTeamsPanel = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [deletingTeamIds, setDeletingTeamIds] = useState<string[]>([]);
 
   const hasMultipleVersions = gameVersions.length > 1;
 
@@ -91,6 +93,21 @@ const SavedTeamsPanel = ({
     setEditingId(team.id);
     setEditName(team.name);
   }, []);
+
+  const handleDelete = useCallback(
+    async (teamId: string) => {
+      if (deletingTeamIds.includes(teamId)) return;
+      setDeletingTeamIds((prev) => [...prev, teamId]);
+
+      await new Promise((resolve) => window.setTimeout(resolve, DELETE_ANIMATION_MS));
+      try {
+        await onDelete(teamId);
+      } finally {
+        setDeletingTeamIds((prev) => prev.filter((id) => id !== teamId));
+      }
+    },
+    [deletingTeamIds, onDelete]
+  );
 
   const confirmRename = useCallback(
     async (teamId: string) => {
@@ -210,10 +227,18 @@ const SavedTeamsPanel = ({
       ) : (
         <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto custom-scrollbar">
           {savedTeams.map((team) => (
-            <div
+            <article
               key={team.id}
-              className="flex items-center gap-2 rounded-lg px-2.5 py-2"
+              className="flex items-center gap-2 rounded-lg px-2.5 py-2 transition-[opacity,transform,max-height,margin,padding] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]"
               style={{
+                opacity: deletingTeamIds.includes(team.id) ? 0 : 1,
+                transform: deletingTeamIds.includes(team.id) ? "translateY(-6px) scale(0.98)" : "none",
+                maxHeight: deletingTeamIds.includes(team.id) ? "0px" : "96px",
+                marginTop: deletingTeamIds.includes(team.id) ? "0px" : undefined,
+                marginBottom: deletingTeamIds.includes(team.id) ? "0px" : undefined,
+                paddingTop: deletingTeamIds.includes(team.id) ? "0px" : undefined,
+                paddingBottom: deletingTeamIds.includes(team.id) ? "0px" : undefined,
+                overflow: "hidden",
                 background: team.id === activeTeamId ? "var(--accent-soft)" : "var(--surface-2)",
                 border: `1px solid ${team.id === activeTeamId ? "rgba(218, 44, 67, 0.3)" : "var(--border)"}`,
               }}
@@ -256,6 +281,7 @@ const SavedTeamsPanel = ({
                   <button
                     type="button"
                     onClick={() => onLoad(team.id)}
+                    disabled={deletingTeamIds.includes(team.id)}
                     className="flex-1 min-w-0 text-left"
                   >
                     <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>
@@ -268,6 +294,7 @@ const SavedTeamsPanel = ({
                   <button
                     type="button"
                     onClick={() => startRename(team)}
+                    disabled={deletingTeamIds.includes(team.id)}
                     className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded"
                     style={{ color: "var(--text-muted)" }}
                     aria-label={`Rename ${team.name}`}
@@ -276,16 +303,21 @@ const SavedTeamsPanel = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onDelete(team.id)}
+                    onClick={() => void handleDelete(team.id)}
+                    disabled={deletingTeamIds.includes(team.id)}
                     className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded"
                     style={{ color: "#ef4444" }}
                     aria-label={`Delete ${team.name}`}
                   >
-                    <FiTrash2 size={11} />
+                    {deletingTeamIds.includes(team.id) ? (
+                      <FiRefreshCw size={11} className="animate-spin" />
+                    ) : (
+                      <FiTrash2 size={11} />
+                    )}
                   </button>
                 </>
               )}
-            </div>
+            </article>
           ))}
         </div>
       )}
