@@ -4,9 +4,12 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FiCheck, FiEye, FiEyeOff, FiLoader, FiX } from "react-icons/fi";
-import { signUp } from "@/lib/auth-client";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { checkUsernameAvailable, loginWithIdentifier, updateMyProfile } from "@/lib/api";
+import {
+  checkUsernameAvailable,
+  loginWithIdentifier,
+  registerWithEmail,
+} from "@/lib/api";
 import { USERNAME_REGEX } from "@/lib/profile";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 
@@ -84,6 +87,8 @@ function AuthPageContent() {
   const queryTab = resolveTab(searchParams.get("mode"));
 
   const [tab, setTab] = useState<Tab>(queryTab);
+  const [displayTab, setDisplayTab] = useState<Tab>(queryTab);
+  const [isExiting, setIsExiting] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -98,12 +103,20 @@ function AuthPageContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
   const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const heightClipRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const heightEndListenerRef = useRef<((e: TransitionEvent) => void) | null>(null);
   const usernameCheckCache = useRef<Map<string, boolean>>(new Map());
 
   const isEmailIdentifier = identifier.includes("@");
 
   useEffect(() => {
-    setTab(queryTab);
+    // External navigation (browser back/forward, direct URL) — sync without animation
+    if (!exitTimer.current) {
+      setTab(queryTab);
+      setDisplayTab(queryTab);
+    }
   }, [queryTab]);
 
   useEffect(() => {
@@ -154,28 +167,88 @@ function AuthPageContent() {
   }, [tab, username]);
 
   function switchTab(next: Tab) {
+    if (next === displayTab) return;
     setError("");
-    setTab(next);
+    setTab(next); // highlight the new tab immediately
 
     const params = new URLSearchParams(searchParams.toString());
     params.set("mode", next);
     router.replace(`/auth?${params.toString()}`, { scroll: false });
+
+    const clip = heightClipRef.current;
+    const content = contentRef.current;
+
+    // Remove any pending transitionend listener from a previous switch.
+    if (heightEndListenerRef.current && clip) {
+      clip.removeEventListener("transitionend", heightEndListenerRef.current);
+      heightEndListenerRef.current = null;
+    }
+
+    // Freeze the clip at its current pixel height so the exit animation
+    // doesn't cause an instant layout jump.
+    if (clip && content) {
+      clip.style.height = `${content.offsetHeight}px`;
+    }
+
+    if (exitTimer.current) clearTimeout(exitTimer.current);
+    setIsExiting(true);
+    exitTimer.current = setTimeout(() => {
+      exitTimer.current = null;
+      setDisplayTab(next);
+      setIsExiting(false);
+
+      // Double-rAF: first frame lets React commit the new content,
+      // second frame lets the browser calculate the new layout.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (!clip || !content) return;
+
+          const onTransitionEnd = (e: TransitionEvent) => {
+            if (e.propertyName !== "height") return;
+            clip.removeEventListener("transitionend", onTransitionEnd);
+            heightEndListenerRef.current = null;
+
+            // Snap px → auto without a visible transition so there's no
+            // sub-pixel jump at the end of the height animation.
+            clip.style.transition = "none";
+            clip.style.height = "";
+            requestAnimationFrame(() => {
+              if (clip) clip.style.transition = "";
+            });
+          };
+
+          heightEndListenerRef.current = onTransitionEnd;
+          clip.addEventListener("transitionend", onTransitionEnd);
+          clip.style.height = `${content.scrollHeight}px`;
+        });
+      });
+    }, 180);
   }
 
-  async function handleSignIn(e: React.FormEvent) {
+  async function handleSignIn(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (submitting) return;
     setError("");
     setSubmitting(true);
 
+    const formData = new FormData(e.currentTarget);
+    const submittedIdentifier = String(formData.get("email") ?? "").trim();
+    const submittedPassword = String(formData.get("password") ?? "");
+
+    if (!submittedIdentifier || !submittedPassword) {
+      setError("Email/username and password are required.");
+      setSubmitting(false);
+      return;
+    }
+
     try {
-      const result = await loginWithIdentifier(identifier.trim(), signInPassword);
+      const result = await loginWithIdentifier(submittedIdentifier, submittedPassword);
       if (!result.ok) {
         setError(result.error ?? "Sign in failed");
         return;
       }
 
-      router.push("/teams");
+      router.replace("/teams");
     } catch (err) {
       setError(formatAuthError(err));
     } finally {
@@ -183,17 +256,30 @@ function AuthPageContent() {
     }
   }
 
-  async function handleSignUp(e: React.FormEvent) {
+  async function handleSignUp(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (submitting) return;
     setError("");
 
-    if (signUpPassword !== confirmPassword) {
+    const formData = new FormData(e.currentTarget);
+    const submittedFirstName = String(formData.get("firstName") ?? "").trim();
+    const submittedLastName = String(formData.get("lastName") ?? "").trim();
+    const submittedEmail = String(formData.get("email") ?? "").trim();
+    const submittedUsername = String(formData.get("username") ?? "");
+    const submittedPassword = String(formData.get("password") ?? "");
+    const submittedConfirmPassword = String(formData.get("confirmPassword") ?? "");
+
+    if (!submittedFirstName || !submittedEmail || !submittedPassword) {
+      setError("First name, email, and password are required.");
+      return;
+    }
+
+    if (submittedPassword !== submittedConfirmPassword) {
       setError("Passwords do not match");
       return;
     }
 
-    const trimmedUsername = username.trim().toLowerCase();
+    const trimmedUsername = submittedUsername.trim().toLowerCase();
     if (trimmedUsername && usernameStatus === "taken") {
       setError("That username is already taken. Please choose another.");
       return;
@@ -206,26 +292,23 @@ function AuthPageContent() {
 
     setSubmitting(true);
 
-    const fullName = lastName.trim()
-      ? `${firstName.trim()} ${lastName.trim()}`
-      : firstName.trim();
+    const fullName = submittedLastName
+      ? `${submittedFirstName} ${submittedLastName}`
+      : submittedFirstName;
 
     try {
-      const result = await signUp.email({ name: fullName, email: email.trim(), password: signUpPassword });
-      if (result.error) {
-        setError(result.error.message ?? "Sign up failed");
+      const result = await registerWithEmail(
+        fullName,
+        submittedEmail,
+        submittedPassword,
+        trimmedUsername || undefined
+      );
+      if (!result.ok) {
+        setError(result.error ?? "Sign up failed");
         return;
       }
 
-      if (trimmedUsername) {
-        try {
-          await updateMyProfile({ username: trimmedUsername });
-        } catch {
-          // Non-fatal: user can set username later from profile settings.
-        }
-      }
-
-      router.push("/teams");
+      router.replace("/teams");
     } catch (err) {
       setError(formatAuthError(err));
     } finally {
@@ -321,20 +404,23 @@ function AuthPageContent() {
             </div>
           )}
 
-          {tab === "sign-in" ? (
+          <div className="auth-height-clip" ref={heightClipRef}>
+          <div ref={contentRef}>
+          <div key={`${displayTab}-${isExiting ? "exit" : "enter"}`} className={isExiting ? "auth-form-exit" : "auth-form-enter"}>
+          {displayTab === "sign-in" ? (
             <form onSubmit={handleSignIn} className="flex flex-col gap-4">
               <label className="auth-field" htmlFor="identifier">
                 <span className="auth-label">Email or Username</span>
                 <input
                   id="identifier"
-                  name="identifier"
+                  name="email"
                   type="text"
                   required
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   className="auth-input"
-                  placeholder={isEmailIdentifier ? "trainer@example.com" : "ash_ketchum"}
-                  autoComplete="username email"
+                  placeholder={isEmailIdentifier ? "trainer@example.com" : "Username"}
+                  autoComplete="username"
                   spellCheck={false}
                   autoCapitalize="none"
                   autoCorrect="off"
@@ -345,7 +431,7 @@ function AuthPageContent() {
                 <span className="auth-label">Password</span>
                 <PasswordInput
                   id="signInPassword"
-                  name="signInPassword"
+                  name="password"
                   value={signInPassword}
                   onChange={setSignInPassword}
                   placeholder="Enter your password"
@@ -377,7 +463,7 @@ function AuthPageContent() {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     className="auth-input"
-                    placeholder="Ash"
+                    placeholder="First Name"
                     autoComplete="given-name"
                   />
                 </label>
@@ -390,7 +476,7 @@ function AuthPageContent() {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     className="auth-input"
-                    placeholder="Ketchum"
+                    placeholder="Last Name"
                     autoComplete="family-name"
                   />
                 </label>
@@ -435,7 +521,7 @@ function AuthPageContent() {
                     onChange={(e) => setUsername(e.target.value)}
                     className="auth-input"
                     style={{ paddingLeft: "1.625rem" }}
-                    placeholder="ash_ketchum"
+                    placeholder="username"
                     autoComplete="username"
                     spellCheck={false}
                     autoCapitalize="none"
@@ -460,7 +546,7 @@ function AuthPageContent() {
                 <span className="auth-label">Password</span>
                 <PasswordInput
                   id="signUpPassword"
-                  name="signUpPassword"
+                  name="password"
                   value={signUpPassword}
                   onChange={setSignUpPassword}
                   placeholder="At least 8 characters"
@@ -509,6 +595,9 @@ function AuthPageContent() {
               </button>
             </form>
           )}
+          </div>
+          </div>
+          </div>
 
           <p className="mt-5 text-center text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
             {tab === "sign-in" ? "Don't have an account? " : "Already have an account? "}

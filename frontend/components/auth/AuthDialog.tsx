@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { signIn, signUp } from "@/lib/auth-client";
+import { loginWithIdentifier, registerWithEmail } from "@/lib/api";
 import { FiX, FiEye, FiEyeOff } from "react-icons/fi";
 
 type Tab = "sign-in" | "sign-up";
@@ -15,7 +15,7 @@ function formatAuthError(error: unknown): string {
   if (error instanceof Error) {
     const message = error.message.trim();
     if (/failed to fetch|networkerror|load failed/i.test(message)) {
-      return "Unable to reach the auth server. Check NEXT_PUBLIC_API_URL on Vercel and FRONTEND_URLS/BETTER_AUTH_URL on Railway.";
+      return "Unable to reach the auth server. Check NEXT_PUBLIC_API_URL on Vercel and FRONTEND_URL/BETTER_AUTH_URL on Railway.";
     }
     return message.length > 0 ? message : "An unexpected error occurred";
   }
@@ -103,15 +103,25 @@ const AuthDialog = ({ isOpen, onClose }: AuthDialogProps) => {
     }
   }, [isOpen, tab]);
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
+    const formData = new FormData(e.currentTarget);
+    const submittedEmail = String(formData.get("email") ?? "").trim();
+    const submittedPassword = String(formData.get("password") ?? "");
+
+    if (!submittedEmail || !submittedPassword) {
+      setError("Email and password are required");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const result = await signIn.email({ email, password });
-      if (result.error) {
-        setError(result.error.message ?? "Sign in failed");
+      const result = await loginWithIdentifier(submittedEmail, submittedPassword);
+      if (!result.ok) {
+        setError(result.error ?? "Sign in failed");
       } else {
         onClose();
       }
@@ -123,25 +133,37 @@ const AuthDialog = ({ isOpen, onClose }: AuthDialogProps) => {
     }
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
 
-    if (password !== confirmPassword) {
+    const formData = new FormData(e.currentTarget);
+    const submittedFirstName = String(formData.get("firstName") ?? "").trim();
+    const submittedLastName = String(formData.get("lastName") ?? "").trim();
+    const submittedEmail = String(formData.get("email") ?? "").trim();
+    const submittedPassword = String(formData.get("password") ?? "");
+    const submittedConfirmPassword = String(formData.get("confirmPassword") ?? "");
+
+    if (!submittedFirstName || !submittedEmail || !submittedPassword) {
+      setError("First name, email, and password are required");
+      return;
+    }
+
+    if (submittedPassword !== submittedConfirmPassword) {
       setError("Passwords do not match");
       return;
     }
 
     setLoading(true);
 
-    const fullName = lastName.trim()
-      ? `${firstName.trim()} ${lastName.trim()}`
-      : firstName.trim();
+    const fullName = submittedLastName
+      ? `${submittedFirstName} ${submittedLastName}`
+      : submittedFirstName;
 
     try {
-      const result = await signUp.email({ name: fullName, email, password });
-      if (result.error) {
-        setError(result.error.message ?? "Sign up failed");
+      const result = await registerWithEmail(fullName, submittedEmail, submittedPassword);
+      if (!result.ok) {
+        setError(result.error ?? "Sign up failed");
       } else {
         onClose();
       }
@@ -218,18 +240,20 @@ const AuthDialog = ({ isOpen, onClose }: AuthDialogProps) => {
         {tab === "sign-in" ? (
           <form onSubmit={handleSignIn} className="flex flex-col gap-3">
             <label className="auth-field" htmlFor="signin-email">
-              <span className="auth-label">Email</span>
+              <span className="auth-label">Email or Username</span>
               <input
                 id="signin-email"
                 name="email"
-                type="email"
+                type="text"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="auth-input"
-                placeholder="trainer@example.com"
-                autoComplete="email"
+                placeholder={email.includes("@") ? "trainer@example.com" : "username"}
+                autoComplete="username"
                 spellCheck={false}
+                autoCapitalize="none"
+                autoCorrect="off"
               />
             </label>
             <label className="auth-field" htmlFor="signin-password">

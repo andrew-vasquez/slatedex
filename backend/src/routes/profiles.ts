@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { prisma } from "../db";
-import { auth } from "../lib/auth";
 import { authMiddleware } from "../middleware/auth";
 
 type AuthEnv = {
@@ -292,69 +291,7 @@ async function ensureUsernameForUser(user: { id: string; name: string; username:
   throw new Error("Failed to generate a unique username");
 }
 
-// ── Check username availability (unauthenticated) ─────────────
-profiles.get("/check-username", async (c) => {
-  const q = normalizeUsername(c.req.query("q") ?? "");
-  if (!USERNAME_REGEX.test(q)) {
-    return c.json({ available: false, reason: "invalid" });
-  }
-  const existing = await prisma.user.findUnique({
-    where: { username: q },
-    select: { id: true },
-  });
-  return c.json({ available: !existing });
-});
-
-// ── Login with email or username (proxy to Better Auth) ────────
-// Resolves username → email server-side so the client never sees the mapping.
-profiles.post("/login", async (c) => {
-  const body = await c.req.json().catch(() => null);
-  if (!body || typeof body.identifier !== "string" || typeof body.password !== "string") {
-    return c.json({ error: "identifier and password are required" }, 400);
-  }
-
-  let email = body.identifier.trim();
-
-  if (!email.includes("@")) {
-    const username = normalizeUsername(email);
-    if (!USERNAME_REGEX.test(username)) {
-      return c.json({ error: "Invalid credentials" }, 401);
-    }
-    const found = await prisma.user.findUnique({
-      where: { username },
-      select: { email: true },
-    });
-    if (!found) {
-      return c.json({ error: "Invalid credentials" }, 401);
-    }
-    email = found.email;
-  }
-
-  const configuredAuthBase = process.env.BETTER_AUTH_URL?.trim();
-  const authBase = configuredAuthBase
-    ? (configuredAuthBase.startsWith("http://") || configuredAuthBase.startsWith("https://")
-      ? configuredAuthBase
-      : `https://${configuredAuthBase}`)
-    : new URL(c.req.url).origin;
-
-  // Forward to Better Auth's email sign-in handler with request context headers preserved.
-  const authReq = new Request(new URL("/api/auth/sign-in/email", authBase), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Cookie: c.req.header("Cookie") ?? "",
-      "x-forwarded-for": c.req.header("x-forwarded-for") ?? c.req.header("cf-connecting-ip") ?? "",
-      "x-forwarded-host": c.req.header("x-forwarded-host") ?? "",
-      "x-forwarded-proto": c.req.header("x-forwarded-proto") ?? "",
-      Origin: c.req.header("Origin") ?? "",
-      Referer: c.req.header("Referer") ?? "",
-      "User-Agent": c.req.header("User-Agent") ?? "",
-    },
-    body: JSON.stringify({ email, password: body.password }),
-  });
-
-  return auth.handler(authReq);
-});
+// Authentication flows use native Better Auth endpoints under `/api/auth/*`.
 
 profiles.get("/me", authMiddleware, async (c) => {
   const authUser = c.get("user");

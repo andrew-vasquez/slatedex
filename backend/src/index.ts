@@ -45,7 +45,7 @@ app.use(
   "*",
   cors({
     origin: (origin) => {
-      if (!origin) return config.primaryFrontendOrigin;
+      if (!origin) return undefined;
       if (isAllowedOrigin(origin)) return origin;
 
       if (process.env.NODE_ENV !== "production") {
@@ -54,9 +54,11 @@ app.use(
         );
       }
 
-      return "";
+      return undefined;
     },
     credentials: true,
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    maxAge: 600,
   })
 );
 
@@ -90,18 +92,6 @@ app.use(
   })
 );
 
-// Identifier sign-in proxy: same policy as Better Auth sign-in route.
-app.use(
-  "/api/profiles/login",
-  rateLimiter({
-    windowMs: 15 * 60 * 1000,
-    limit: 10,
-    keyGenerator: getClientKey,
-    skip: shouldSkipRateLimit,
-    skipSuccessfulRequests: true,
-  })
-);
-
 // Team API: 60 requests per minute
 app.use(
   "/api/teams/*",
@@ -120,7 +110,7 @@ app.use(
     windowMs: 60 * 1000,
     limit: 60,
     keyGenerator: getClientKey,
-    skip: (c) => shouldSkipRateLimit(c) || c.req.path === "/api/profiles/login",
+    skip: shouldSkipRateLimit,
   })
 );
 

@@ -1,4 +1,5 @@
 import type { Pokemon } from "./types";
+import { authClient } from "./auth-client";
 
 function getApiUrl(): string {
   const rawUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
@@ -149,52 +150,83 @@ export async function checkUsernameAvailable(
   username: string,
   signal?: AbortSignal
 ): Promise<{ available: boolean; reason?: string }> {
-  const res = await fetch(
-    `${API_URL}/api/profiles/check-username?q=${encodeURIComponent(username)}`,
-    { credentials: "include", signal }
-  );
-  if (!res.ok) return { available: false };
-  return res.json();
+  const normalized = username.trim().toLowerCase();
+  if (!normalized) return { available: false, reason: "invalid" };
+
+  const result = await authClient
+    .isUsernameAvailable({ username: normalized }, { signal })
+    .catch(() => null);
+
+  if (!result) return { available: false };
+  if (result.error) {
+    return {
+      available: false,
+      reason: result.error.message ?? "invalid",
+    };
+  }
+
+  return { available: Boolean(result.data?.available) };
 }
 
 export async function loginWithIdentifier(
   identifier: string,
   password: string
 ): Promise<{ ok: boolean; error?: string }> {
-  const res = await fetch(`${API_URL}/api/profiles/login`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ identifier, password }),
+  const normalizedIdentifier = identifier.trim();
+  if (!normalizedIdentifier || !password) {
+    return { ok: false, error: "Email/username and password are required." };
+  }
+
+  const result = normalizedIdentifier.includes("@")
+    ? await authClient.signIn.email({ email: normalizedIdentifier, password })
+    : await authClient.signIn.username({
+        username: normalizedIdentifier.toLowerCase(),
+        password,
+      });
+
+  if (result.error) {
+    return { ok: false, error: result.error.message ?? "Invalid credentials" };
+  }
+
+  const session = await authClient.getSession().catch(() => null);
+  if (!session?.data?.user) {
+    return { ok: false, error: "Sign in did not complete. Please try again." };
+  }
+
+  return { ok: true };
+}
+
+export async function registerWithEmail(
+  name: string,
+  email: string,
+  password: string,
+  username?: string
+): Promise<{ ok: boolean; error?: string }> {
+  const normalizedName = name.trim();
+  const normalizedEmail = email.trim();
+  const normalizedUsername = username?.trim().toLowerCase();
+
+  if (!normalizedName || !normalizedEmail || !password) {
+    return { ok: false, error: "Name, email, and password are required." };
+  }
+
+  const result = await authClient.signUp.email({
+    name: normalizedName,
+    email: normalizedEmail,
+    password,
+    ...(normalizedUsername ? { username: normalizedUsername } : {}),
   });
 
-  if (res.ok) return { ok: true };
-
-  const body = await res.json().catch(() => ({} as Record<string, unknown>));
-  const bodyError =
-    (typeof body.error === "string" && body.error) ||
-    (typeof body.message === "string" && body.message) ||
-    (typeof body.code === "string" && body.code);
-
-  if (res.status === 429) {
-    return { ok: false, error: "Too many attempts. Please wait and try again." };
+  if (result.error) {
+    return { ok: false, error: result.error.message ?? "Sign up failed" };
   }
 
-  if (res.status === 403) {
-    return {
-      ok: false,
-      error:
-        typeof bodyError === "string" && bodyError.length > 0
-          ? bodyError
-          : "Sign-in blocked by auth security settings. Please contact support.",
-    };
+  const session = await authClient.getSession().catch(() => null);
+  if (!session?.data?.user) {
+    return { ok: false, error: "Sign up did not complete. Please try again." };
   }
 
-  if (res.status >= 500) {
-    return { ok: false, error: "Auth server error. Please try again shortly." };
-  }
-
-  return { ok: false, error: (typeof bodyError === "string" && bodyError.length > 0) ? bodyError : "Invalid credentials" };
+  return { ok: true };
 }
 
 export function fetchPublicProfile(username: string): Promise<PublicProfile> {

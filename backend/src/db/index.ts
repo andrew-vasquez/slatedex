@@ -37,24 +37,28 @@ if (!databaseUrl && !directUrl) {
 }
 
 function createPrismaClient(): PrismaClient {
-  // Prisma Accelerate mode.
+  // Prefer direct Postgres when available for strongest read-after-write consistency.
+  // This is especially important for auth flows (sign-up -> immediate sign-in).
+  if (directUrl) {
+    console.log(`[db] Using direct Postgres via DIRECT_URL (${urlTargetLabel(directUrl)})`);
+    return new PrismaClient({
+      adapter: new PrismaPg({ connectionString: directUrl }),
+    });
+  }
+
+  // Prisma Accelerate mode when direct connection is not configured.
   if (databaseUrl?.startsWith("prisma://")) {
     console.log("[db] Using Prisma Accelerate via DATABASE_URL");
     return new PrismaClient({ accelerateUrl: databaseUrl });
   }
 
-  // Direct Postgres mode (Railway, Supabase, etc). Prefer DIRECT_URL when present.
-  const runtimeUrl = directUrl ?? databaseUrl;
-  if (!runtimeUrl) {
+  if (!databaseUrl) {
     throw new Error("No runtime database URL available.");
   }
 
-  console.log(
-    `[db] Using direct Postgres via ${directUrl ? "DIRECT_URL" : "DATABASE_URL"} (${urlTargetLabel(runtimeUrl)})`
-  );
-
+  console.log(`[db] Using direct Postgres via DATABASE_URL (${urlTargetLabel(databaseUrl)})`);
   return new PrismaClient({
-    adapter: new PrismaPg({ connectionString: runtimeUrl }),
+    adapter: new PrismaPg({ connectionString: databaseUrl }),
   });
 }
 

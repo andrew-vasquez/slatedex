@@ -1,4 +1,5 @@
 import { createAuthClient } from "better-auth/react";
+import { usernameClient } from "better-auth/client/plugins";
 
 function getBaseURL(): string {
   const rawUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
@@ -22,6 +23,7 @@ function getBaseURL(): string {
 
 export const authClient = createAuthClient({
   baseURL: getBaseURL(),
+  plugins: [usernameClient()],
 });
 
 export const { useSession, signIn, signUp, signOut } = authClient;
