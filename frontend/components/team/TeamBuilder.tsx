@@ -20,6 +20,7 @@ import TeamBuilderHeader from "./TeamBuilderHeader";
 import ClearTeamDialog from "./ClearTeamDialog";
 import PokemonSelection from "./PokemonSelection";
 import TeamPanel from "./TeamPanel";
+import MobileTeamSheet from "./MobileTeamSheet";
 import TeamToolsModal from "./TeamToolsModal";
 import UndoToast from "@/components/ui/UndoToast";
 import PokemonDetailDrawer from "@/components/ui/PokemonDetailDrawer";
@@ -1041,14 +1042,14 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           onSettingsReset={resetSettings}
         />
 
-        <main id="main-content" className="mx-auto max-w-screen-xl px-4 pb-8 pt-4 sm:px-6 sm:pb-10 lg:pt-28" role="main">
-          <section className="panel mb-4 p-4 sm:mb-5 sm:p-5" aria-label="Team planning status">
+        <main id="main-content" className="mx-auto max-w-screen-xl px-4 pb-24 pt-4 sm:px-6 lg:pb-8 lg:pt-28" role="main">
+          <section className="panel mb-3 p-3.5 sm:mb-5 sm:p-5" aria-label="Team planning status">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-display text-lg sm:text-xl" style={{ color: "var(--text-primary)" }}>
                   Build Flow
                 </h2>
-                <p className="mt-0.5 text-[0.7rem] sm:text-[0.74rem]" style={{ color: "var(--text-muted)" }}>
+                <p className="mt-0.5 hidden text-[0.7rem] sm:block sm:text-[0.74rem]" style={{ color: "var(--text-muted)" }}>
                   Follow the steps left to right: pick Pokémon, fill team slots, then refine with analysis.
                 </p>
               </div>
@@ -1059,35 +1060,37 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
               )}
             </div>
 
-            <div className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
-              <div className="panel-soft px-3 py-1.5">
-                <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
-                  1. Search & Pick
-                </p>
-              </div>
-              <div className="panel-soft px-3 py-1.5">
-                <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
-                  2. Fill Team Slots
-                </p>
-              </div>
-              <div className="panel-soft px-3 py-1.5">
-                <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
-                  3. Analyze Coverage
-                </p>
+            <div className="mt-2 sm:mt-3">
+              <div className="flex gap-1.5 sm:grid sm:grid-cols-3 sm:gap-1.5">
+                <div className="panel-soft flex-1 px-2 py-1 sm:px-3 sm:py-1.5">
+                  <p className="text-[0.55rem] font-semibold uppercase tracking-[0.1em] sm:text-[0.6rem] sm:tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                    1. Pick
+                  </p>
+                </div>
+                <div className="panel-soft flex-1 px-2 py-1 sm:px-3 sm:py-1.5">
+                  <p className="text-[0.55rem] font-semibold uppercase tracking-[0.1em] sm:text-[0.6rem] sm:tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                    2. Build
+                  </p>
+                </div>
+                <div className="panel-soft flex-1 px-2 py-1 sm:px-3 sm:py-1.5">
+                  <p className="text-[0.55rem] font-semibold uppercase tracking-[0.1em] sm:text-[0.6rem] sm:tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                    3. Analyze
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              <div className="panel-soft px-3.5 py-3">
-                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
-                  Team Slots Filled
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:mt-2.5 sm:gap-2.5">
+              <div className="panel-soft px-3 py-2 sm:px-3.5 sm:py-3">
+                <p className="text-[0.58rem] font-semibold uppercase tracking-[0.14em] sm:text-[0.62rem] sm:tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+                  Slots Filled
                 </p>
                 <AnimatedNumber
                   value={`${currentTeam.length}/6`}
-                  className="font-display mt-1 text-2xl"
+                  className="font-display mt-0.5 text-xl sm:mt-1 sm:text-2xl"
                   style={{ color: "var(--accent)" }}
                 />
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--stat-track)" }}>
+                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full sm:mt-2" style={{ background: "var(--stat-track)" }}>
                   <div
                     className="h-full rounded-full"
                     style={{
@@ -1098,8 +1101,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                   />
                 </div>
               </div>
-              <div className="panel-soft px-3.5 py-3">
-                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+              <div className="panel-soft px-3 py-2 sm:px-3.5 sm:py-3">
+                <p className="text-[0.58rem] font-semibold uppercase tracking-[0.14em] sm:text-[0.62rem] sm:tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
                   Coverage Snapshot
                 </p>
                 <div className="mt-2 grid grid-cols-2 gap-2">
@@ -1127,7 +1130,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+            <div className="mt-2 grid grid-cols-3 gap-1.5 sm:mt-3 sm:grid-cols-2 sm:gap-2 lg:grid-cols-4">
               <button
                 type="button"
                 onClick={handleUndo}
@@ -1154,7 +1157,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                   setReplaceMode((prev) => !prev);
                   setReplaceTargetSlot(null);
                 }}
-                className="btn-secondary action-btn col-span-2 w-full lg:col-span-1"
+                className="btn-secondary action-btn w-full sm:col-span-2 lg:col-span-1"
                 style={{
                   borderColor: replaceMode ? "rgba(59, 130, 246, 0.34)" : undefined,
                   background: replaceMode ? "rgba(59, 130, 246, 0.14)" : undefined,
@@ -1162,10 +1165,11 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                 }}
               >
                 <FiRepeat size={13} />
-                {replaceMode ? "Replace Mode On" : "Replace Mode Off"}
+                <span className="hidden sm:inline">{replaceMode ? "Replace Mode On" : "Replace Mode Off"}</span>
+                <span className="sm:hidden">{replaceMode ? "Replace" : "Replace"}</span>
               </button>
 
-              <div className="col-span-2 rounded-xl border px-3 py-2 text-[0.66rem] lg:col-span-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}>
+              <div className="col-span-3 rounded-xl border px-3 py-1.5 text-[0.62rem] sm:col-span-2 sm:py-2 sm:text-[0.66rem] lg:col-span-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}>
                 {replaceMode
                   ? replaceTargetSlot !== null
                     ? `Targeting slot ${replaceTargetSlot + 1}`
@@ -1213,19 +1217,21 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
             </div>
 
             <div className="flex flex-col gap-4 lg:h-full">
-              <TeamPanel
-                team={team}
-                currentTeamLength={currentTeam.length}
-                activeDropId={activeDropId}
-                onRemove={removeFromTeam}
-                dragEnabled={dragEnabled}
-                lockedSlots={lockedSlots}
-                onToggleLock={toggleLockSlot}
-                replaceMode={replaceMode}
-                selectedReplaceSlot={replaceTargetSlot}
-                onSelectReplaceSlot={setReplaceTargetSlot}
-                onOpenTeamTools={() => setIsTeamToolsOpen(true)}
-              />
+              <div className="hidden lg:block">
+                <TeamPanel
+                  team={team}
+                  currentTeamLength={currentTeam.length}
+                  activeDropId={activeDropId}
+                  onRemove={removeFromTeam}
+                  dragEnabled={dragEnabled}
+                  lockedSlots={lockedSlots}
+                  onToggleLock={toggleLockSlot}
+                  replaceMode={replaceMode}
+                  selectedReplaceSlot={replaceTargetSlot}
+                  onSelectReplaceSlot={setReplaceTargetSlot}
+                  onOpenTeamTools={() => setIsTeamToolsOpen(true)}
+                />
+              </div>
 
               {isDesktopScreen && shouldRenderEmpty && (
                 <section
@@ -1379,6 +1385,22 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           message={undoToastMessage}
           onUndo={handleUndo}
           onDismiss={dismissUndoToast}
+        />
+      )}
+
+      {!isDesktopScreen && (
+        <MobileTeamSheet
+          team={team}
+          currentTeamLength={currentTeam.length}
+          activeDropId={activeDropId}
+          onRemove={removeFromTeam}
+          dragEnabled={false}
+          lockedSlots={lockedSlots}
+          onToggleLock={toggleLockSlot}
+          replaceMode={replaceMode}
+          selectedReplaceSlot={replaceTargetSlot}
+          onSelectReplaceSlot={setReplaceTargetSlot}
+          onOpenTeamTools={() => setIsTeamToolsOpen(true)}
         />
       )}
     </DndContext>

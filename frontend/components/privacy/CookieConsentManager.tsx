@@ -110,19 +110,7 @@ export default function CookieConsentManager() {
         </section>
       )}
 
-      {hasSavedConsent && (
-        <button
-          type="button"
-          className="cookie-preferences-trigger"
-          onClick={() => {
-            setDraft(toDraft(savedConsent));
-            setIsPreferencesOpen(true);
-          }}
-          aria-label="Open cookie preferences"
-        >
-          Cookie Preferences
-        </button>
-      )}
+      {/* Cookie preferences can still be opened via the OPEN_COOKIE_PREFERENCES_EVENT (e.g. from a footer link) */}
 
       {isPreferencesOpen && (
         <div className="cookie-modal-backdrop" role="presentation" onClick={() => setIsPreferencesOpen(false)}>

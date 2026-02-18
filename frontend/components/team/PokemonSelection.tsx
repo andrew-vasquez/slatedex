@@ -261,8 +261,8 @@ const PokemonSelection = ({
   }, [cardDensity, columns, defaultRowHeight, filteredPokemon, maxVisibleBottom, measuredRowHeights, rowCount, rowOffsets, scrollTop]);
 
   return (
-    <section className="panel p-4 sm:p-5" aria-labelledby="available-pokemon-heading">
-      <div className="mb-4 sm:mb-5">
+    <section className="panel p-3.5 sm:p-5" aria-labelledby="available-pokemon-heading">
+      <div className="mb-3 sm:mb-5">
         <div className="rounded-2xl border p-3 sm:p-3.5" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
           <div className="flex items-start justify-between gap-2.5">
             <div className="min-w-0">
@@ -324,7 +324,7 @@ const PokemonSelection = ({
               )}
             </div>
 
-            <div className="flex flex-wrap gap-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.09em]">
+            <div className="hidden flex-wrap gap-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.09em] sm:flex">
               <span className="rounded-md border px-2 py-0.5" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
                 Dex {dexMode === "regional" ? "Regional" : "National"}
               </span>
@@ -572,7 +572,7 @@ const PokemonSelection = ({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="max-h-[54vh] overflow-y-auto pr-1 custom-scrollbar sm:max-h-[calc(100vh-330px)]"
+        className="max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar sm:max-h-[calc(100vh-330px)]"
         role="list"
         aria-label="Available Pokémon"
       >

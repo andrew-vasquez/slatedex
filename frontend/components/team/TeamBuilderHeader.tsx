@@ -162,7 +162,7 @@ const TeamBuilderHeader = ({
               </button>
 
               {isSettingsOpen && (
-                <div className="absolute right-0 top-[calc(100%+0.45rem)] z-[80] w-[22rem] max-w-[calc(100vw-1rem)]">
+                <div className="absolute left-0 top-[calc(100%+0.45rem)] z-[80] w-[22rem] max-w-[calc(100vw-2rem)] sm:left-auto sm:right-0">
                   <BuilderSettingsPanel
                     settings={settings}
                     onDexModeChange={onSettingsDexModeChange}

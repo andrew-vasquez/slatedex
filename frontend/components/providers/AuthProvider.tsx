@@ -4,7 +4,13 @@ import { createContext, useContext } from "react";
 import { useSession } from "@/lib/auth-client";
 
 interface AuthContextValue {
-  user: { id: string; name: string; email: string } | null;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    username?: string | null;
+    image?: string | null;
+  } | null;
   isLoading: boolean;
   isAuthenticated: boolean;
 }

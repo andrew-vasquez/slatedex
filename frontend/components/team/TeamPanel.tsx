@@ -33,8 +33,8 @@ const TeamPanel = ({
   onOpenTeamTools,
 }: TeamPanelProps) => {
   return (
-    <section className="panel p-4 sm:p-5" aria-labelledby="team-heading">
-      <div className="mb-3 flex items-start justify-between gap-3 sm:mb-5 sm:items-center">
+    <section className="panel p-3.5 sm:p-5" aria-labelledby="team-heading">
+      <div className="mb-2.5 flex items-start justify-between gap-3 sm:mb-5 sm:items-center">
         <div className="min-w-0">
           <h2 id="team-heading" className="font-display text-base leading-tight sm:text-lg" style={{ color: "var(--text-primary)" }}>
             Step 2: Build Team

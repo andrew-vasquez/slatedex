@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { FiLogIn, FiLogOut, FiMoon, FiSun } from "react-icons/fi";
+import Link from "next/link";
+import { FiLogIn, FiLogOut, FiMoon, FiSettings, FiSun, FiUser } from "react-icons/fi";
 import { signOut } from "@/lib/auth-client";
 import { useAuth } from "@/components/providers/AuthProvider";
 import AuthDialog from "./AuthDialog";
@@ -131,6 +132,28 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
                   <p className="user-menu-name">{user?.name}</p>
                   <p className="user-menu-email">{user?.email}</p>
                 </div>
+
+                {user?.username && (
+                  <Link
+                    href={`/u/${user.username}`}
+                    className="user-menu-item"
+                    role="menuitem"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <FiUser size={14} aria-hidden="true" />
+                    Public Profile
+                  </Link>
+                )}
+
+                <Link
+                  href="/settings/profile"
+                  className="user-menu-item"
+                  role="menuitem"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FiSettings size={14} aria-hidden="true" />
+                  Profile Settings
+                </Link>
 
                 <button
                   type="button"

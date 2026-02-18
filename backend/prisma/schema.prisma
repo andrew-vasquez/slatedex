@@ -15,6 +15,7 @@ datasource db {
 
 model User {
   id            String    @id
+  username      String?   @unique
   name          String
   email         String
   emailVerified Boolean   @default(false)
@@ -24,9 +25,38 @@ model User {
   sessions      Session[]
   accounts      Account[]
   teams         Team[]
+  profile       Profile?
+  usernameLogs  ProfileUsernameChange[]
 
   @@unique([email])
   @@map("user")
+}
+
+model Profile {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio                  String   @default("")
+  avatarUrl            String?
+  favoriteTeamId       String?
+  favoriteGameIds      Int[]    @default([])
+  favoritePokemonNames String[] @default([])
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("profile")
+}
+
+model ProfileUsernameChange {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromUsername String?
+  toUsername   String
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("profile_username_change")
 }
 
 model Session {

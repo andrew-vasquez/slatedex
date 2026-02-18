@@ -34,6 +34,37 @@ export interface SavedTeam {
   updatedAt: string;
 }
 
+export interface ProfileTeamSummary {
+  generation: number;
+  gameId: number;
+  teamCount: number;
+  lastUpdatedAt: string;
+  latestTeamName: string;
+}
+
+export interface PublicProfile {
+  username: string;
+  name: string;
+  image: string | null;
+  memberSince: string;
+  bio: string;
+  favoriteGameIds: number[];
+  favoritePokemonNames: string[];
+  teamStats: {
+    totalTeams: number;
+    summaries: ProfileTeamSummary[];
+  };
+}
+
+export interface MyProfile extends PublicProfile {
+  usernameChangeWindow: {
+    max: number;
+    used: number;
+    remaining: number;
+    days: number;
+  };
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
@@ -90,5 +121,25 @@ export function updateTeam(
 export function deleteTeam(id: string): Promise<{ success: boolean }> {
   return apiFetch(`/api/teams/${id}`, {
     method: "DELETE",
+  });
+}
+
+export function fetchPublicProfile(username: string): Promise<PublicProfile> {
+  return apiFetch(`/api/profiles/${encodeURIComponent(username)}`);
+}
+
+export function fetchMyProfile(): Promise<MyProfile> {
+  return apiFetch("/api/profiles/me");
+}
+
+export function updateMyProfile(data: {
+  username?: string;
+  bio?: string;
+  favoriteGameIds?: number[];
+  favoritePokemonNames?: string[];
+}): Promise<{ success: boolean }> {
+  return apiFetch("/api/profiles/me", {
+    method: "PUT",
+    body: JSON.stringify(data),
   });
 }
