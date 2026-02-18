@@ -42,14 +42,34 @@ export interface ProfileTeamSummary {
   latestTeamName: string;
 }
 
+export interface ProfilePokemonPreview {
+  id: number | null;
+  name: string;
+  sprite: string | null;
+}
+
+export interface ProfileSavedTeam {
+  id: string;
+  name: string;
+  generation: number;
+  gameId: number;
+  updatedAt: string;
+  pokemonPreview: ProfilePokemonPreview[];
+}
+
 export interface PublicProfile {
   username: string;
   name: string;
   image: string | null;
   memberSince: string;
   bio: string;
+  avatarUrl: string | null;
+  avatarFrame: string;
+  favoriteTeamId: string | null;
   favoriteGameIds: number[];
   favoritePokemonNames: string[];
+  savedTeams: ProfileSavedTeam[];
+  favoriteTeam: ProfileSavedTeam | null;
   teamStats: {
     totalTeams: number;
     summaries: ProfileTeamSummary[];
@@ -135,6 +155,9 @@ export function fetchMyProfile(): Promise<MyProfile> {
 export function updateMyProfile(data: {
   username?: string;
   bio?: string;
+  avatarUrl?: string | null;
+  avatarFrame?: string;
+  favoriteTeamId?: string | null;
   favoriteGameIds?: number[];
   favoritePokemonNames?: string[];
 }): Promise<{ success: boolean }> {

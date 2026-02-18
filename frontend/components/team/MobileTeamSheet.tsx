@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { FiChevronUp, FiChevronDown } from "react-icons/fi";
+import { FiChevronUp } from "react-icons/fi";
 import Image from "next/image";
 import TeamPanel from "./TeamPanel";
 import type { Pokemon } from "@/lib/types";
@@ -37,35 +37,78 @@ export default function MobileTeamSheet({
 }: MobileTeamSheetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
   const touchStartY = useRef<number | null>(null);
-  const touchCurrentY = useRef<number | null>(null);
+  const touchLastY = useRef<number | null>(null);
+  const touchLastTime = useRef<number | null>(null);
   const isDragging = useRef(false);
+  const velocityRef = useRef(0);
+  const savedScrollY = useRef(0);
+  const suppressClickRef = useRef(false);
+  const suppressClickTimerRef = useRef<number | null>(null);
 
-  // Lock body scroll when sheet is open
+  const toggleSheet = useCallback(() => {
+    setIsOpen((prev) => !prev);
+  }, []);
+
+  // iOS-compatible scroll lock: position-fixed trick preserves scroll position
   useEffect(() => {
     if (isOpen) {
+      savedScrollY.current = window.scrollY;
       document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${savedScrollY.current}px`;
+      document.body.style.left = "0";
+      document.body.style.right = "0";
     } else {
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      window.scrollTo(0, savedScrollY.current);
     }
     return () => {
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    return () => {
+      if (suppressClickTimerRef.current != null) {
+        window.clearTimeout(suppressClickTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartY.current = e.touches[0].clientY;
-    touchCurrentY.current = e.touches[0].clientY;
+    touchLastY.current = e.touches[0].clientY;
+    touchLastTime.current = Date.now();
     isDragging.current = false;
+    velocityRef.current = 0;
     setDragOffset(0);
   }, []);
 
   const handleTouchMove = useCallback(
     (e: React.TouchEvent) => {
       if (touchStartY.current === null) return;
-      const delta = e.touches[0].clientY - touchStartY.current;
-      touchCurrentY.current = e.touches[0].clientY;
+      const currentY = e.touches[0].clientY;
+      const delta = currentY - touchStartY.current;
+
+      // Track velocity (px/ms) from last event
+      if (touchLastY.current !== null && touchLastTime.current !== null) {
+        const dt = Date.now() - touchLastTime.current;
+        if (dt > 0) {
+          velocityRef.current = (currentY - touchLastY.current) / dt;
+        }
+      }
+      touchLastY.current = currentY;
+      touchLastTime.current = Date.now();
+
       if (Math.abs(delta) > 6) {
         isDragging.current = true;
       }
@@ -79,36 +122,54 @@ export default function MobileTeamSheet({
   );
 
   const handleTouchEnd = useCallback(() => {
+    const velocity = velocityRef.current; // positive = downward
     if (!isDragging.current) {
-      setIsOpen((prev) => !prev);
+      toggleSheet();
     } else {
       if (isOpen) {
-        setIsOpen(dragOffset > 80 ? false : true);
+        // Dismiss if dragged far enough OR swiped down fast
+        const shouldClose = dragOffset > 80 || velocity > 0.45;
+        setIsOpen(!shouldClose);
       } else {
-        setIsOpen(dragOffset < -80 ? true : false);
+        // Open if dragged far enough OR swiped up fast
+        const shouldOpen = dragOffset < -80 || velocity < -0.45;
+        setIsOpen(shouldOpen);
       }
     }
     touchStartY.current = null;
-    touchCurrentY.current = null;
+    touchLastY.current = null;
+    touchLastTime.current = null;
     isDragging.current = false;
+    velocityRef.current = 0;
     setDragOffset(0);
-  }, [isOpen, dragOffset]);
 
-  const animatingRef = useRef(false);
-  const open = () => {
-    if (animatingRef.current) return;
-    setIsOpen(true);
-  };
-  const close = () => {
-    if (animatingRef.current) return;
-    setIsOpen(false);
-  };
+    // Prevent synthetic click after touch from immediately toggling back.
+    suppressClickRef.current = true;
+    if (suppressClickTimerRef.current != null) {
+      window.clearTimeout(suppressClickTimerRef.current);
+    }
+    suppressClickTimerRef.current = window.setTimeout(() => {
+      suppressClickRef.current = false;
+      suppressClickTimerRef.current = null;
+    }, 320);
+  }, [isOpen, dragOffset, toggleSheet]);
 
-  const translateY = isOpen
-    ? `${Math.max(0, dragOffset)}px`
-    : `calc(100% - ${PEEK_HEIGHT}px + ${Math.min(0, dragOffset) * -1}px)`;
-
+  const close = useCallback(() => setIsOpen(false), []);
   const useTransition = !isDragging.current;
+
+  // Use env(safe-area-inset-bottom) inline — supported in all modern browsers
+  const getTranslateY = () => {
+    if (isDragging.current) {
+      if (isOpen) {
+        return `${Math.max(0, dragOffset)}px`;
+      }
+      const upDrag = Math.abs(Math.min(0, dragOffset));
+      return `calc(100% - ${PEEK_HEIGHT}px - env(safe-area-inset-bottom, 0px) - ${upDrag}px)`;
+    }
+    return isOpen
+      ? "0px"
+      : `calc(100% - ${PEEK_HEIGHT}px - env(safe-area-inset-bottom, 0px))`;
+  };
 
   return (
     <>
@@ -116,11 +177,11 @@ export default function MobileTeamSheet({
       <div
         className="fixed inset-0 z-40"
         style={{
-          background: "rgba(2, 5, 16, 0.68)",
-          backdropFilter: "blur(2px)",
+          background: "rgba(2, 5, 16, 0.72)",
+          backdropFilter: "blur(3px)",
           opacity: isOpen ? 1 : 0,
           pointerEvents: isOpen ? "auto" : "none",
-          transition: "opacity 0.32s ease",
+          transition: "opacity 0.3s ease",
         }}
         onClick={close}
         aria-hidden="true"
@@ -130,9 +191,9 @@ export default function MobileTeamSheet({
       <div
         className="fixed bottom-0 left-0 right-0 z-50 flex flex-col"
         style={{
-          transform: `translateY(${translateY})`,
+          transform: `translateY(${getTranslateY()})`,
           transition: useTransition ? "transform 0.38s cubic-bezier(0.32, 0.72, 0, 1)" : "none",
-          maxHeight: "82vh",
+          maxHeight: "85dvh",
           willChange: "transform",
         }}
         role="dialog"
@@ -145,7 +206,13 @@ export default function MobileTeamSheet({
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          onClick={() => !isDragging.current && setIsOpen((prev) => !prev)}
+          onClick={(event) => {
+            if (suppressClickRef.current) {
+              event.preventDefault();
+              return;
+            }
+            if (!isDragging.current) toggleSheet();
+          }}
           role="button"
           tabIndex={0}
           aria-expanded={isOpen}
@@ -153,7 +220,7 @@ export default function MobileTeamSheet({
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
-              setIsOpen((prev) => !prev);
+              toggleSheet();
             }
           }}
         >
@@ -169,11 +236,11 @@ export default function MobileTeamSheet({
                   className="mobile-sheet-mini-slot"
                   style={{
                     border: pokemon
-                      ? "1.5px solid rgba(218, 44, 67, 0.35)"
-                      : "1.5px dashed rgba(148, 163, 184, 0.28)",
+                      ? "1.5px solid rgba(218, 44, 67, 0.4)"
+                      : "1.5px dashed rgba(148, 163, 184, 0.25)",
                     background: pokemon
                       ? "rgba(218, 44, 67, 0.1)"
-                      : "rgba(148, 163, 184, 0.06)",
+                      : "rgba(148, 163, 184, 0.05)",
                   }}
                   aria-label={pokemon ? pokemon.name : "Empty slot"}
                 >
@@ -189,11 +256,11 @@ export default function MobileTeamSheet({
                     />
                   ) : (
                     <svg
-                      width="12"
-                      height="12"
+                      width="11"
+                      height="11"
                       viewBox="0 0 24 24"
                       fill="none"
-                      style={{ color: "var(--text-muted)", opacity: 0.4 }}
+                      style={{ color: "var(--text-muted)", opacity: 0.35 }}
                     >
                       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8" />
                       <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="1.8" />
@@ -209,8 +276,7 @@ export default function MobileTeamSheet({
               <span
                 className="rounded-full px-2 py-0.5 text-[0.62rem] font-semibold tabular-nums"
                 style={{
-                  background:
-                    currentTeamLength > 0 ? "var(--accent-soft)" : "var(--surface-3)",
+                  background: currentTeamLength > 0 ? "var(--accent-soft)" : "var(--surface-3)",
                   border: "1px solid var(--border)",
                   color: currentTeamLength > 0 ? "var(--accent)" : "var(--text-muted)",
                 }}
@@ -223,7 +289,7 @@ export default function MobileTeamSheet({
                   background: "var(--surface-3)",
                   border: "1px solid var(--border)",
                   color: "var(--text-muted)",
-                  transition: "transform 0.3s ease",
+                  transition: "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
                   transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
                 }}
                 aria-hidden="true"
@@ -237,7 +303,10 @@ export default function MobileTeamSheet({
         {/* Scrollable content */}
         <div
           className="mobile-sheet-content custom-scrollbar"
-          style={{ overflowY: isOpen ? "auto" : "hidden" }}
+          style={{
+            overflowY: isOpen ? "auto" : "hidden",
+            overscrollBehavior: "contain",
+          }}
         >
           <div className="px-4 pb-6 pt-1">
             <TeamPanel

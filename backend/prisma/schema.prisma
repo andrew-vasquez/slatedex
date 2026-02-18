@@ -38,6 +38,7 @@ model Profile {
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   bio                  String   @default("")
   avatarUrl            String?
+  avatarFrame          String   @default("classic")
   favoriteTeamId       String?
   favoriteGameIds      Int[]    @default([])
   favoritePokemonNames String[] @default([])
