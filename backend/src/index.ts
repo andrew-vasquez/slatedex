@@ -36,6 +36,12 @@ app.use(
   rateLimiter({ windowMs: 60 * 60 * 1000, limit: 3, keyGenerator: getClientKey })
 );
 
+// Identifier sign-in proxy: 5 attempts per 15 minutes
+app.use(
+  "/api/profiles/login",
+  rateLimiter({ windowMs: 15 * 60 * 1000, limit: 5, keyGenerator: getClientKey })
+);
+
 // Team API: 60 requests per minute
 app.use(
   "/api/teams/*",

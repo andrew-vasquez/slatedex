@@ -157,7 +157,7 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
             type="button"
             className={`user-menu-trigger user-menu-trigger--signin${compactOnMobile ? " user-menu-trigger--icon" : ""}`}
             aria-label="Sign in or create account"
-            onClick={openAuthDialog}
+            onClick={() => openAuthDialog("sign-in")}
           >
             <FiLogIn size={14} aria-hidden="true" />
             {!compactOnMobile && <span>Sign In</span>}
