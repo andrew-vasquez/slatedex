@@ -30,7 +30,7 @@ export default function PageTransitionWrapper({ children }: { children: React.Re
       {
         duration: 260,
         easing: "cubic-bezier(0.22, 1, 0.36, 1)",
-        fill: "both",
+        fill: "backwards",
       }
     );
 
