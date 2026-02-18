@@ -7,19 +7,13 @@ import { FiArrowLeft, FiPlus, FiTrash2, FiExternalLink, FiLoader } from "react-i
 import { useAuth } from "@/components/providers/AuthProvider";
 import { fetchTeams, deleteTeam } from "@/lib/api";
 import type { SavedTeam } from "@/lib/api";
-import { GENERATION_META } from "@/lib/pokemon";
+import { GENERATION_META, getVersionLabel } from "@/lib/pokemon";
 import UserMenu from "@/components/auth/UserMenu";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 
 function getGenerationLabel(generation: number): string {
   const meta = GENERATION_META.find((g) => g.generation === generation);
   return meta ? `Gen ${generation} · ${meta.region}` : `Gen ${generation}`;
-}
-
-function getGameName(generation: number, gameId: number): string {
-  const meta = GENERATION_META.find((g) => g.generation === generation);
-  const game = meta?.games.find((g) => g.id === gameId);
-  return game?.name ?? "Unknown Game";
 }
 
 function formatDate(dateStr: string): string {
@@ -73,7 +67,7 @@ function TeamCard({
             {team.name}
           </h3>
           <p className="mt-0.5 text-[0.68rem]" style={{ color: "var(--text-muted)" }}>
-            {getGameName(team.generation, team.gameId)} · {filledSlots}/6 Pokémon · {formatDate(team.updatedAt)}
+            {getVersionLabel(team.gameId, team.selectedVersionId)} · {filledSlots}/6 Pokémon · {formatDate(team.updatedAt)}
           </p>
         </div>
         <button

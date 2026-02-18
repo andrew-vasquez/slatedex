@@ -4,6 +4,8 @@ import "@/app/globals.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import CookieConsentManager from "@/components/privacy/CookieConsentManager";
 import PrivacyScriptLoader from "@/components/privacy/PrivacyScriptLoader";
+import NavigationProgress from "@/components/ui/NavigationProgress";
+import PageTransitionWrapper from "@/components/ui/PageTransitionWrapper";
 import { METADATA_BASE, SITE_URL } from "@/lib/site";
 
 const display = Chakra_Petch({
@@ -98,7 +100,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="font-body antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <NavigationProgress />
+        <AuthProvider>
+          <PageTransitionWrapper>{children}</PageTransitionWrapper>
+        </AuthProvider>
         <PrivacyScriptLoader />
         <CookieConsentManager />
       </body>

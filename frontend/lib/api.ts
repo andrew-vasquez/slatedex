@@ -53,6 +53,7 @@ export interface ProfileSavedTeam {
   name: string;
   generation: number;
   gameId: number;
+  selectedVersionId: string | null;
   updatedAt: string;
   pokemonPreview: ProfilePokemonPreview[];
 }

@@ -81,7 +81,7 @@ interface UseTeamPersistenceReturn {
   setTeam: (team: (Pokemon | null)[]) => void;
   savedTeams: SavedTeam[];
   activeTeamId: string | null;
-  saveTeamAs: (name: string) => Promise<void>;
+  saveTeamAs: (name: string, versionIds?: string[]) => Promise<void>;
   loadSavedTeam: (teamId: string) => void;
   deleteSavedTeam: (teamId: string) => Promise<void>;
   renameSavedTeam: (teamId: string, name: string) => Promise<void>;
@@ -212,18 +212,38 @@ export function useTeamPersistence({
   );
 
   const saveTeamAs = useCallback(
-    async (name: string) => {
+    async (name: string, versionIds?: string[]) => {
       if (!isAuthenticated) return;
 
       setIsSaving(true);
       try {
-        const saved = await createTeam({
-          name,
-          generation,
-          gameId,
-          pokemon: team,
-        });
-        setActiveTeamId(saved.id);
+        if (versionIds && versionIds.length > 1) {
+          // Save one team per version when user chooses "save for all"
+          const suffix = (label: string) =>
+            versionIds.length > 1 ? `${name} (${label})` : name;
+
+          const results = await Promise.all(
+            versionIds.map((vid) =>
+              createTeam({
+                name: suffix(vid.charAt(0).toUpperCase() + vid.slice(1).replace(/-/g, " ")),
+                generation,
+                gameId,
+                pokemon: team,
+                selectedVersionId: vid,
+              })
+            )
+          );
+          setActiveTeamId(results[0].id);
+        } else {
+          const saved = await createTeam({
+            name,
+            generation,
+            gameId,
+            pokemon: team,
+            selectedVersionId: versionIds?.[0],
+          });
+          setActiveTeamId(saved.id);
+        }
         await refreshSavedTeams();
       } finally {
         setIsSaving(false);

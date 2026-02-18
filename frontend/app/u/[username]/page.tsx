@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { FiArrowLeft } from "react-icons/fi";
 import { AVATAR_FRAME_OPTIONS, getAvatarFrameStyles, getGameDecoration, type AvatarFrameKey } from "@/lib/profile";
 import FavoritePokemonDisplay from "@/components/profile/FavoritePokemonDisplay";
+import { getVersionLabel } from "@/lib/pokemon";
 
 type ProfilePokemonPreview = {
   id: number | null;
@@ -17,6 +18,7 @@ type ProfileSavedTeam = {
   name: string;
   generation: number;
   gameId: number;
+  selectedVersionId: string | null;
   updatedAt: string;
   pokemonPreview: ProfilePokemonPreview[];
 };
@@ -325,7 +327,7 @@ export default async function PublicProfilePage({
                   {profile.favoriteTeam.name}
                 </p>
                 <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                  Gen {profile.favoriteTeam.generation} • Game {profile.favoriteTeam.gameId}
+                  Gen {profile.favoriteTeam.generation} · {getVersionLabel(profile.favoriteTeam.gameId, profile.favoriteTeam.selectedVersionId)}
                 </p>
                 <PokemonSpriteStrip team={profile.favoriteTeam} />
               </div>
@@ -361,7 +363,7 @@ export default async function PublicProfilePage({
                       {team.name}
                     </p>
                     <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                      Gen {team.generation} • Game {team.gameId}
+                      Gen {team.generation} · {getVersionLabel(team.gameId, team.selectedVersionId)}
                     </p>
                     <PokemonSpriteStrip team={team} />
                   </div>

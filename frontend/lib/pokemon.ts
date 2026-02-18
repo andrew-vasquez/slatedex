@@ -76,6 +76,20 @@ export const GENERATION_META: GenerationMeta[] = [
         starters: ["treecko", "torchic", "mudkip"],
         legendaries: ["rayquaza"],
       },
+      {
+        id: 12,
+        name: "FireRed/LeafGreen",
+        generation: 3,
+        region: "Kanto",
+        versions: [
+          { id: "firered", label: "FireRed" },
+          { id: "leafgreen", label: "LeafGreen" },
+        ],
+        versionGroupCandidates: ["firered-leafgreen"],
+        regionalDexCandidates: ["kanto"],
+        starters: ["bulbasaur", "charmander", "squirtle"],
+        legendaries: ["mewtwo"],
+      },
     ],
   },
   {
@@ -99,6 +113,20 @@ export const GENERATION_META: GenerationMeta[] = [
         regionalDexCandidates: ["extended-sinnoh", "original-sinnoh", "sinnoh"],
         starters: ["turtwig", "chimchar", "piplup"],
         legendaries: ["arceus"],
+      },
+      {
+        id: 13,
+        name: "HeartGold/SoulSilver",
+        generation: 4,
+        region: "Johto",
+        versions: [
+          { id: "heartgold", label: "HeartGold" },
+          { id: "soulsilver", label: "SoulSilver" },
+        ],
+        versionGroupCandidates: ["heartgold-soulsilver"],
+        regionalDexCandidates: ["updated-johto", "original-johto", "johto"],
+        starters: ["chikorita", "cyndaquil", "totodile"],
+        legendaries: ["lugia", "ho-oh"],
       },
     ],
   },
@@ -197,6 +225,20 @@ export const GENERATION_META: GenerationMeta[] = [
         starters: ["rowlet", "litten", "popplio"],
         legendaries: ["necrozma"],
       },
+      {
+        id: 14,
+        name: "Let's Go Pikachu/Eevee",
+        generation: 7,
+        region: "Kanto",
+        versions: [
+          { id: "lets-go-pikachu", label: "Let's Go, Pikachu!" },
+          { id: "lets-go-eevee", label: "Let's Go, Eevee!" },
+        ],
+        versionGroupCandidates: ["lets-go-pikachu-lets-go-eevee"],
+        regionalDexCandidates: ["letsgo-kanto", "kanto"],
+        starters: ["bulbasaur", "charmander", "squirtle"],
+        legendaries: ["mewtwo"],
+      },
     ],
   },
   {
@@ -261,4 +303,24 @@ export function getGenerationMeta(generation: number): GenerationMeta | undefine
 /** Get all games for a specific generation. */
 export function getGamesForGeneration(generation: number): Game[] {
   return getGenerationMeta(generation)?.games ?? [];
+}
+
+/**
+ * Resolve the human-readable label for a saved team.
+ * Uses the specific version (e.g. "Pokémon X") when available,
+ * falling back to the game title (e.g. "Pokémon X/Y").
+ */
+export function getVersionLabel(
+  gameId: number,
+  selectedVersionId: string | null | undefined
+): string {
+  const game = ALL_GAMES.find((g) => g.id === gameId);
+  if (!game) return "Unknown Game";
+
+  if (selectedVersionId) {
+    const version = game.versions.find((v) => v.id === selectedVersionId);
+    if (version) return `Pokémon ${version.label}`;
+  }
+
+  return `Pokémon ${game.name}`;
 }

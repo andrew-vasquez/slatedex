@@ -47,8 +47,8 @@ const OffensiveCoverage = dynamic(() => import("./OffensiveCoverage"), { loading
 const TeamRecommendations = dynamic(() => import("./TeamRecommendations"), { loading: () => null });
 
 const HISTORY_LIMIT = 40;
-const SMART_PICKS_EXCLUDE_LEGENDARIES_KEY = "smart_picks_exclude_legendaries_v1";
-const SMART_PICKS_EXCLUDE_STARTERS_KEY = "smart_picks_exclude_starters_v1";
+const SMART_PICKS_INCLUDE_LEGENDARIES_KEY = "smart_picks_include_legendaries_v1";
+const SMART_PICKS_INCLUDE_STARTERS_KEY = "smart_picks_include_starters_v1";
 
 type RecommendationRole = "all" | "bulky" | "fast" | "physical" | "special";
 
@@ -186,8 +186,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const [activeDropId, setActiveDropId] = useState<string | null>(null);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [recommendationsEnabled, setRecommendationsEnabled] = useState(true);
-  const [excludeLegendaryRecommendations, setExcludeLegendaryRecommendations] = useState(false);
-  const [excludeStarterRecommendations, setExcludeStarterRecommendations] = useState(false);
+  const [allowLegendaryMythicalRecommendations, setAllowLegendaryMythicalRecommendations] = useState(false);
+  const [allowStarterRecommendations, setAllowStarterRecommendations] = useState(false);
   const [recommendationRole, setRecommendationRole] = useState<RecommendationRole>("all");
   const [dexMode, setDexMode] = useState<DexMode>("national");
   const [selectedVersionId, setSelectedVersionId] = useState<string>("");
@@ -442,35 +442,35 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
   useEffect(() => {
     try {
-      setExcludeLegendaryRecommendations(localStorage.getItem(SMART_PICKS_EXCLUDE_LEGENDARIES_KEY) === "true");
-      setExcludeStarterRecommendations(localStorage.getItem(SMART_PICKS_EXCLUDE_STARTERS_KEY) === "true");
+      setAllowLegendaryMythicalRecommendations(localStorage.getItem(SMART_PICKS_INCLUDE_LEGENDARIES_KEY) === "true");
+      setAllowStarterRecommendations(localStorage.getItem(SMART_PICKS_INCLUDE_STARTERS_KEY) === "true");
     } catch {
-      setExcludeLegendaryRecommendations(false);
-      setExcludeStarterRecommendations(false);
+      setAllowLegendaryMythicalRecommendations(false);
+      setAllowStarterRecommendations(false);
     }
   }, []);
 
   useEffect(() => {
     try {
       localStorage.setItem(
-        SMART_PICKS_EXCLUDE_LEGENDARIES_KEY,
-        excludeLegendaryRecommendations ? "true" : "false"
+        SMART_PICKS_INCLUDE_LEGENDARIES_KEY,
+        allowLegendaryMythicalRecommendations ? "true" : "false"
       );
     } catch {
       // ignore storage errors
     }
-  }, [excludeLegendaryRecommendations]);
+  }, [allowLegendaryMythicalRecommendations]);
 
   useEffect(() => {
     try {
       localStorage.setItem(
-        SMART_PICKS_EXCLUDE_STARTERS_KEY,
-        excludeStarterRecommendations ? "true" : "false"
+        SMART_PICKS_INCLUDE_STARTERS_KEY,
+        allowStarterRecommendations ? "true" : "false"
       );
     } catch {
       // ignore storage errors
     }
-  }, [excludeStarterRecommendations]);
+  }, [allowStarterRecommendations]);
 
   useEffect(() => {
     if (!isSelectedGamePoolReady) return;
@@ -878,8 +878,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
     const candidatePool = availablePokemon.filter((pokemon) => {
       if (!pokemon.isFinalEvolution) return false;
-      if (excludeLegendaryRecommendations && (pokemon.isLegendary || pokemon.isMythical)) return false;
-      if (excludeStarterRecommendations && pokemon.isStarterLine) return false;
+      if (!allowLegendaryMythicalRecommendations && (pokemon.isLegendary || pokemon.isMythical)) return false;
+      if (!allowStarterRecommendations && pokemon.isStarterLine) return false;
       return true;
     });
     if (candidatePool.length === 0) return [];
@@ -990,11 +990,11 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
     return ranked.sort((a, b) => b.score - a.score).slice(0, 3);
   }, [
+    allowLegendaryMythicalRecommendations,
+    allowStarterRecommendations,
     availablePokemon,
     currentTeam,
     defensiveCoverage,
-    excludeLegendaryRecommendations,
-    excludeStarterRecommendations,
     generation,
     offensiveCoverage,
     recommendationRole,
@@ -1412,10 +1412,10 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                     teamFull={currentTeam.length >= 6}
                     recommendationsEnabled={recommendationsEnabled}
                     onToggleRecommendations={setRecommendationsEnabled}
-                    excludeLegendaryRecommendations={excludeLegendaryRecommendations}
-                    onExcludeLegendaryRecommendationsChange={setExcludeLegendaryRecommendations}
-                    excludeStarterRecommendations={excludeStarterRecommendations}
-                    onExcludeStarterRecommendationsChange={setExcludeStarterRecommendations}
+                    allowLegendaryMythicalRecommendations={allowLegendaryMythicalRecommendations}
+                    onAllowLegendaryMythicalRecommendationsChange={setAllowLegendaryMythicalRecommendations}
+                    allowStarterRecommendations={allowStarterRecommendations}
+                    onAllowStarterRecommendationsChange={setAllowStarterRecommendations}
                     onAddPokemon={addPokemonToTeam}
                     role={recommendationRole}
                     onRoleChange={setRecommendationRole}
@@ -1477,19 +1477,19 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
               {!isDesktopScreen && (
                 <section className={`mt-4 sm:mt-5 ${isAnalysisExiting ? "animate-scale-out" : "animate-section-reveal"}`}>
-                <TeamRecommendations
-                  recommendations={recommendations}
-                  exposedTypes={exposedTypeNames}
-                  teamFull={currentTeam.length >= 6}
-                  recommendationsEnabled={recommendationsEnabled}
-                  onToggleRecommendations={setRecommendationsEnabled}
-                  excludeLegendaryRecommendations={excludeLegendaryRecommendations}
-                  onExcludeLegendaryRecommendationsChange={setExcludeLegendaryRecommendations}
-                  excludeStarterRecommendations={excludeStarterRecommendations}
-                  onExcludeStarterRecommendationsChange={setExcludeStarterRecommendations}
-                  onAddPokemon={addPokemonToTeam}
-                  role={recommendationRole}
-                  onRoleChange={setRecommendationRole}
+                  <TeamRecommendations
+                    recommendations={recommendations}
+                    exposedTypes={exposedTypeNames}
+                    teamFull={currentTeam.length >= 6}
+                    recommendationsEnabled={recommendationsEnabled}
+                    onToggleRecommendations={setRecommendationsEnabled}
+                    allowLegendaryMythicalRecommendations={allowLegendaryMythicalRecommendations}
+                    onAllowLegendaryMythicalRecommendationsChange={setAllowLegendaryMythicalRecommendations}
+                    allowStarterRecommendations={allowStarterRecommendations}
+                    onAllowStarterRecommendationsChange={setAllowStarterRecommendations}
+                    onAddPokemon={addPokemonToTeam}
+                    role={recommendationRole}
+                    onRoleChange={setRecommendationRole}
                     onReplaceWeakest={handleReplaceWeakest}
                     canReplaceWeakest={canReplaceWeakest}
                   />
@@ -1539,6 +1539,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
         isSaving={isSaving}
         payload={sharePayload}
         onImport={queueImportPayload}
+        gameVersions={selectedGame.versions}
+        selectedVersionId={selectedVersionId}
       />
 
       <PokemonDetailDrawer

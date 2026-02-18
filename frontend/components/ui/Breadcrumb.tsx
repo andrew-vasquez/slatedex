@@ -13,34 +13,47 @@ interface BreadcrumbProps {
 export default function Breadcrumb({ items, className = "" }: BreadcrumbProps) {
   return (
     <nav aria-label="Breadcrumb" className={className}>
-      <ol className="flex flex-wrap items-center gap-1" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+      <ol className="breadcrumb-list">
         {items.map((item, i) => {
           const isLast = i === items.length - 1;
+          const isRoot = i === 0 && !!item.href;
           return (
-            <li key={i} className="flex items-center gap-1">
+            <li
+              key={i}
+              className="breadcrumb-item"
+              style={{ animationDelay: `${i * 55}ms` }}
+            >
               {i > 0 && (
-                <span
-                  className="select-none text-[0.6rem]"
-                  style={{ color: "var(--text-muted)", opacity: 0.55 }}
-                  aria-hidden="true"
-                >
-                  ›
+                <span className="breadcrumb-sep" aria-hidden="true">
+                  /
                 </span>
               )}
               {isLast || !item.href ? (
                 <span
-                  className="text-[0.65rem] font-semibold uppercase tracking-[0.14em]"
-                  style={{ color: isLast ? "var(--text-secondary)" : "var(--text-muted)" }}
+                  className="breadcrumb-current"
                   aria-current={isLast ? "page" : undefined}
                 >
                   {item.label}
                 </span>
               ) : (
-                <Link
-                  href={item.href}
-                  className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] transition-colors"
-                  style={{ color: "var(--text-muted)", textDecoration: "none" }}
-                >
+                <Link href={item.href} className="breadcrumb-link">
+                  {isRoot && (
+                    <svg
+                      className="breadcrumb-home-icon"
+                      width="9"
+                      height="9"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                      <polyline points="9 22 9 12 15 12 15 22" />
+                    </svg>
+                  )}
                   {item.label}
                 </Link>
               )}

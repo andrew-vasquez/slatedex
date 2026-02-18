@@ -22,10 +22,10 @@ interface TeamRecommendationsProps {
   teamFull: boolean;
   recommendationsEnabled: boolean;
   onToggleRecommendations: Dispatch<SetStateAction<boolean>>;
-  excludeLegendaryRecommendations: boolean;
-  onExcludeLegendaryRecommendationsChange: Dispatch<SetStateAction<boolean>>;
-  excludeStarterRecommendations: boolean;
-  onExcludeStarterRecommendationsChange: Dispatch<SetStateAction<boolean>>;
+  allowLegendaryMythicalRecommendations: boolean;
+  onAllowLegendaryMythicalRecommendationsChange: Dispatch<SetStateAction<boolean>>;
+  allowStarterRecommendations: boolean;
+  onAllowStarterRecommendationsChange: Dispatch<SetStateAction<boolean>>;
   onAddPokemon: (pokemon: Pokemon) => void;
   role: RecommendationRole;
   onRoleChange: (role: RecommendationRole) => void;
@@ -39,10 +39,10 @@ const TeamRecommendations = ({
   teamFull,
   recommendationsEnabled,
   onToggleRecommendations,
-  excludeLegendaryRecommendations,
-  onExcludeLegendaryRecommendationsChange,
-  excludeStarterRecommendations,
-  onExcludeStarterRecommendationsChange,
+  allowLegendaryMythicalRecommendations,
+  onAllowLegendaryMythicalRecommendationsChange,
+  allowStarterRecommendations,
+  onAllowStarterRecommendationsChange,
   onAddPokemon,
   role,
   onRoleChange,
@@ -168,35 +168,37 @@ const TeamRecommendations = ({
         <div
           id="smart-picks-settings-panel"
           className={`overflow-hidden transition-[max-height,opacity,margin-top] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-            isRecommendationSettingsOpen ? "mt-2 max-h-40 opacity-100" : "mt-0 max-h-0 opacity-0 pointer-events-none"
+            isRecommendationSettingsOpen ? "mt-2 max-h-64 opacity-100" : "mt-0 max-h-0 opacity-0 pointer-events-none"
           }`}
         >
           <div className="space-y-2 rounded-xl border p-2.5" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+            <p className="rounded-lg border px-2.5 py-2 text-[0.66rem] leading-relaxed" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>
+              Smart Picks excludes <span className="font-semibold">legendaries/mythicals and starter lines</span> by default.
+            </p>
             <label
               className="inline-flex w-full items-center justify-between gap-3 rounded-lg border px-2.5 py-2 text-[0.66rem] font-semibold uppercase tracking-[0.08em]"
               style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}
             >
-              Exclude legendaries
+              Include Legendaries & Mythicals
               <input
                 type="checkbox"
-                checked={excludeLegendaryRecommendations}
-                onChange={(event) => onExcludeLegendaryRecommendationsChange(event.target.checked)}
+                checked={allowLegendaryMythicalRecommendations}
+                onChange={(event) => onAllowLegendaryMythicalRecommendationsChange(event.target.checked)}
                 className="h-3.5 w-3.5 accent-[var(--accent)]"
-                aria-label="Exclude legendaries and mythical Pokemon from smart picks"
+                aria-label="Include legendary and mythical Pokemon in smart picks"
               />
             </label>
-
             <label
               className="inline-flex w-full items-center justify-between gap-3 rounded-lg border px-2.5 py-2 text-[0.66rem] font-semibold uppercase tracking-[0.08em]"
               style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}
             >
-              Exclude starter lines
+              Include Starter Lines
               <input
                 type="checkbox"
-                checked={excludeStarterRecommendations}
-                onChange={(event) => onExcludeStarterRecommendationsChange(event.target.checked)}
+                checked={allowStarterRecommendations}
+                onChange={(event) => onAllowStarterRecommendationsChange(event.target.checked)}
                 className="h-3.5 w-3.5 accent-[var(--accent)]"
-                aria-label="Exclude starter evolution lines from smart picks"
+                aria-label="Include starter evolution lines in smart picks"
               />
             </label>
           </div>

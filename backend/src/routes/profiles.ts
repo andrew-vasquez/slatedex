@@ -46,6 +46,7 @@ type TeamCard = {
   name: string;
   generation: number;
   gameId: number;
+  selectedVersionId: string | null;
   updatedAt: string;
   pokemonPreview: TeamPokemonPreview[];
 };
@@ -55,6 +56,7 @@ type TeamQueryRow = {
   name: string;
   generation: number;
   gameId: number;
+  selectedVersionId: string | null;
   updatedAt: Date;
   pokemon: unknown;
 };
@@ -229,6 +231,7 @@ function toTeamCards(teams: TeamQueryRow[]): TeamCard[] {
     name: team.name,
     generation: team.generation,
     gameId: team.gameId,
+    selectedVersionId: team.selectedVersionId,
     updatedAt: team.updatedAt.toISOString(),
     pokemonPreview: extractPokemonPreview(team.pokemon),
   }));
@@ -349,6 +352,7 @@ profiles.get("/me", authMiddleware, async (c) => {
           id: true,
           generation: true,
           gameId: true,
+          selectedVersionId: true,
           updatedAt: true,
           name: true,
           pokemon: true,
@@ -626,6 +630,7 @@ profiles.get("/:username", async (c) => {
           id: true,
           generation: true,
           gameId: true,
+          selectedVersionId: true,
           updatedAt: true,
           name: true,
           pokemon: true,
