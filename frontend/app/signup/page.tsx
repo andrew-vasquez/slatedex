@@ -108,7 +108,16 @@ export default function SignupPage() {
   const pwMatch = confirmPassword.length > 0 && password === confirmPassword;
   const pwMismatch = confirmPassword.length > 0 && password !== confirmPassword;
 
-  if (isLoading) return null;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg-gradient)" }}>
+        <div className="flex flex-col items-center gap-3">
+          <div className="skeleton h-7 w-24 rounded-xl" />
+          <div className="skeleton h-4 w-40 rounded-lg" />
+        </div>
+      </div>
+    );
+  }
   if (isAuthenticated) return null;
 
   return (

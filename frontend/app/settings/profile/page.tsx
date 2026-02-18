@@ -231,6 +231,14 @@ export default function ProfileSettingsPage() {
       setFavoriteTeamId(refreshed.favoriteTeamId);
       setFavoriteGameIds(refreshed.favoriteGameIds);
       setFavoritePokemonInput(refreshed.favoritePokemonNames.join(", "));
+      window.dispatchEvent(
+        new CustomEvent("profile-appearance-updated", {
+          detail: {
+            avatarUrl: refreshed.avatarUrl ?? refreshed.image ?? null,
+            avatarFrame: refreshed.avatarFrame,
+          },
+        })
+      );
       setSaveStatus("saved");
     } catch (error: unknown) {
       setSaveStatus("error");

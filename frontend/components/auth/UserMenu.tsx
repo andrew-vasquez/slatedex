@@ -4,6 +4,12 @@ import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { FiLogIn, FiLogOut, FiMoon, FiSettings, FiSun, FiUser, FiGrid } from "react-icons/fi";
 import { signOut } from "@/lib/auth-client";
+import { fetchMyProfile } from "@/lib/api";
+import {
+  AVATAR_FRAME_OPTIONS,
+  getAvatarFrameStyles,
+  type AvatarFrameKey,
+} from "@/lib/profile";
 import { useAuth } from "@/components/providers/AuthProvider";
 import AuthDialog from "./AuthDialog";
 
@@ -33,11 +39,18 @@ interface UserMenuProps {
   compactOnMobile?: boolean;
 }
 
+function toAvatarFrame(value: string | null | undefined): AvatarFrameKey {
+  const match = AVATAR_FRAME_OPTIONS.find((option) => option.key === value);
+  return match?.key ?? "classic";
+}
+
 const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>("dark");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarFrame, setAvatarFrame] = useState<AvatarFrameKey>("classic");
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
 
@@ -66,6 +79,44 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setAvatarUrl(null);
+      setAvatarFrame("classic");
+      return;
+    }
+
+    let cancelled = false;
+
+    fetchMyProfile()
+      .then((profile) => {
+        if (cancelled) return;
+        setAvatarUrl(profile.avatarUrl ?? profile.image ?? null);
+        setAvatarFrame(toAvatarFrame(profile.avatarFrame));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAvatarUrl(user?.image ?? null);
+        setAvatarFrame("classic");
+      });
+
+    const onAppearanceUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<{ avatarUrl?: string | null; avatarFrame?: string }>;
+      if (customEvent.detail?.avatarUrl !== undefined) {
+        setAvatarUrl(customEvent.detail.avatarUrl ?? null);
+      }
+      if (customEvent.detail?.avatarFrame !== undefined) {
+        setAvatarFrame(toAvatarFrame(customEvent.detail.avatarFrame));
+      }
+    };
+
+    window.addEventListener("profile-appearance-updated", onAppearanceUpdated as EventListener);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("profile-appearance-updated", onAppearanceUpdated as EventListener);
+    };
+  }, [isAuthenticated, user?.image]);
+
   const toggleTheme = () => {
     const next: Theme = theme === "dark" ? "light" : "dark";
     applyTheme(next);
@@ -74,8 +125,13 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
 
   const handleSignOut = async () => {
     await signOut();
+    setAvatarUrl(null);
+    setAvatarFrame("classic");
     setIsOpen(false);
   };
+
+  const frameStyles = getAvatarFrameStyles(avatarFrame);
+  const effectiveAvatarUrl = avatarUrl?.trim() || user?.image || "";
 
   return (
     <>
@@ -117,13 +173,26 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
             <button
               type="button"
               className="user-menu-avatar"
+              style={{
+                border: `2px solid ${frameStyles.border}`,
+                boxShadow: frameStyles.glow,
+                background: "rgba(8, 15, 34, 0.9)",
+              }}
               aria-haspopup="menu"
               aria-expanded={isOpen}
               aria-controls={menuId}
               aria-label="Open user menu"
               onClick={() => setIsOpen((prev) => !prev)}
             >
-              {getInitials(user?.name ?? "?")}
+              {effectiveAvatarUrl ? (
+                <img
+                  src={effectiveAvatarUrl}
+                  alt={user?.name ? `${user.name} avatar` : "User avatar"}
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                getInitials(user?.name ?? "?")
+              )}
             </button>
 
             {isOpen && (

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
+import { FiArrowLeft } from "react-icons/fi";
 import { AVATAR_FRAME_OPTIONS, getAvatarFrameStyles, getGameDecoration, type AvatarFrameKey } from "@/lib/profile";
 
 type ProfilePokemonPreview = {
@@ -138,7 +140,45 @@ export default async function PublicProfilePage({
   const avatarFrameStyles = getAvatarFrameStyles(avatarFrame);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-9">
+    <div className="min-h-screen" style={{ background: "var(--bg-gradient)" }}>
+      {/* Sticky nav */}
+      <header className="glass sticky top-0 z-40 border-b" style={{ borderColor: "var(--border)" }}>
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/play"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-xl"
+              style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+              aria-label="Back to builder"
+            >
+              <FiArrowLeft size={14} aria-hidden="true" />
+            </Link>
+            <Link
+              href="/"
+              className="font-display text-[0.95rem] leading-none"
+              style={{ letterSpacing: "-0.02em", color: "var(--text-primary)", textDecoration: "none" }}
+              aria-label="Slatedex home"
+            >
+              Slate<span style={{ color: "var(--accent)" }}>dex</span>
+            </Link>
+            <span
+              className="hidden rounded-md px-2 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em] sm:inline-block"
+              style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
+            >
+              Trainer Profile
+            </span>
+          </div>
+          <Link
+            href="/play"
+            className="hidden rounded-xl border px-3.5 py-2 text-[0.72rem] font-semibold sm:inline-flex items-center gap-1.5"
+            style={{ borderColor: "var(--border)", color: "var(--text-secondary)", background: "var(--surface-2)" }}
+          >
+            Open Builder
+          </Link>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-9">
       <section
         className="relative overflow-hidden rounded-2xl border p-5 sm:p-6"
         style={{
@@ -158,7 +198,7 @@ export default async function PublicProfilePage({
               }}
             >
               {avatar ? (
-                <img src={avatar} alt={`${profile.name} avatar`} className="h-14 w-14 rounded-xl object-cover" />
+                <Image src={avatar} alt={`${profile.name} avatar`} width={56} height={56} className="rounded-xl object-cover" />
               ) : (
                 <span className="text-xs font-semibold uppercase" style={{ color: "var(--text-muted)" }}>
                   {profile.name.slice(0, 2)}
@@ -181,11 +221,11 @@ export default async function PublicProfilePage({
             </div>
           </div>
           <Link
-            href="/"
-            className="rounded-xl border px-3.5 py-2 text-sm font-semibold"
+            href="/play"
+            className="hidden rounded-xl border px-3.5 py-2 text-sm font-semibold sm:inline-flex"
             style={{ borderColor: "var(--border)", color: "var(--text-primary)", background: "var(--surface-2)" }}
           >
-            Back to Builder
+            Open Builder
           </Link>
         </div>
 
@@ -353,5 +393,6 @@ export default async function PublicProfilePage({
         </div>
       </section>
     </main>
+    </div>
   );
 }
