@@ -100,7 +100,8 @@ const TeamSlot = ({
     <div
       ref={setNodeRef}
       className={`
-        relative aspect-square rounded-xl flex items-center justify-center overflow-hidden
+        relative rounded-xl flex items-center justify-center overflow-hidden
+        aspect-auto sm:aspect-square min-h-[8.5rem] sm:min-h-[7.5rem]
         ${isOver ? "drop-glow scale-[1.02]" : ""}
         ${slotSnapPulse ? "slot-snap-pulse" : ""}
       `}
@@ -126,21 +127,32 @@ const TeamSlot = ({
       )}
 
       {(!hasPokemon || shouldRenderEmpty) && !children && (
-        <div className={`flex flex-col items-center gap-1.5 ${isEmptyExiting ? "animate-scale-out" : "animate-fade-in-up"}`}>
+        <div className={`flex flex-col items-center gap-2 ${isEmptyExiting ? "animate-scale-out" : "animate-fade-in-up"}`}>
           <svg
-            width="28"
-            height="28"
+            width="30"
+            height="30"
             viewBox="0 0 24 24"
             fill="none"
-            style={{ color: "var(--text-muted)", opacity: 0.58 }}
+            style={{ color: "var(--text-muted)", opacity: 0.48 }}
             aria-hidden="true"
           >
             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
             <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="1.5" />
             <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" />
           </svg>
-          <span className="text-[0.62rem] font-medium" style={{ color: "var(--text-muted)" }}>
+          <span className="text-[0.6rem] font-medium" style={{ color: "var(--text-muted)", opacity: 0.7 }}>
             Empty
+          </span>
+          <span
+            className="rounded-full px-2 py-0.5 text-[0.52rem] font-semibold uppercase tracking-[0.08em] sm:hidden"
+            style={{
+              background: "rgba(148,163,184,0.08)",
+              border: "1px dashed rgba(148,163,184,0.22)",
+              color: "var(--text-muted)",
+              opacity: 0.75,
+            }}
+          >
+            Tap to add
           </span>
         </div>
       )}
@@ -149,7 +161,7 @@ const TeamSlot = ({
         <button
           type="button"
           onClick={onRemove}
-          className="absolute right-1.5 top-1.5 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition-transform duration-150 active:scale-95 sm:h-7 sm:w-7"
+          className="absolute right-1.5 top-1.5 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-sm transition-transform duration-150 active:scale-90 sm:h-7 sm:w-7"
           style={{
             background: "rgba(218, 44, 67, 0.16)",
             borderColor: "rgba(218, 44, 67, 0.42)",
@@ -157,7 +169,7 @@ const TeamSlot = ({
           }}
           aria-label={`Remove ${pokemon.name} from team`}
         >
-          <FiX size={14} aria-hidden="true" />
+          <FiX size={15} aria-hidden="true" />
         </button>
       )}
 
@@ -165,7 +177,7 @@ const TeamSlot = ({
         <button
           type="button"
           onClick={onToggleLock}
-          className={`absolute left-1.5 top-1.5 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition-transform duration-150 active:scale-95 sm:h-7 sm:w-7 ${lockPulse ? "animate-confirm-pulse" : ""}`}
+          className={`absolute left-1.5 top-1.5 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-sm transition-transform duration-150 active:scale-90 sm:h-7 sm:w-7 ${lockPulse ? "animate-confirm-pulse" : ""}`}
           style={{
             background: isLocked ? "rgba(59, 130, 246, 0.16)" : "rgba(148, 163, 184, 0.12)",
             borderColor: isLocked ? "rgba(59, 130, 246, 0.38)" : "var(--border)",
@@ -174,7 +186,7 @@ const TeamSlot = ({
           } as React.CSSProperties}
           aria-label={isLocked ? "Unlock team slot" : "Lock team slot"}
         >
-          {isLocked ? <FiLock size={12} aria-hidden="true" /> : <FiUnlock size={12} aria-hidden="true" />}
+          {isLocked ? <FiLock size={13} aria-hidden="true" /> : <FiUnlock size={13} aria-hidden="true" />}
         </button>
       )}
 

@@ -4,6 +4,7 @@ import { rateLimiter } from "hono-rate-limiter";
 import { auth } from "./lib/auth";
 import { config, isAllowedOrigin } from "./lib/config";
 import teams from "./routes/teams";
+import profiles from "./routes/profiles";
 
 const app = new Hono();
 
@@ -41,9 +42,16 @@ app.use(
   rateLimiter({ windowMs: 60 * 1000, limit: 60, keyGenerator: getClientKey })
 );
 
+// Profile API: 60 requests per minute
+app.use(
+  "/api/profiles/*",
+  rateLimiter({ windowMs: 60 * 1000, limit: 60, keyGenerator: getClientKey })
+);
+
 app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 app.route("/api/teams", teams);
+app.route("/api/profiles", profiles);
 
 app.onError((error, c) => {
   const url = new URL(c.req.url);

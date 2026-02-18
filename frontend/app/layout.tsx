@@ -4,6 +4,8 @@ import "@/app/globals.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import CookieConsentManager from "@/components/privacy/CookieConsentManager";
 import PrivacyScriptLoader from "@/components/privacy/PrivacyScriptLoader";
+import NavigationProgress from "@/components/ui/NavigationProgress";
+import PageTransitionWrapper from "@/components/ui/PageTransitionWrapper";
 import { METADATA_BASE, SITE_URL } from "@/lib/site";
 
 const display = Chakra_Petch({
@@ -29,12 +31,12 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: METADATA_BASE,
-  title: "Pokémon Team Builder — Build Your Ultimate Team",
+  title: "Slatedex — Pokémon Team Builder",
   description:
-    "Create and optimize your perfect Pokémon team with our interactive team builder. Choose from all generations, analyze type coverage, and build competitive teams for any Pokémon game.",
+    "Build your ideal Pokémon team with Slatedex. Analyze type coverage, find defensive weaknesses, and get smart team recommendations across all nine generations.",
   keywords:
-    "pokemon, team builder, pokemon team, competitive pokemon, pokemon strategy, pokemon types, pokemon generations, team analysis",
-  authors: [{ name: "Pokémon Team Builder" }],
+    "slatedex, pokemon, team builder, pokemon team, competitive pokemon, pokemon strategy, pokemon types, pokemon generations, team analysis, type coverage",
+  authors: [{ name: "Slatedex" }],
   robots: "index, follow",
   icons: {
     icon: [{ url: "/pokeball.svg", type: "image/svg+xml" }],
@@ -84,21 +86,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebApplication",
-              name: "Pokémon Team Builder",
+              name: "Slatedex",
               description:
-                "Interactive Pokémon team builder for creating and optimizing competitive Pokémon teams across all generations",
+                "Slatedex — a tactical Pokémon team builder for analyzing type coverage, finding team weaknesses, and building optimal competitive teams across all nine generations.",
               url: SITE_URL,
               applicationCategory: "GameApplication",
               operatingSystem: "Web Browser",
               offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-              author: { "@type": "Organization", name: "Pokémon Team Builder" },
-              keywords: "pokemon, team builder, competitive pokemon, pokemon strategy",
+              author: { "@type": "Organization", name: "Slatedex" },
+              keywords: "slatedex, pokemon, team builder, competitive pokemon, pokemon strategy, type coverage",
             }),
           }}
         />
       </head>
       <body className="font-body antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <NavigationProgress />
+        <AuthProvider>
+          <PageTransitionWrapper>{children}</PageTransitionWrapper>
+        </AuthProvider>
         <PrivacyScriptLoader />
         <CookieConsentManager />
       </body>

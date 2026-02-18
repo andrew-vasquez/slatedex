@@ -34,6 +34,58 @@ export interface SavedTeam {
   updatedAt: string;
 }
 
+export interface ProfileTeamSummary {
+  generation: number;
+  gameId: number;
+  teamCount: number;
+  lastUpdatedAt: string;
+  latestTeamName: string;
+}
+
+export interface ProfilePokemonPreview {
+  id: number | null;
+  name: string;
+  sprite: string | null;
+}
+
+export interface ProfileSavedTeam {
+  id: string;
+  name: string;
+  generation: number;
+  gameId: number;
+  selectedVersionId: string | null;
+  updatedAt: string;
+  pokemonPreview: ProfilePokemonPreview[];
+}
+
+export interface PublicProfile {
+  username: string;
+  name: string;
+  image: string | null;
+  memberSince: string;
+  bio: string;
+  avatarUrl: string | null;
+  avatarFrame: string;
+  favoriteTeamId: string | null;
+  favoriteGameIds: number[];
+  favoritePokemonNames: string[];
+  savedTeams: ProfileSavedTeam[];
+  favoriteTeam: ProfileSavedTeam | null;
+  teamStats: {
+    totalTeams: number;
+    summaries: ProfileTeamSummary[];
+  };
+}
+
+export interface MyProfile extends PublicProfile {
+  usernameChangeWindow: {
+    max: number;
+    used: number;
+    remaining: number;
+    days: number;
+  };
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
@@ -90,5 +142,56 @@ export function updateTeam(
 export function deleteTeam(id: string): Promise<{ success: boolean }> {
   return apiFetch(`/api/teams/${id}`, {
     method: "DELETE",
+  });
+}
+
+export async function checkUsernameAvailable(
+  username: string
+): Promise<{ available: boolean; reason?: string }> {
+  const res = await fetch(
+    `${API_URL}/api/profiles/check-username?q=${encodeURIComponent(username)}`,
+    { credentials: "include" }
+  );
+  if (!res.ok) return { available: false };
+  return res.json();
+}
+
+export async function loginWithIdentifier(
+  identifier: string,
+  password: string
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${API_URL}/api/profiles/login`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier, password }),
+  });
+
+  if (res.ok) return { ok: true };
+
+  const body = await res.json().catch(() => ({}));
+  return { ok: false, error: body.error ?? "Invalid credentials" };
+}
+
+export function fetchPublicProfile(username: string): Promise<PublicProfile> {
+  return apiFetch(`/api/profiles/${encodeURIComponent(username)}`);
+}
+
+export function fetchMyProfile(): Promise<MyProfile> {
+  return apiFetch("/api/profiles/me");
+}
+
+export function updateMyProfile(data: {
+  username?: string;
+  bio?: string;
+  avatarUrl?: string | null;
+  avatarFrame?: string;
+  favoriteTeamId?: string | null;
+  favoriteGameIds?: number[];
+  favoritePokemonNames?: string[];
+}): Promise<{ success: boolean }> {
+  return apiFetch("/api/profiles/me", {
+    method: "PUT",
+    body: JSON.stringify(data),
   });
 }

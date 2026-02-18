@@ -1,10 +1,16 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { FiLogIn, FiLogOut, FiMoon, FiSun } from "react-icons/fi";
+import Link from "next/link";
+import { FiLogIn, FiLogOut, FiMoon, FiSettings, FiSun, FiUser, FiGrid } from "react-icons/fi";
 import { signOut } from "@/lib/auth-client";
+import { fetchMyProfile } from "@/lib/api";
+import {
+  AVATAR_FRAME_OPTIONS,
+  getAvatarFrameStyles,
+  type AvatarFrameKey,
+} from "@/lib/profile";
 import { useAuth } from "@/components/providers/AuthProvider";
-import AuthDialog from "./AuthDialog";
 
 type Theme = "dark" | "light";
 
@@ -32,11 +38,17 @@ interface UserMenuProps {
   compactOnMobile?: boolean;
 }
 
+function toAvatarFrame(value: string | null | undefined): AvatarFrameKey {
+  const match = AVATAR_FRAME_OPTIONS.find((option) => option.key === value);
+  return match?.key ?? "classic";
+}
+
 const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) => {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, openAuthDialog } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>("dark");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarFrame, setAvatarFrame] = useState<AvatarFrameKey>("classic");
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
 
@@ -65,6 +77,44 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setAvatarUrl(null);
+      setAvatarFrame("classic");
+      return;
+    }
+
+    let cancelled = false;
+
+    fetchMyProfile()
+      .then((profile) => {
+        if (cancelled) return;
+        setAvatarUrl(profile.avatarUrl ?? profile.image ?? null);
+        setAvatarFrame(toAvatarFrame(profile.avatarFrame));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAvatarUrl(user?.image ?? null);
+        setAvatarFrame("classic");
+      });
+
+    const onAppearanceUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<{ avatarUrl?: string | null; avatarFrame?: string }>;
+      if (customEvent.detail?.avatarUrl !== undefined) {
+        setAvatarUrl(customEvent.detail.avatarUrl ?? null);
+      }
+      if (customEvent.detail?.avatarFrame !== undefined) {
+        setAvatarFrame(toAvatarFrame(customEvent.detail.avatarFrame));
+      }
+    };
+
+    window.addEventListener("profile-appearance-updated", onAppearanceUpdated as EventListener);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("profile-appearance-updated", onAppearanceUpdated as EventListener);
+    };
+  }, [isAuthenticated, user?.image]);
+
   const toggleTheme = () => {
     const next: Theme = theme === "dark" ? "light" : "dark";
     applyTheme(next);
@@ -73,12 +123,16 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
 
   const handleSignOut = async () => {
     await signOut();
+    setAvatarUrl(null);
+    setAvatarFrame("classic");
     setIsOpen(false);
   };
 
+  const frameStyles = getAvatarFrameStyles(avatarFrame);
+  const effectiveAvatarUrl = avatarUrl?.trim() || user?.image || "";
+
   return (
-    <>
-      <div className={`user-menu-shell${compactOnMobile ? " user-menu-shell--compact-mobile" : ""} ${className}`.trim()}>
+    <div className={`user-menu-shell${compactOnMobile ? " user-menu-shell--compact-mobile" : ""} ${className}`.trim()}>
         {/* Theme Toggle */}
         <button
           type="button"
@@ -103,7 +157,7 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
             type="button"
             className={`user-menu-trigger user-menu-trigger--signin${compactOnMobile ? " user-menu-trigger--icon" : ""}`}
             aria-label="Sign in or create account"
-            onClick={() => setAuthDialogOpen(true)}
+            onClick={openAuthDialog}
           >
             <FiLogIn size={14} aria-hidden="true" />
             {!compactOnMobile && <span>Sign In</span>}
@@ -116,13 +170,26 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
             <button
               type="button"
               className="user-menu-avatar"
+              style={{
+                border: `2px solid ${frameStyles.border}`,
+                boxShadow: frameStyles.glow,
+                background: "rgba(8, 15, 34, 0.9)",
+              }}
               aria-haspopup="menu"
               aria-expanded={isOpen}
               aria-controls={menuId}
               aria-label="Open user menu"
               onClick={() => setIsOpen((prev) => !prev)}
             >
-              {getInitials(user?.name ?? "?")}
+              {effectiveAvatarUrl ? (
+                <img
+                  src={effectiveAvatarUrl}
+                  alt={user?.name ? `${user.name} avatar` : "User avatar"}
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                getInitials(user?.name ?? "?")
+              )}
             </button>
 
             {isOpen && (
@@ -131,6 +198,36 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
                   <p className="user-menu-name">{user?.name}</p>
                   <p className="user-menu-email">{user?.email}</p>
                 </div>
+
+                <Link
+                  href="/teams"
+                  className="user-menu-item"
+                  role="menuitem"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FiGrid size={14} aria-hidden="true" />
+                  My Teams
+                </Link>
+
+                <Link
+                  href={user?.username ? `/u/${user.username}` : "/settings/profile"}
+                  className="user-menu-item"
+                  role="menuitem"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FiUser size={14} aria-hidden="true" />
+                  Profile
+                </Link>
+
+                <Link
+                  href="/settings"
+                  className="user-menu-item"
+                  role="menuitem"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FiSettings size={14} aria-hidden="true" />
+                  Settings
+                </Link>
 
                 <button
                   type="button"
@@ -145,10 +242,7 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
             )}
           </div>
         )}
-      </div>
-
-      <AuthDialog isOpen={authDialogOpen} onClose={() => setAuthDialogOpen(false)} />
-    </>
+    </div>
   );
 };
 

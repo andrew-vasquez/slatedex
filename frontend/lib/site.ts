@@ -1,4 +1,4 @@
-const DEFAULT_SITE_URL = "https://pokemon-team-builder.com";
+const DEFAULT_SITE_URL = "https://slatedex.com";
 
 function normalizeUrl(value: string | undefined): string {
   if (!value) return DEFAULT_SITE_URL;

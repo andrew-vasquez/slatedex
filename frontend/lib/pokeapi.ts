@@ -2,7 +2,7 @@ import { cache } from "react";
 import Pokedex from "pokedex-promise-v2";
 import type { Game, Pokemon, PokemonPools } from "@/lib/types";
 import { resolveVersionExclusivity } from "@/lib/versionExclusives";
-import { getGamesForGeneration } from "@/lib/pokemon";
+import { GENERATION_META, getGamesForGeneration } from "@/lib/pokemon";
 
 const pokedex = new Pokedex({
   cacheLimit: 300 * 1000, // 5-minute cache — covers full build duration
@@ -62,6 +62,8 @@ async function fetchPokemonByGeneration(maxGeneration: number): Promise<Pokemon[
     pokemon: Omit<Pokemon, "isFinalEvolution">;
     speciesName: string;
     evolvesFrom: string | null;
+    isLegendary: boolean;
+    isMythical: boolean;
   }> = [];
 
   for (let i = 0; i < speciesList.length; i += BATCH_SIZE) {
@@ -71,6 +73,8 @@ async function fetchPokemonByGeneration(maxGeneration: number): Promise<Pokemon[
         pokemon: Omit<Pokemon, "isFinalEvolution">;
         speciesName: string;
         evolvesFrom: string | null;
+        isLegendary: boolean;
+        isMythical: boolean;
       } | null> => {
         try {
           const [pokemonData, speciesData]: any[] = await Promise.all([
@@ -78,9 +82,17 @@ async function fetchPokemonByGeneration(maxGeneration: number): Promise<Pokemon[
             pokedex.getPokemonSpeciesByName(species.name),
           ]);
           return {
-            pokemon: mapPokemonData(pokemonData, species.generation, maxGeneration),
+            pokemon: mapPokemonData(
+              pokemonData,
+              species.generation,
+              maxGeneration,
+              Boolean(speciesData?.is_legendary),
+              Boolean(speciesData?.is_mythical)
+            ),
             speciesName: species.name,
             evolvesFrom: speciesData.evolves_from_species?.name ?? null,
+            isLegendary: Boolean(speciesData?.is_legendary),
+            isMythical: Boolean(speciesData?.is_mythical),
           };
         } catch {
           return null;
@@ -92,9 +104,41 @@ async function fetchPokemonByGeneration(maxGeneration: number): Promise<Pokemon[
         pokemon: Omit<Pokemon, "isFinalEvolution">;
         speciesName: string;
         evolvesFrom: string | null;
+        isLegendary: boolean;
+        isMythical: boolean;
       }>)
     );
   }
+
+  const evolvesFromBySpecies = new Map<string, string | null>(
+    pokemonWithSpeciesData.map((entry) => [entry.speciesName.toLowerCase(), entry.evolvesFrom?.toLowerCase() ?? null])
+  );
+  const rootSpeciesCache = new Map<string, string>();
+  const starterRoots = new Set(
+    GENERATION_META
+      .filter((meta) => meta.generation <= maxGeneration)
+      .flatMap((meta) => meta.games.flatMap((game) => game.starters))
+      .map((name) => name.toLowerCase())
+  );
+
+  const getRootSpecies = (speciesName: string): string => {
+    const normalized = speciesName.toLowerCase();
+    const cachedRoot = rootSpeciesCache.get(normalized);
+    if (cachedRoot) return cachedRoot;
+
+    let current = normalized;
+    const seen = new Set<string>();
+
+    while (!seen.has(current)) {
+      seen.add(current);
+      const evolvesFrom = evolvesFromBySpecies.get(current);
+      if (!evolvesFrom) break;
+      current = evolvesFrom;
+    }
+
+    rootSpeciesCache.set(normalized, current);
+    return current;
+  };
 
   const speciesWithEvolutions = new Set(
     pokemonWithSpeciesData
@@ -105,6 +149,9 @@ async function fetchPokemonByGeneration(maxGeneration: number): Promise<Pokemon[
   const allPokemon: Pokemon[] = pokemonWithSpeciesData.map((entry) => ({
     ...entry.pokemon,
     isFinalEvolution: !speciesWithEvolutions.has(entry.speciesName),
+    isLegendary: entry.isLegendary,
+    isMythical: entry.isMythical,
+    isStarterLine: starterRoots.has(getRootSpecies(entry.speciesName)),
   }));
 
   return allPokemon.sort((a, b) => a.id - b.id);
@@ -370,7 +417,13 @@ export const getPokemonPoolsForGeneration = cache(async (
   return Object.fromEntries(poolEntries);
 });
 
-function mapPokemonData(pokemon: any, generation: number, rulesGeneration: number): Omit<Pokemon, "isFinalEvolution"> {
+function mapPokemonData(
+  pokemon: any,
+  generation: number,
+  rulesGeneration: number,
+  isLegendary: boolean,
+  isMythical: boolean
+): Omit<Pokemon, "isFinalEvolution"> {
   const stats: {
     hp?: number;
     attack?: number;
@@ -420,6 +473,8 @@ function mapPokemonData(pokemon: any, generation: number, rulesGeneration: numbe
     specialDefense: stats.specialDefense || 0,
     speed: stats.speed || 0,
     sprite: pokemon.sprites.front_default || "",
+    isLegendary,
+    isMythical,
     gameIndexVersionIds: ((pokemon.game_indices ?? []) as Array<{ version?: { name?: string } }>)
       .map((entry) => entry.version?.name)
       .filter((name): name is string => typeof name === "string"),

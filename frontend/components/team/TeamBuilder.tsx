@@ -20,6 +20,8 @@ import TeamBuilderHeader from "./TeamBuilderHeader";
 import ClearTeamDialog from "./ClearTeamDialog";
 import PokemonSelection from "./PokemonSelection";
 import TeamPanel from "./TeamPanel";
+import TeamCaptureGuide from "./TeamCaptureGuide";
+import MobileTeamSheet from "./MobileTeamSheet";
 import TeamToolsModal from "./TeamToolsModal";
 import UndoToast from "@/components/ui/UndoToast";
 import PokemonDetailDrawer from "@/components/ui/PokemonDetailDrawer";
@@ -38,13 +40,15 @@ import {
   decodeSharedTeamPayload,
   type SharedTeamPayload,
 } from "@/lib/teamShare";
-import type { DexMode, Pokemon, PokemonPools, Game } from "@/lib/types";
+import type { CoverageMap, DexMode, OffensiveCoverageMap, Pokemon, PokemonPools, Game } from "@/lib/types";
 
 const DefensiveCoverage = dynamic(() => import("./DefensiveCoverage"), { loading: () => null });
 const OffensiveCoverage = dynamic(() => import("./OffensiveCoverage"), { loading: () => null });
 const TeamRecommendations = dynamic(() => import("./TeamRecommendations"), { loading: () => null });
 
 const HISTORY_LIMIT = 40;
+const SMART_PICKS_INCLUDE_LEGENDARIES_KEY = "smart_picks_include_legendaries_v1";
+const SMART_PICKS_INCLUDE_STARTERS_KEY = "smart_picks_include_starters_v1";
 
 type RecommendationRole = "all" | "bulky" | "fast" | "physical" | "special";
 
@@ -116,6 +120,60 @@ function getRoleLabel(role: RecommendationRole): string {
   return "Special";
 }
 
+function getCoverageTypeRisk(entry: CoverageMap[string]): number {
+  if (entry.locked) return 0;
+  const weak = entry.weakPokemon.length;
+  const resist = entry.resistPokemon.length;
+  const severeWeaknessCount = entry.weakPokemon.filter((pokemon) => pokemon.effectiveness >= 4).length;
+  return Math.max(0, weak - resist) * 1.6 + severeWeaknessCount * 1.3 - Math.max(0, resist - weak) * 0.24;
+}
+
+function getDefensiveRiskScore(coverage: CoverageMap): number {
+  return Object.values(coverage).reduce((sum, entry) => sum + getCoverageTypeRisk(entry), 0);
+}
+
+function getOffensivePressureScore(coverage: OffensiveCoverageMap): number {
+  return Object.values(coverage).reduce((sum, entry) => {
+    if (entry.locked) return sum;
+    const hitterCount = entry.hitters.length;
+    if (hitterCount === 0) return sum - 1.45;
+    return sum + Math.min(hitterCount, 2) * 1.05 + Math.max(0, hitterCount - 2) * 0.22;
+  }, 0);
+}
+
+function getPrimaryPokemonRole(pokemon: Pokemon): RecommendationRole {
+  const bulkyScore = (pokemon.hp + pokemon.defense + pokemon.specialDefense) / 3;
+  const fastScore = pokemon.speed * 1.2;
+  const physicalScore = pokemon.attack * 1.08;
+  const specialScore = pokemon.specialAttack * 1.08;
+
+  const ranking = [
+    { role: "bulky" as const, value: bulkyScore },
+    { role: "fast" as const, value: fastScore },
+    { role: "physical" as const, value: physicalScore },
+    { role: "special" as const, value: specialScore },
+  ].sort((a, b) => b.value - a.value);
+
+  return ranking[0]?.role ?? "all";
+}
+
+function getRoleFitScore(pokemon: Pokemon, role: RecommendationRole): number {
+  const bulk = pokemon.hp + pokemon.defense + pokemon.specialDefense;
+  if (role === "bulky") return bulk / 58 + pokemon.speed / 165;
+  if (role === "fast") return pokemon.speed / 14 + Math.max(pokemon.attack, pokemon.specialAttack) / 78;
+  if (role === "physical") return pokemon.attack / 14 + pokemon.speed / 66 + bulk / 250;
+  if (role === "special") return pokemon.specialAttack / 14 + pokemon.speed / 66 + bulk / 250;
+
+  const bst = pokemon.hp + pokemon.attack + pokemon.defense + pokemon.specialAttack + pokemon.specialDefense + pokemon.speed;
+  const strongest = Math.max(
+    pokemon.attack,
+    pokemon.specialAttack,
+    pokemon.speed,
+    (pokemon.hp + pokemon.defense + pokemon.specialDefense) / 3
+  );
+  return bst / 90 + strongest / 110;
+}
+
 const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -128,6 +186,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const [activeDropId, setActiveDropId] = useState<string | null>(null);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [recommendationsEnabled, setRecommendationsEnabled] = useState(true);
+  const [allowLegendaryMythicalRecommendations, setAllowLegendaryMythicalRecommendations] = useState(false);
+  const [allowStarterRecommendations, setAllowStarterRecommendations] = useState(false);
   const [recommendationRole, setRecommendationRole] = useState<RecommendationRole>("all");
   const [dexMode, setDexMode] = useState<DexMode>("national");
   const [selectedVersionId, setSelectedVersionId] = useState<string>("");
@@ -381,6 +441,38 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   }, []);
 
   useEffect(() => {
+    try {
+      setAllowLegendaryMythicalRecommendations(localStorage.getItem(SMART_PICKS_INCLUDE_LEGENDARIES_KEY) === "true");
+      setAllowStarterRecommendations(localStorage.getItem(SMART_PICKS_INCLUDE_STARTERS_KEY) === "true");
+    } catch {
+      setAllowLegendaryMythicalRecommendations(false);
+      setAllowStarterRecommendations(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        SMART_PICKS_INCLUDE_LEGENDARIES_KEY,
+        allowLegendaryMythicalRecommendations ? "true" : "false"
+      );
+    } catch {
+      // ignore storage errors
+    }
+  }, [allowLegendaryMythicalRecommendations]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        SMART_PICKS_INCLUDE_STARTERS_KEY,
+        allowStarterRecommendations ? "true" : "false"
+      );
+    } catch {
+      // ignore storage errors
+    }
+  }, [allowStarterRecommendations]);
+
+  useEffect(() => {
     if (!isSelectedGamePoolReady) return;
     const preferred = settings.defaultDexMode;
     if (preferred === "regional" && !pokemonPools.regionalResolved) {
@@ -543,6 +635,13 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const availablePokemon = useMemo(
     () => versionScopedPokemonPool.filter((p) => !teamPokemonIds.has(p.id)),
     [teamPokemonIds, versionScopedPokemonPool]
+  );
+  const selectedVersionLabel = useMemo(
+    () =>
+      selectedGame.versions.find((version) => version.id === selectedVersionId)?.label
+      ?? selectedGame.versions[0]?.label
+      ?? selectedVersionId,
+    [selectedGame.versions, selectedVersionId]
   );
 
   const filteredPokemon = useMemo(() => {
@@ -777,8 +876,13 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const recommendations = useMemo<Recommendation[]>(() => {
     if (!recommendationsEnabled || currentTeam.length === 0 || availablePokemon.length === 0) return [];
 
-    const candidatePool = availablePokemon.filter((pokemon) => pokemon.isFinalEvolution);
-    if (candidatePool.length === 0 || deficitByType.length === 0) return [];
+    const candidatePool = availablePokemon.filter((pokemon) => {
+      if (!pokemon.isFinalEvolution) return false;
+      if (!allowLegendaryMythicalRecommendations && (pokemon.isLegendary || pokemon.isMythical)) return false;
+      if (!allowStarterRecommendations && pokemon.isStarterLine) return false;
+      return true;
+    });
+    if (candidatePool.length === 0) return [];
 
     const roleFilteredPool = candidatePool.filter((pokemon) => {
       if (recommendationRole === "all") return true;
@@ -790,48 +894,85 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
     if (roleFilteredPool.length === 0) return [];
 
+    const activeTypeNames = Object.entries(defensiveCoverage)
+      .filter(([, entry]) => !entry.locked)
+      .map(([type]) => type);
+    const baseDefensiveRisk = getDefensiveRiskScore(defensiveCoverage);
+    const baseOffensivePressure = getOffensivePressureScore(offensiveCoverage);
+    const teamTypeCounts = new Map<string, number>();
+    const teamPrimaryRoleCounts = new Map<RecommendationRole, number>();
+
+    currentTeam.forEach((member) => {
+      member.types.forEach((type) => {
+        teamTypeCounts.set(type, (teamTypeCounts.get(type) ?? 0) + 1);
+      });
+      const role = getPrimaryPokemonRole(member);
+      teamPrimaryRoleCounts.set(role, (teamPrimaryRoleCounts.get(role) ?? 0) + 1);
+    });
+
     const ranked = roleFilteredPool.map((pokemon) => {
-      let score = 0;
-      const covers: string[] = [];
-      const risky: string[] = [];
+      const simulatedTeam = [...currentTeam, pokemon];
+      const simulatedDefensiveCoverage = getTeamDefensiveCoverage(simulatedTeam, generation);
+      const simulatedOffensiveCoverage = getTeamOffensiveCoverage(simulatedTeam, generation);
 
-      deficitByType.forEach(({ type, deficit }) => {
-        const effectiveness = getPokemonEffectivenessAgainstType(pokemon, type);
+      const defensiveDelta = baseDefensiveRisk - getDefensiveRiskScore(simulatedDefensiveCoverage);
+      const offensiveDelta = getOffensivePressureScore(simulatedOffensiveCoverage) - baseOffensivePressure;
 
-        if (effectiveness < 1) {
-          score += effectiveness <= 0.5 ? 1.9 * deficit : 1.4 * deficit;
-          if (covers.length < 3) covers.push(type);
-        } else if (effectiveness > 1) {
-          score -= effectiveness >= 4 ? 1.9 * deficit : 1.1 * deficit;
-          if (risky.length < 2) risky.push(type);
-        } else {
-          score += 0.15 * deficit;
-        }
+      const typeImprovements = activeTypeNames.map((type) => {
+        const baseEntry = defensiveCoverage[type];
+        const simulatedEntry = simulatedDefensiveCoverage[type];
+        const riskDelta = getCoverageTypeRisk(baseEntry) - getCoverageTypeRisk(simulatedEntry);
+        return { type, riskDelta };
       });
 
-      const bulkBonus = (pokemon.hp + pokemon.defense + pokemon.specialDefense) / 220;
-      score += bulkBonus;
+      const covers = typeImprovements
+        .filter((entry) => entry.riskDelta > 0.08)
+        .sort((a, b) => b.riskDelta - a.riskDelta)
+        .map((entry) => entry.type);
 
-      if (recommendationRole === "bulky") score += (pokemon.hp + pokemon.defense + pokemon.specialDefense) / 120;
-      if (recommendationRole === "fast") score += pokemon.speed / 35;
-      if (recommendationRole === "physical") score += pokemon.attack / 40;
-      if (recommendationRole === "special") score += pokemon.specialAttack / 40;
+      const risky = activeTypeNames
+        .map((type) => {
+          const simulatedEntry = simulatedDefensiveCoverage[type];
+          return {
+            type,
+            net: simulatedEntry.weakPokemon.length - simulatedEntry.resistPokemon.length,
+            effectiveness: getPokemonEffectivenessAgainstType(pokemon, type),
+          };
+        })
+        .filter((entry) => entry.net > 0 && entry.effectiveness > 1)
+        .sort((a, b) => b.net - a.net || b.effectiveness - a.effectiveness)
+        .map((entry) => entry.type);
+
+      const roleFitScore = getRoleFitScore(pokemon, recommendationRole);
+      const primaryRole = getPrimaryPokemonRole(pokemon);
+      const duplicateTypePenalty = pokemon.types.reduce((sum, type) => sum + (teamTypeCounts.get(type) ?? 0) * 0.86, 0);
+      const dualTypeRepeatPenalty =
+        pokemon.types.length > 1 && pokemon.types.every((type) => (teamTypeCounts.get(type) ?? 0) > 0) ? 0.75 : 0;
+      const roleOverlapPenalty = (teamPrimaryRoleCounts.get(primaryRole) ?? 0) * 0.38;
+
+      const score =
+        defensiveDelta * 3.15 +
+        offensiveDelta * 1.95 +
+        roleFitScore * 1.05 -
+        duplicateTypePenalty -
+        dualTypeRepeatPenalty -
+        roleOverlapPenalty;
 
       const reasonParts: string[] = [];
-      if (covers.length > 0) {
+      if (covers.length > 0 && defensiveDelta > 0) {
         reasonParts.push(`Patches ${covers.slice(0, 2).join(" / ")}`);
+      }
+      if (defensiveDelta > 0.15) {
+        reasonParts.push(`Def gain +${defensiveDelta.toFixed(1)}`);
+      }
+      if (offensiveDelta > 0.15) {
+        reasonParts.push(`Off gain +${offensiveDelta.toFixed(1)}`);
       }
 
       if (recommendationRole === "all") {
-        const allStats = [
-          { label: "speed", value: pokemon.speed },
-          { label: "bulk", value: pokemon.hp + pokemon.defense + pokemon.specialDefense },
-          { label: "attack", value: pokemon.attack },
-          { label: "special", value: pokemon.specialAttack },
-        ].sort((a, b) => b.value - a.value);
-        reasonParts.push(`Strong ${allStats[0].label} profile`);
+        reasonParts.push(`Strong ${getRoleLabel(primaryRole).toLowerCase()} profile`);
       } else {
-        reasonParts.push(`${getRoleLabel(recommendationRole)} role match`);
+        reasonParts.push(`${getRoleLabel(recommendationRole)} role fit`);
       }
 
       if (risky.length > 0) {
@@ -848,7 +989,17 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     });
 
     return ranked.sort((a, b) => b.score - a.score).slice(0, 3);
-  }, [availablePokemon, currentTeam.length, deficitByType, recommendationRole, recommendationsEnabled]);
+  }, [
+    allowLegendaryMythicalRecommendations,
+    allowStarterRecommendations,
+    availablePokemon,
+    currentTeam,
+    defensiveCoverage,
+    generation,
+    offensiveCoverage,
+    recommendationRole,
+    recommendationsEnabled,
+  ]);
 
   const canReplaceWeakest = useMemo(
     () => team.some((slot, index) => slot !== null && !lockedSlots[index]),
@@ -1041,14 +1192,14 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           onSettingsReset={resetSettings}
         />
 
-        <main id="main-content" className="mx-auto max-w-screen-xl px-4 pb-8 pt-4 sm:px-6 sm:pb-10 lg:pt-28" role="main">
-          <section className="panel mb-4 p-4 sm:mb-5 sm:p-5" aria-label="Team planning status">
+        <main id="main-content" className="mx-auto max-w-screen-xl px-4 pb-24 pt-4 sm:px-6 lg:pb-8 lg:pt-28" role="main">
+          <section className="panel mb-3 p-3.5 sm:mb-5 sm:p-5" aria-label="Team planning status">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-display text-lg sm:text-xl" style={{ color: "var(--text-primary)" }}>
                   Build Flow
                 </h2>
-                <p className="mt-0.5 text-[0.7rem] sm:text-[0.74rem]" style={{ color: "var(--text-muted)" }}>
+                <p className="mt-0.5 hidden text-[0.7rem] sm:block sm:text-[0.74rem]" style={{ color: "var(--text-muted)" }}>
                   Follow the steps left to right: pick Pokémon, fill team slots, then refine with analysis.
                 </p>
               </div>
@@ -1059,35 +1210,37 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
               )}
             </div>
 
-            <div className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
-              <div className="panel-soft px-3 py-1.5">
-                <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
-                  1. Search & Pick
-                </p>
-              </div>
-              <div className="panel-soft px-3 py-1.5">
-                <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
-                  2. Fill Team Slots
-                </p>
-              </div>
-              <div className="panel-soft px-3 py-1.5">
-                <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
-                  3. Analyze Coverage
-                </p>
+            <div className="mt-2 sm:mt-3">
+              <div className="flex gap-1.5 sm:grid sm:grid-cols-3 sm:gap-1.5">
+                <div className="panel-soft flex-1 px-2 py-1 sm:px-3 sm:py-1.5">
+                  <p className="text-[0.55rem] font-semibold uppercase tracking-[0.1em] sm:text-[0.6rem] sm:tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                    1. Pick
+                  </p>
+                </div>
+                <div className="panel-soft flex-1 px-2 py-1 sm:px-3 sm:py-1.5">
+                  <p className="text-[0.55rem] font-semibold uppercase tracking-[0.1em] sm:text-[0.6rem] sm:tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                    2. Build
+                  </p>
+                </div>
+                <div className="panel-soft flex-1 px-2 py-1 sm:px-3 sm:py-1.5">
+                  <p className="text-[0.55rem] font-semibold uppercase tracking-[0.1em] sm:text-[0.6rem] sm:tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                    3. Analyze
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              <div className="panel-soft px-3.5 py-3">
-                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
-                  Team Slots Filled
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:mt-2.5 sm:gap-2.5">
+              <div className="panel-soft px-3 py-2 sm:px-3.5 sm:py-3">
+                <p className="text-[0.58rem] font-semibold uppercase tracking-[0.14em] sm:text-[0.62rem] sm:tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+                  Slots Filled
                 </p>
                 <AnimatedNumber
                   value={`${currentTeam.length}/6`}
-                  className="font-display mt-1 text-2xl"
+                  className="font-display mt-0.5 text-xl sm:mt-1 sm:text-2xl"
                   style={{ color: "var(--accent)" }}
                 />
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--stat-track)" }}>
+                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full sm:mt-2" style={{ background: "var(--stat-track)" }}>
                   <div
                     className="h-full rounded-full"
                     style={{
@@ -1098,8 +1251,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                   />
                 </div>
               </div>
-              <div className="panel-soft px-3.5 py-3">
-                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+              <div className="panel-soft px-3 py-2 sm:px-3.5 sm:py-3">
+                <p className="text-[0.58rem] font-semibold uppercase tracking-[0.14em] sm:text-[0.62rem] sm:tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
                   Coverage Snapshot
                 </p>
                 <div className="mt-2 grid grid-cols-2 gap-2">
@@ -1127,7 +1280,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+            <div className="mt-2 grid grid-cols-3 gap-1.5 sm:mt-3 sm:grid-cols-2 sm:gap-2 lg:grid-cols-4">
               <button
                 type="button"
                 onClick={handleUndo}
@@ -1154,7 +1307,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                   setReplaceMode((prev) => !prev);
                   setReplaceTargetSlot(null);
                 }}
-                className="btn-secondary action-btn col-span-2 w-full lg:col-span-1"
+                className="btn-secondary action-btn w-full sm:col-span-2 lg:col-span-1"
                 style={{
                   borderColor: replaceMode ? "rgba(59, 130, 246, 0.34)" : undefined,
                   background: replaceMode ? "rgba(59, 130, 246, 0.14)" : undefined,
@@ -1162,10 +1315,11 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                 }}
               >
                 <FiRepeat size={13} />
-                {replaceMode ? "Replace Mode On" : "Replace Mode Off"}
+                <span className="hidden sm:inline">{replaceMode ? "Replace Mode On" : "Replace Mode Off"}</span>
+                <span className="sm:hidden">{replaceMode ? "Replace" : "Replace"}</span>
               </button>
 
-              <div className="col-span-2 rounded-xl border px-3 py-2 text-[0.66rem] lg:col-span-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}>
+              <div className="col-span-3 rounded-xl border px-3 py-1.5 text-[0.62rem] sm:col-span-2 sm:py-2 sm:text-[0.66rem] lg:col-span-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}>
                 {replaceMode
                   ? replaceTargetSlot !== null
                     ? `Targeting slot ${replaceTargetSlot + 1}`
@@ -1213,19 +1367,21 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
             </div>
 
             <div className="flex flex-col gap-4 lg:h-full">
-              <TeamPanel
-                team={team}
-                currentTeamLength={currentTeam.length}
-                activeDropId={activeDropId}
-                onRemove={removeFromTeam}
-                dragEnabled={dragEnabled}
-                lockedSlots={lockedSlots}
-                onToggleLock={toggleLockSlot}
-                replaceMode={replaceMode}
-                selectedReplaceSlot={replaceTargetSlot}
-                onSelectReplaceSlot={setReplaceTargetSlot}
-                onOpenTeamTools={() => setIsTeamToolsOpen(true)}
-              />
+              <div className="hidden lg:block">
+                <TeamPanel
+                  team={team}
+                  currentTeamLength={currentTeam.length}
+                  activeDropId={activeDropId}
+                  onRemove={removeFromTeam}
+                  dragEnabled={dragEnabled}
+                  lockedSlots={lockedSlots}
+                  onToggleLock={toggleLockSlot}
+                  replaceMode={replaceMode}
+                  selectedReplaceSlot={replaceTargetSlot}
+                  onSelectReplaceSlot={setReplaceTargetSlot}
+                  onOpenTeamTools={() => setIsTeamToolsOpen(true)}
+                />
+              </div>
 
               {isDesktopScreen && shouldRenderEmpty && (
                 <section
@@ -1256,6 +1412,10 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                     teamFull={currentTeam.length >= 6}
                     recommendationsEnabled={recommendationsEnabled}
                     onToggleRecommendations={setRecommendationsEnabled}
+                    allowLegendaryMythicalRecommendations={allowLegendaryMythicalRecommendations}
+                    onAllowLegendaryMythicalRecommendationsChange={setAllowLegendaryMythicalRecommendations}
+                    allowStarterRecommendations={allowStarterRecommendations}
+                    onAllowStarterRecommendationsChange={setAllowStarterRecommendations}
                     onAddPokemon={addPokemonToTeam}
                     role={recommendationRole}
                     onRoleChange={setRecommendationRole}
@@ -1266,6 +1426,17 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
               )}
             </div>
           </div>
+
+          {isDesktopScreen && (
+            <section className="mt-4 hidden lg:block">
+              <TeamCaptureGuide
+                team={team}
+                selectedVersionId={selectedVersionId}
+                selectedVersionLabel={selectedVersionLabel}
+                compactMode={settings.cardDensity === "compact"}
+              />
+            </section>
+          )}
 
           {!isDesktopScreen && shouldRenderEmpty && (
             <section
@@ -1312,6 +1483,10 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                     teamFull={currentTeam.length >= 6}
                     recommendationsEnabled={recommendationsEnabled}
                     onToggleRecommendations={setRecommendationsEnabled}
+                    allowLegendaryMythicalRecommendations={allowLegendaryMythicalRecommendations}
+                    onAllowLegendaryMythicalRecommendationsChange={setAllowLegendaryMythicalRecommendations}
+                    allowStarterRecommendations={allowStarterRecommendations}
+                    onAllowStarterRecommendationsChange={setAllowStarterRecommendations}
                     onAddPokemon={addPokemonToTeam}
                     role={recommendationRole}
                     onRoleChange={setRecommendationRole}
@@ -1353,6 +1528,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       <TeamToolsModal
         isOpen={isTeamToolsOpen}
         onClose={() => setIsTeamToolsOpen(false)}
+        teamHasPokemon={currentTeam.length > 0}
         isAuthenticated={isAuthenticated}
         savedTeams={savedTeams}
         activeTeamId={activeTeamId}
@@ -1364,6 +1540,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
         isSaving={isSaving}
         payload={sharePayload}
         onImport={queueImportPayload}
+        gameVersions={selectedGame.versions}
+        selectedVersionId={selectedVersionId}
       />
 
       <PokemonDetailDrawer
@@ -1379,6 +1557,25 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           message={undoToastMessage}
           onUndo={handleUndo}
           onDismiss={dismissUndoToast}
+        />
+      )}
+
+      {!isDesktopScreen && (
+        <MobileTeamSheet
+          team={team}
+          currentTeamLength={currentTeam.length}
+          activeDropId={activeDropId}
+          onRemove={removeFromTeam}
+          dragEnabled={false}
+          lockedSlots={lockedSlots}
+          onToggleLock={toggleLockSlot}
+          replaceMode={replaceMode}
+          selectedReplaceSlot={replaceTargetSlot}
+          onSelectReplaceSlot={setReplaceTargetSlot}
+          onOpenTeamTools={() => setIsTeamToolsOpen(true)}
+          selectedVersionId={selectedVersionId}
+          selectedVersionLabel={selectedVersionLabel}
+          captureGuideCompact={settings.cardDensity === "compact"}
         />
       )}
     </DndContext>

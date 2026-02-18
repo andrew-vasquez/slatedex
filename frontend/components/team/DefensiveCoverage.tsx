@@ -241,7 +241,7 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div>
-          <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-9 sm:gap-2" role="grid" aria-label="Type coverage heatmap">
+          <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-9 sm:gap-2" role="grid" aria-label="Type coverage heatmap">
             {typeSummaries.map(({ type, weakCount, resistCount, net, isLocked }) => {
               if (isLocked) {
                 return (

@@ -58,6 +58,11 @@ teams.post("/", async (c) => {
     return c.json({ error: "pokemon must be an array of length 6" }, 400);
   }
 
+  const hasAtLeastOnePokemon = pokemon.some((slot) => slot !== null);
+  if (!hasAtLeastOnePokemon) {
+    return c.json({ error: "Add at least one Pokemon before saving a team." }, 400);
+  }
+
   const team = await prisma.team.create({
     data: {
       name,

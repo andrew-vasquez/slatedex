@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { FiArrowLeft, FiChevronDown, FiSettings, FiShuffle, FiTrash2 } from "react-icons/fi";
+import { GENERATION_META } from "@/lib/pokemon";
 import type { BuilderSettings, CardDensity, DexMode, DragBehavior, Game } from "@/lib/types";
 import BuilderSettingsPanel from "./BuilderSettingsPanel";
 import UserMenu from "@/components/auth/UserMenu";
@@ -38,25 +39,32 @@ const TeamBuilderHeader = ({
 }: TeamBuilderHeaderProps) => {
   const completion = Math.round((teamLength / 6) * 100);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isGenerationMenuOpen, setIsGenerationMenuOpen] = useState(false);
   const [isDesktopCompact, setIsDesktopCompact] = useState(false);
   const settingsRefMobile = useRef<HTMLDivElement | null>(null);
   const settingsRefDesktop = useRef<HTMLDivElement | null>(null);
+  const generationRefMobile = useRef<HTMLDivElement | null>(null);
+  const generationRefDesktop = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!isSettingsOpen) return;
+    if (!isSettingsOpen && !isGenerationMenuOpen) return;
 
     const onPointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
       const clickedMobile = settingsRefMobile.current?.contains(target) ?? false;
       const clickedDesktop = settingsRefDesktop.current?.contains(target) ?? false;
-      if (!clickedMobile && !clickedDesktop) {
+      const clickedGenerationMobile = generationRefMobile.current?.contains(target) ?? false;
+      const clickedGenerationDesktop = generationRefDesktop.current?.contains(target) ?? false;
+      if (!clickedMobile && !clickedDesktop && !clickedGenerationMobile && !clickedGenerationDesktop) {
         setIsSettingsOpen(false);
+        setIsGenerationMenuOpen(false);
       }
     };
 
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setIsSettingsOpen(false);
+        setIsGenerationMenuOpen(false);
       }
     };
 
@@ -66,7 +74,7 @@ const TeamBuilderHeader = ({
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onEscape);
     };
-  }, [isSettingsOpen]);
+  }, [isGenerationMenuOpen, isSettingsOpen]);
 
   useEffect(() => {
     const desktopQuery = window.matchMedia("(min-width: 1024px)");
@@ -94,8 +102,8 @@ const TeamBuilderHeader = ({
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-center gap-2.5">
                 <Link
-                  href="/"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-xl"
+                  href="/play"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-xl shrink-0"
                   style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
                   aria-label="Go back to game selection"
                 >
@@ -103,20 +111,75 @@ const TeamBuilderHeader = ({
                 </Link>
 
                 <div className="min-w-0">
-                  <p className="font-display text-[0.62rem] uppercase tracking-[0.2em]" style={{ color: "var(--text-muted)" }}>
-                    Gen {generation} Team Builder
-                  </p>
-                  <div className="flex min-w-0 items-center gap-2">
-                    <h1 className="font-display truncate text-base sm:text-lg" style={{ color: "var(--text-primary)" }}>
-                      {game.name}
-                    </h1>
-                    <span
-                      className="rounded-md px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]"
-                      style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/"
+                      className="font-display shrink-0 text-[0.95rem] leading-none"
+                      style={{ letterSpacing: "-0.02em", color: "var(--text-primary)", textDecoration: "none" }}
+                      aria-label="Slatedex home"
                     >
-                      {game.region}
-                    </span>
+                      Slate<span style={{ color: "var(--accent)" }}>dex</span>
+                    </Link>
+                    <div className="relative shrink-0" ref={generationRefMobile}>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.56rem] font-semibold uppercase tracking-[0.12em]"
+                        style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
+                        onClick={() => {
+                          setIsGenerationMenuOpen((prev) => !prev);
+                          setIsSettingsOpen(false);
+                        }}
+                        aria-expanded={isGenerationMenuOpen}
+                        aria-haspopup="menu"
+                        aria-label="Switch generation"
+                      >
+                        Gen {generation}
+                        <FiChevronDown
+                          size={11}
+                          aria-hidden="true"
+                          style={{ transform: isGenerationMenuOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }}
+                        />
+                      </button>
+
+                      {isGenerationMenuOpen && (
+                        <div
+                          className="absolute left-0 top-[calc(100%+0.35rem)] z-[85] w-52 rounded-xl border p-1.5"
+                          style={{ borderColor: "var(--border)", background: "var(--surface-1)", boxShadow: "var(--shadow-soft)" }}
+                          role="menu"
+                          aria-label="Switch generation"
+                        >
+                          {GENERATION_META.map((meta) => {
+                            const isActive = meta.generation === generation;
+                            return (
+                              <Link
+                                key={meta.generation}
+                                href={`/game/${meta.generation}`}
+                                onClick={() => setIsGenerationMenuOpen(false)}
+                                className="flex items-center justify-between rounded-lg px-2 py-1.5 text-[0.66rem] font-semibold transition-colors"
+                                style={{
+                                  background: isActive ? "var(--accent-soft)" : "transparent",
+                                  color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+                                  border: isActive ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
+                                }}
+                                role="menuitem"
+                              >
+                                <span>Gen {meta.generation}</span>
+                                <span className="text-[0.58rem] uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
+                                  {meta.region}
+                                </span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
+                  <h1 className="font-display mt-0.5 truncate text-sm leading-tight" style={{ color: "var(--text-secondary)" }}>
+                    {game.name}
+                    <span className="ml-1.5 text-[0.6rem] font-normal uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                      · {game.region}
+                    </span>
+                  </h1>
                 </div>
               </div>
             </div>
@@ -146,7 +209,10 @@ const TeamBuilderHeader = ({
             <div className="relative col-span-1 sm:col-auto" ref={settingsRefMobile}>
               <button
                 type="button"
-                onClick={() => setIsSettingsOpen((prev) => !prev)}
+                onClick={() => {
+                  setIsGenerationMenuOpen(false);
+                  setIsSettingsOpen((prev) => !prev);
+                }}
                 className="btn-secondary action-btn w-full sm:w-auto"
                 aria-label="Open builder settings"
                 aria-expanded={isSettingsOpen}
@@ -162,7 +228,7 @@ const TeamBuilderHeader = ({
               </button>
 
               {isSettingsOpen && (
-                <div className="absolute right-0 top-[calc(100%+0.45rem)] z-[80] w-[22rem] max-w-[calc(100vw-1rem)]">
+                <div className="absolute left-0 top-[calc(100%+0.45rem)] z-[80] w-[22rem] max-w-[calc(100vw-2rem)] sm:left-auto sm:right-0">
                   <BuilderSettingsPanel
                     settings={settings}
                     onDexModeChange={onSettingsDexModeChange}
@@ -203,7 +269,7 @@ const TeamBuilderHeader = ({
         <div className="hidden items-center justify-between gap-5 lg:flex" role="toolbar" aria-label="Team management">
           <div className={`min-w-0 flex items-center ${isDesktopCompact ? "gap-3" : "gap-3.5"}`} style={{ transition: "gap 0.2s ease" }}>
             <Link
-              href="/"
+              href="/play"
               className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
               style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
               aria-label="Go back to game selection"
@@ -211,17 +277,76 @@ const TeamBuilderHeader = ({
               <FiArrowLeft size={14} aria-hidden="true" />
             </Link>
 
+            <Link
+              href="/"
+              className={`font-display shrink-0 leading-none transition-all duration-200 ${isDesktopCompact ? "text-[0.9rem]" : "text-[1.05rem]"}`}
+              style={{ letterSpacing: "-0.02em", color: "var(--text-primary)", textDecoration: "none" }}
+              aria-label="Slatedex home"
+            >
+              Slate<span style={{ color: "var(--accent)" }}>dex</span>
+            </Link>
+
+            <div
+              className="h-4 w-px shrink-0"
+              style={{ background: "var(--border)" }}
+              aria-hidden="true"
+            />
+
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-2">
-                <p className="font-display text-[0.62rem] uppercase tracking-[0.2em]" style={{ color: "var(--text-muted)" }}>
-                  Gen {generation} Team Builder
-                </p>
-                <span
-                  className="rounded-md px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]"
-                  style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
-                >
-                  {game.region}
-                </span>
+                <div className="relative" ref={generationRefDesktop}>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.14em]"
+                    style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
+                    onClick={() => {
+                      setIsGenerationMenuOpen((prev) => !prev);
+                      setIsSettingsOpen(false);
+                    }}
+                    aria-expanded={isGenerationMenuOpen}
+                    aria-haspopup="menu"
+                    aria-label="Switch generation"
+                  >
+                    Gen {generation} · {game.region}
+                    <FiChevronDown
+                      size={12}
+                      aria-hidden="true"
+                      style={{ transform: isGenerationMenuOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }}
+                    />
+                  </button>
+
+                  {isGenerationMenuOpen && (
+                    <div
+                      className="absolute left-0 top-[calc(100%+0.35rem)] z-[85] w-56 rounded-xl border p-1.5"
+                      style={{ borderColor: "var(--border)", background: "var(--surface-1)", boxShadow: "var(--shadow-soft)" }}
+                      role="menu"
+                      aria-label="Switch generation"
+                    >
+                      {GENERATION_META.map((meta) => {
+                        const isActive = meta.generation === generation;
+                        return (
+                          <Link
+                            key={meta.generation}
+                            href={`/game/${meta.generation}`}
+                            onClick={() => setIsGenerationMenuOpen(false)}
+                            className="flex items-center justify-between rounded-lg px-2 py-1.5 text-[0.66rem] font-semibold transition-colors"
+                            style={{
+                              background: isActive ? "var(--accent-soft)" : "transparent",
+                              color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+                              border: isActive ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
+                            }}
+                            role="menuitem"
+                          >
+                            <span>Gen {meta.generation}</span>
+                            <span className="text-[0.58rem] uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
+                              {meta.region}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className={`flex items-center gap-2.5 ${isDesktopCompact ? "mt-0" : "mt-0.5"}`} style={{ transition: "margin-top 0.2s ease" }}>
@@ -255,7 +380,10 @@ const TeamBuilderHeader = ({
             <div className="relative" ref={settingsRefDesktop}>
               <button
                 type="button"
-                onClick={() => setIsSettingsOpen((prev) => !prev)}
+                onClick={() => {
+                  setIsGenerationMenuOpen(false);
+                  setIsSettingsOpen((prev) => !prev);
+                }}
                 className="btn-secondary action-btn"
                 aria-label="Open builder settings"
                 aria-expanded={isSettingsOpen}

@@ -178,29 +178,54 @@ const GameSelector = () => {
   return (
     <div className="min-h-screen pb-14 sm:pb-20">
       <header className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-          <div className="absolute -top-10 left-10 h-44 w-44 rounded-full border border-[var(--border)] bg-[var(--accent-soft)]" />
-          <div className="absolute top-12 right-0 h-60 w-60 rounded-full border border-[var(--border)] bg-[var(--accent-blue-soft)]" />
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          <div
+            className="absolute -top-20 -left-20 h-64 w-64 rounded-full opacity-60"
+            style={{ background: "radial-gradient(circle, rgba(218,44,67,0.14) 0%, transparent 70%)" }}
+          />
+          <div
+            className="absolute -top-10 right-10 h-80 w-80 rounded-full opacity-40"
+            style={{ background: "radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%)" }}
+          />
+          <div
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 h-px w-3/4 opacity-30"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(218,44,67,0.4), transparent)" }}
+          />
         </div>
 
         <div className="relative mx-auto max-w-screen-xl px-4 pt-8 sm:px-6 sm:pt-10">
           <div className="panel overflow-hidden p-6 sm:p-9">
             <div className="flex items-start justify-between gap-3">
-              <p className="font-display text-xs font-semibold uppercase tracking-[0.22em]" style={{ color: "var(--text-muted)" }}>
-                Pokedex Planning Lab
-              </p>
+              <div className="flex items-center gap-2.5">
+                <div
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+                  style={{ background: "var(--accent-soft)", border: "1px solid rgba(218,44,67,0.28)" }}
+                  aria-hidden="true"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: "var(--accent)" }}>
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8" />
+                    <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="1.8" />
+                    <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="1.8" />
+                  </svg>
+                </div>
+                <p className="font-display text-[0.62rem] font-semibold uppercase tracking-[0.18em] sm:tracking-[0.26em]" style={{ color: "var(--text-muted)" }}>
+                  Tactical Team Builder
+                </p>
+              </div>
               <UserMenu />
             </div>
 
-            <h1 className="font-display mt-3 text-4xl leading-[0.95] sm:text-6xl" style={{ textWrap: "balance" }}>
-              Build smarter teams.
-              <span className="block" style={{ color: "var(--accent)" }}>
-                Cover every matchup.
-              </span>
+            <h1 className="font-display mt-5 text-5xl leading-none sm:text-7xl" style={{ letterSpacing: "-0.025em" }}>
+              <span style={{ color: "var(--text-primary)" }}>Slate</span>
+              <span style={{ color: "var(--accent)" }}>dex</span>
             </h1>
 
-            <p className="mt-4 max-w-xl text-sm leading-relaxed sm:text-base" style={{ color: "var(--text-secondary)" }}>
-              Choose a generation, draft your six, and instantly inspect where your team folds or holds. The flow is designed to keep strategy clear at a glance.
+            <p className="font-display mt-0.5 text-sm font-medium uppercase tracking-[0.18em] sm:text-base" style={{ color: "var(--text-muted)" }}>
+              Build your ideal team. Outsmart every matchup.
+            </p>
+
+            <p className="mt-3.5 max-w-xl text-sm leading-relaxed sm:text-base" style={{ color: "var(--text-secondary)" }}>
+              Pick a generation, draft your six, and instantly see where your team holds strong or breaks. Type coverage, defensive analysis, and smart picks — all at a glance.
             </p>
 
             {resumeSession && (
@@ -233,46 +258,60 @@ const GameSelector = () => {
               </div>
             )}
 
-            <div className="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            <div className="mt-6 grid grid-cols-3 gap-2">
               {STEPS.map((step, i) => (
                 <div
                   key={step}
-                  className="rounded-xl px-3.5 py-3 text-xs font-medium"
+                  className="rounded-xl px-2.5 py-2.5 sm:px-3.5 sm:py-3"
                   style={{
                     background: "var(--surface-2)",
                     border: "1px solid var(--border)",
                     color: "var(--text-secondary)",
                   }}
                 >
-                  <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-[0.65rem] font-bold" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                  <span className="mb-1.5 flex h-5 w-5 items-center justify-center rounded-full text-[0.62rem] font-bold" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
                     {i + 1}
                   </span>
-                  {step}
+                  <p className="text-[0.65rem] font-medium leading-snug sm:text-xs">{step}</p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-7 flex flex-wrap items-center gap-2.5 text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
-              <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
-                9 mainline generations
-              </span>
-              <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
-                Up to 1025 Pokemon
-              </span>
-              <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
-                Live defensive analysis
-              </span>
+            <div className="mt-5 flex flex-wrap items-center gap-1.5 sm:gap-2">
+              {[
+                "9 generations",
+                "Up to 1025 Pokémon",
+                "Live type coverage",
+                "Smart picks",
+              ].map((label) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.62rem] font-semibold sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[0.68rem]"
+                  style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-secondary)" }}
+                >
+                  <span style={{ color: "var(--accent)", fontSize: "0.45rem" }}>◈</span>
+                  {label}
+                </span>
+              ))}
             </div>
           </div>
         </div>
       </header>
 
       <main id="main-content" className="mx-auto mt-6 max-w-screen-xl px-4 sm:mt-8 sm:px-6" role="main">
-        <h2 className="font-display text-xl sm:text-2xl" style={{ color: "var(--text-primary)" }}>
-          Choose Your Region
-        </h2>
-        <p className="mt-1 text-xs sm:text-sm" style={{ color: "var(--text-muted)" }}>
-          Each card loads species from that generation and earlier.
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 className="font-display text-xl sm:text-2xl" style={{ color: "var(--text-primary)" }}>
+            Select a Generation
+          </h2>
+          <span
+            className="rounded-full border px-2 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.14em]"
+            style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}
+          >
+            Gen I – IX
+          </span>
+        </div>
+        <p className="mt-1 text-[0.72rem] sm:text-sm" style={{ color: "var(--text-muted)" }}>
+          Each generation loads all Pokémon from that era and earlier.
         </p>
 
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -313,7 +352,7 @@ const GameSelector = () => {
               <Link
                 key={gen.generation}
                 href={`/game/${gen.generation}`}
-                className="group animate-fade-in-up relative overflow-hidden rounded-2xl"
+                className="group animate-fade-in-up relative block h-full overflow-hidden rounded-2xl"
                 style={{ animationDelay: `${i * 80}ms` }}
                 aria-label={`Generation ${gen.generation}, ${gen.region} region`}
               >

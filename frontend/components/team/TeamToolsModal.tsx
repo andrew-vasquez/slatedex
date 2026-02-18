@@ -9,13 +9,19 @@ import type { SavedTeam } from "@/lib/api";
 
 type TeamToolsTab = "saved" | "share";
 
+interface VersionOption {
+  id: string;
+  label: string;
+}
+
 interface TeamToolsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  teamHasPokemon: boolean;
   isAuthenticated: boolean;
   savedTeams: SavedTeam[];
   activeTeamId: string | null;
-  onSaveAs: (name: string) => Promise<void>;
+  onSaveAs: (name: string, versionIds?: string[]) => Promise<void>;
   onLoadSavedTeam: (teamId: string) => void;
   onDeleteSavedTeam: (teamId: string) => Promise<void>;
   onRenameSavedTeam: (teamId: string, name: string) => Promise<void>;
@@ -23,11 +29,14 @@ interface TeamToolsModalProps {
   isSaving: boolean;
   payload: SharedTeamPayload;
   onImport: (payload: SharedTeamPayload) => string;
+  gameVersions?: VersionOption[];
+  selectedVersionId?: string | null;
 }
 
 const TeamToolsModal = ({
   isOpen,
   onClose,
+  teamHasPokemon,
   isAuthenticated,
   savedTeams,
   activeTeamId,
@@ -39,6 +48,8 @@ const TeamToolsModal = ({
   isSaving,
   payload,
   onImport,
+  gameVersions,
+  selectedVersionId,
 }: TeamToolsModalProps) => {
   const [activeTab, setActiveTab] = useState<TeamToolsTab>("saved");
   const [importInput, setImportInput] = useState("");
@@ -58,6 +69,17 @@ const TeamToolsModal = ({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -109,17 +131,17 @@ const TeamToolsModal = ({
   if (!shouldRender) return null;
 
   return (
-    <div className="fixed inset-0 z-[95] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="team-tools-modal-title">
+    <div className="fixed inset-0 z-[95] grid place-items-center overflow-hidden p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="team-tools-modal-title">
       <button
         type="button"
         onClick={onClose}
-        className="absolute inset-0 bg-[rgba(20,16,12,0.45)] backdrop-blur-[2px]"
+        className="fixed inset-0 bg-[rgba(20,16,12,0.45)] backdrop-blur-[2px]"
         style={{ animation: isAnimatingOut ? "backdropFadeOut 160ms ease-in both" : "backdropFadeIn 180ms ease-out both" }}
         aria-label="Close team tools dialog"
       />
 
       <section
-        className={`panel relative w-full max-w-3xl p-5 ${isAnimatingOut ? "animate-scale-out" : "animate-scale-in"}`}
+        className={`panel relative w-full max-w-3xl overflow-hidden p-5 max-h-[min(88dvh,52rem)] ${isAnimatingOut ? "animate-scale-out" : "animate-scale-in"}`}
         onAnimationEnd={onAnimationEnd}
         aria-labelledby="team-tools-modal-title"
       >
@@ -172,11 +194,12 @@ const TeamToolsModal = ({
           </button>
         </div>
 
-        <div key={tabTransitionKey} className="mt-4 animate-accordion-down">
+        <div key={tabTransitionKey} className="mt-4 animate-accordion-down max-h-[min(68dvh,36rem)] overflow-y-auto pr-1 custom-scrollbar">
           {activeTab === "saved" ? (
             isAuthenticated ? (
               <SavedTeamsPanel
                 variant="embedded"
+                teamHasPokemon={teamHasPokemon}
                 savedTeams={savedTeams}
                 activeTeamId={activeTeamId}
                 onSaveAs={onSaveAs}
@@ -185,6 +208,8 @@ const TeamToolsModal = ({
                 onRename={onRenameSavedTeam}
                 onRefresh={onRefreshSavedTeams}
                 isSaving={isSaving}
+                gameVersions={gameVersions}
+                selectedVersionId={selectedVersionId}
               />
             ) : (
               <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
