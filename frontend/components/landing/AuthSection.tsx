@@ -48,7 +48,7 @@ export function HeroAuthButtons() {
       </Link>
       <button
         type="button"
-        onClick={openAuthDialog}
+        onClick={() => openAuthDialog("sign-up")}
         className="landing-cta-secondary inline-flex items-center gap-2 rounded-2xl border px-6 py-3 text-sm font-semibold sm:text-base"
       >
         Create Free Account
@@ -119,14 +119,14 @@ export function AuthCTASection() {
             <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
               <button
                 type="button"
-                onClick={openAuthDialog}
+                onClick={() => openAuthDialog("sign-up")}
                 className="landing-cta-primary inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold"
               >
                 Create Free Account
               </button>
               <button
                 type="button"
-                onClick={openAuthDialog}
+                onClick={() => openAuthDialog("sign-in")}
                 className="landing-cta-secondary inline-flex items-center gap-2 rounded-2xl border px-5 py-2.5 text-sm font-semibold"
               >
                 Sign In
@@ -144,8 +144,8 @@ export function FooterAuthLinks() {
   if (isLoading || isAuthenticated) return null;
   return (
     <>
-      <button type="button" onClick={openAuthDialog} className="landing-footer-link text-[0.72rem] font-medium">Sign In</button>
-      <button type="button" onClick={openAuthDialog} className="landing-footer-link text-[0.72rem] font-medium">Sign Up</button>
+      <button type="button" onClick={() => openAuthDialog("sign-in")} className="landing-footer-link text-[0.72rem] font-medium">Sign In</button>
+      <button type="button" onClick={() => openAuthDialog("sign-up")} className="landing-footer-link text-[0.72rem] font-medium">Sign Up</button>
     </>
   );
 }

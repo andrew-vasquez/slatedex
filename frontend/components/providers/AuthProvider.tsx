@@ -1,8 +1,10 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth-client";
-import AuthDialog from "@/components/auth/AuthDialog";
+
+type AuthTab = "sign-in" | "sign-up";
 
 interface AuthContextValue {
   user: {
@@ -14,7 +16,7 @@ interface AuthContextValue {
   } | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  openAuthDialog: () => void;
+  openAuthDialog: (tab?: AuthTab) => void;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -25,10 +27,16 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const { data: session, isPending } = useSession();
-  const [authDialogOpen, setAuthDialogOpen] = useState(false);
 
-  const openAuthDialog = useCallback(() => setAuthDialogOpen(true), []);
+  const openAuthDialog = useCallback(
+    (tab: AuthTab = "sign-in") => {
+      const params = new URLSearchParams({ mode: tab });
+      router.push(`/auth?${params.toString()}`);
+    },
+    [router]
+  );
 
   const value: AuthContextValue = {
     user: session?.user ?? null,
@@ -40,7 +48,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext value={value}>
       {children}
-      <AuthDialog isOpen={authDialogOpen} onClose={() => setAuthDialogOpen(false)} />
     </AuthContext>
   );
 }

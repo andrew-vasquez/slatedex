@@ -396,13 +396,7 @@ export async function GET(request: Request) {
   const cacheKey = `${pokemonId}:${versionId}`;
   const inFlight = requestCache.get(cacheKey);
 
-  const requestPromise =
-    inFlight ??
-    resolveCaptureGuide(pokemonId, versionId)
-      .catch((error) => {
-        requestCache.delete(cacheKey);
-        throw error;
-      });
+  const requestPromise = inFlight ?? resolveCaptureGuide(pokemonId, versionId);
 
   if (!inFlight) {
     requestCache.set(cacheKey, requestPromise);
@@ -417,5 +411,9 @@ export async function GET(request: Request) {
     });
   } catch {
     return NextResponse.json({ error: "Failed to load capture guide." }, { status: 500 });
+  } finally {
+    if (!inFlight) {
+      requestCache.delete(cacheKey);
+    }
   }
 }

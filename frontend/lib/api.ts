@@ -146,11 +146,12 @@ export function deleteTeam(id: string): Promise<{ success: boolean }> {
 }
 
 export async function checkUsernameAvailable(
-  username: string
+  username: string,
+  signal?: AbortSignal
 ): Promise<{ available: boolean; reason?: string }> {
   const res = await fetch(
     `${API_URL}/api/profiles/check-username?q=${encodeURIComponent(username)}`,
-    { credentials: "include" }
+    { credentials: "include", signal }
   );
   if (!res.ok) return { available: false };
   return res.json();
@@ -169,8 +170,31 @@ export async function loginWithIdentifier(
 
   if (res.ok) return { ok: true };
 
-  const body = await res.json().catch(() => ({}));
-  return { ok: false, error: body.error ?? "Invalid credentials" };
+  const body = await res.json().catch(() => ({} as Record<string, unknown>));
+  const bodyError =
+    (typeof body.error === "string" && body.error) ||
+    (typeof body.message === "string" && body.message) ||
+    (typeof body.code === "string" && body.code);
+
+  if (res.status === 429) {
+    return { ok: false, error: "Too many attempts. Please wait and try again." };
+  }
+
+  if (res.status === 403) {
+    return {
+      ok: false,
+      error:
+        typeof bodyError === "string" && bodyError.length > 0
+          ? bodyError
+          : "Sign-in blocked by auth security settings. Please contact support.",
+    };
+  }
+
+  if (res.status >= 500) {
+    return { ok: false, error: "Auth server error. Please try again shortly." };
+  }
+
+  return { ok: false, error: (typeof bodyError === "string" && bodyError.length > 0) ? bodyError : "Invalid credentials" };
 }
 
 export function fetchPublicProfile(username: string): Promise<PublicProfile> {
