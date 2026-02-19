@@ -71,7 +71,6 @@ const PasswordInput = ({
         className="auth-pw-toggle"
         onClick={() => setVisible((v) => !v)}
         aria-label={visible ? "Hide password" : "Show password"}
-        tabIndex={-1}
       >
         {visible ? <FiEyeOff size={15} aria-hidden="true" /> : <FiEye size={15} aria-hidden="true" />}
       </button>
@@ -501,7 +500,7 @@ function AuthPageContent() {
               <div className="auth-field">
                 <label htmlFor="username" className="auth-label flex items-center gap-1.5">
                   Username
-                  <span className="rounded-full px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.1em]" style={{ background: "rgba(148,163,184,0.1)", color: "var(--text-muted)" }}>
+                  <span className="rounded-full px-1.5 py-0.5 text-[0.68rem] font-semibold uppercase tracking-[0.08em]" style={{ background: "rgba(148,163,184,0.1)", color: "var(--text-muted)" }}>
                     optional
                   </span>
                 </label>
@@ -533,10 +532,10 @@ function AuthPageContent() {
                 {usernameHint ? (
                   <div className="mt-0.5 flex items-center gap-1" style={{ color: usernameHint.color }}>
                     {usernameHint.icon}
-                    <span className="text-[0.62rem]">{usernameHint.text}</span>
+                    <span className="text-[0.72rem]">{usernameHint.text}</span>
                   </div>
                 ) : (
-                  <p className="mt-0.5 text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
+                  <p className="mt-0.5 text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
                     Your public profile URL - you can set or change this later.
                   </p>
                 )}
@@ -573,7 +572,7 @@ function AuthPageContent() {
                   )}
                 </div>
                 {pwMismatch && (
-                  <span id="confirm-pw-error" className="mt-0.5 text-[0.65rem]" role="alert" style={{ color: "#ef4444" }}>
+                  <span id="confirm-pw-error" className="mt-0.5 text-xs" role="alert" style={{ color: "#ef4444" }}>
                     Passwords do not match
                   </span>
                 )}
@@ -599,7 +598,7 @@ function AuthPageContent() {
           </div>
           </div>
 
-          <p className="mt-5 text-center text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
+          <p className="mt-5 text-center text-sm" style={{ color: "var(--text-muted)" }}>
             {tab === "sign-in" ? "Don't have an account? " : "Already have an account? "}
             <button
               type="button"
@@ -611,7 +610,7 @@ function AuthPageContent() {
           </p>
         </div>
 
-        <p className="mt-6 text-center text-[0.65rem] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+        <p className="mt-6 text-center text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
           By continuing you agree to our{" "}
           <Link href="/terms" style={{ color: "var(--text-secondary)", textDecoration: "underline", textUnderlineOffset: "2px" }}>
             Terms

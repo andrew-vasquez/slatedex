@@ -1199,12 +1199,12 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                 <h2 className="font-display text-lg sm:text-xl" style={{ color: "var(--text-primary)" }}>
                   Build Flow
                 </h2>
-                <p className="mt-0.5 hidden text-[0.7rem] sm:block sm:text-[0.74rem]" style={{ color: "var(--text-muted)" }}>
+                <p className="mt-0.5 text-xs sm:text-sm" style={{ color: "var(--text-muted)" }}>
                   Follow the steps left to right: pick Pokémon, fill team slots, then refine with analysis.
                 </p>
               </div>
               {isSaving && (
-                <span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
+                <span className="text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
                   Saving...
                 </span>
               )}
@@ -1212,18 +1212,18 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
             <div className="mt-2 sm:mt-3">
               <div className="flex gap-1.5 sm:grid sm:grid-cols-3 sm:gap-1.5">
-                <div className="panel-soft flex-1 px-2 py-1 sm:px-3 sm:py-1.5">
-                  <p className="text-[0.55rem] font-semibold uppercase tracking-[0.1em] sm:text-[0.6rem] sm:tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                <div className="panel-soft flex-1 px-2.5 py-1.5 sm:px-3.5 sm:py-2">
+                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
                     1. Pick
                   </p>
                 </div>
-                <div className="panel-soft flex-1 px-2 py-1 sm:px-3 sm:py-1.5">
-                  <p className="text-[0.55rem] font-semibold uppercase tracking-[0.1em] sm:text-[0.6rem] sm:tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                <div className="panel-soft flex-1 px-2.5 py-1.5 sm:px-3.5 sm:py-2">
+                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
                     2. Build
                   </p>
                 </div>
-                <div className="panel-soft flex-1 px-2 py-1 sm:px-3 sm:py-1.5">
-                  <p className="text-[0.55rem] font-semibold uppercase tracking-[0.1em] sm:text-[0.6rem] sm:tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                <div className="panel-soft flex-1 px-2.5 py-1.5 sm:px-3.5 sm:py-2">
+                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
                     3. Analyze
                   </p>
                 </div>
@@ -1232,7 +1232,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
             <div className="mt-2 grid grid-cols-2 gap-2 sm:mt-2.5 sm:gap-2.5">
               <div className="panel-soft px-3 py-2 sm:px-3.5 sm:py-3">
-                <p className="text-[0.58rem] font-semibold uppercase tracking-[0.14em] sm:text-[0.62rem] sm:tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
                   Slots Filled
                 </p>
                 <AnimatedNumber
@@ -1252,12 +1252,12 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                 </div>
               </div>
               <div className="panel-soft px-3 py-2 sm:px-3.5 sm:py-3">
-                <p className="text-[0.58rem] font-semibold uppercase tracking-[0.14em] sm:text-[0.62rem] sm:tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
                   Coverage Snapshot
                 </p>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <div className="rounded-lg border px-2.5 py-2" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
-                    <p className="text-[0.56rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
                       Risks
                     </p>
                     <AnimatedNumber
@@ -1267,7 +1267,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                     />
                   </div>
                   <div className="rounded-lg border px-2.5 py-2" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
-                    <p className="text-[0.56rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
                       Stable
                     </p>
                     <AnimatedNumber
@@ -1319,7 +1319,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                 <span className="sm:hidden">{replaceMode ? "Replace" : "Replace"}</span>
               </button>
 
-              <div className="col-span-3 rounded-xl border px-3 py-1.5 text-[0.62rem] sm:col-span-2 sm:py-2 sm:text-[0.66rem] lg:col-span-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}>
+              <div className="col-span-3 rounded-xl border px-3 py-1.5 text-[0.72rem] sm:col-span-2 sm:py-2 sm:text-[0.78rem] lg:col-span-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}>
                 {replaceMode
                   ? replaceTargetSlot !== null
                     ? `Targeting slot ${replaceTargetSlot + 1}`

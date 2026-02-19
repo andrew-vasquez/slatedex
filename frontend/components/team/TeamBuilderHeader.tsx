@@ -123,7 +123,7 @@ const TeamBuilderHeader = ({
                     <div className="relative shrink-0" ref={generationRefMobile}>
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.56rem] font-semibold uppercase tracking-[0.12em]"
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.08em]"
                         style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
                         onClick={() => {
                           setIsGenerationMenuOpen((prev) => !prev);
@@ -155,7 +155,7 @@ const TeamBuilderHeader = ({
                                 key={meta.generation}
                                 href={`/game/${meta.generation}`}
                                 onClick={() => setIsGenerationMenuOpen(false)}
-                                className="flex items-center justify-between rounded-lg px-2 py-1.5 text-[0.66rem] font-semibold transition-colors"
+                                className="flex items-center justify-between rounded-lg px-2.5 py-2 text-[0.74rem] font-semibold transition-colors"
                                 style={{
                                   background: isActive ? "var(--accent-soft)" : "transparent",
                                   color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
@@ -164,7 +164,7 @@ const TeamBuilderHeader = ({
                                 role="menuitem"
                               >
                                 <span>Gen {meta.generation}</span>
-                                <span className="text-[0.58rem] uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
+                                <span className="text-[0.64rem] uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
                                   {meta.region}
                                 </span>
                               </Link>
@@ -176,7 +176,7 @@ const TeamBuilderHeader = ({
                   </div>
                   <h1 className="font-display mt-0.5 truncate text-sm leading-tight" style={{ color: "var(--text-secondary)" }}>
                     {game.name}
-                    <span className="ml-1.5 text-[0.6rem] font-normal uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                    <span className="ml-1.5 hidden text-[0.72rem] font-normal uppercase tracking-[0.08em] min-[420px]:inline" style={{ color: "var(--text-muted)" }}>
                       · {game.region}
                     </span>
                   </h1>
@@ -200,7 +200,7 @@ const TeamBuilderHeader = ({
                 }}
               />
             </div>
-            <span className="text-[0.65rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+            <span className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
               {teamLength}/6 slots filled
             </span>
           </div>
@@ -297,7 +297,7 @@ const TeamBuilderHeader = ({
                 <div className="relative" ref={generationRefDesktop}>
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.14em]"
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.08em]"
                     style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
                     onClick={() => {
                       setIsGenerationMenuOpen((prev) => !prev);
@@ -329,7 +329,7 @@ const TeamBuilderHeader = ({
                             key={meta.generation}
                             href={`/game/${meta.generation}`}
                             onClick={() => setIsGenerationMenuOpen(false)}
-                            className="flex items-center justify-between rounded-lg px-2 py-1.5 text-[0.66rem] font-semibold transition-colors"
+                            className="flex items-center justify-between rounded-lg px-2.5 py-2 text-[0.74rem] font-semibold transition-colors"
                             style={{
                               background: isActive ? "var(--accent-soft)" : "transparent",
                               color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
@@ -338,7 +338,7 @@ const TeamBuilderHeader = ({
                             role="menuitem"
                           >
                             <span>Gen {meta.generation}</span>
-                            <span className="text-[0.58rem] uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
+                            <span className="text-[0.64rem] uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
                               {meta.region}
                             </span>
                           </Link>
@@ -368,7 +368,7 @@ const TeamBuilderHeader = ({
                       }}
                     />
                   </div>
-                  <span className="text-[0.65rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                  <span className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
                     {teamLength}/6 slots filled
                   </span>
                 </div>

@@ -39,7 +39,7 @@ const TeamPanel = ({
           <h2 id="team-heading" className="font-display text-base leading-tight sm:text-lg" style={{ color: "var(--text-primary)" }}>
             Step 2: Build Team
           </h2>
-          <p className="mt-1 text-[0.68rem] leading-tight sm:mt-0.5 sm:text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
+          <p className="mt-1 text-xs leading-tight sm:mt-0.5 sm:text-sm" style={{ color: "var(--text-muted)" }}>
             Fill all slots for full coverage analysis.
           </p>
         </div>
@@ -49,7 +49,7 @@ const TeamPanel = ({
             <button
               type="button"
               onClick={onOpenTeamTools}
-              className="btn-secondary !px-2.5 !py-1.5 !text-[0.62rem]"
+              className="btn-secondary !px-2.5 !py-1.5 !text-[0.75rem]"
               aria-label="Open team tools"
             >
               <FiTool size={12} />
@@ -58,7 +58,7 @@ const TeamPanel = ({
           ) : null}
 
           <span
-            className="rounded-full px-2.5 py-1 text-[0.62rem] font-semibold tabular-nums sm:text-[0.65rem]"
+            className="rounded-full px-2.5 py-1 text-[0.75rem] font-semibold tabular-nums sm:text-[0.8rem]"
             style={{
               background: currentTeamLength > 0 ? "var(--accent-soft)" : "var(--surface-2)",
               border: "1px solid var(--border)",

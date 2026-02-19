@@ -80,7 +80,7 @@ const TeamRecommendations = ({
           <h2 id="smart-picks-heading" className="font-display text-base sm:text-lg" style={{ color: "var(--text-primary)" }}>
             Smart Picks
           </h2>
-          <p className="mt-1 text-[0.68rem] leading-tight sm:mt-0.5 sm:text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
+          <p className="mt-1 text-xs leading-tight sm:mt-0.5 sm:text-sm" style={{ color: "var(--text-muted)" }}>
             Suggestions ranked by how well each option patches your current weaknesses.
           </p>
         </div>
@@ -104,7 +104,7 @@ const TeamRecommendations = ({
           }}
         >
           <span
-            className="text-[0.64rem] font-semibold tracking-[0.03em]"
+            className="text-[0.75rem] font-semibold tracking-[0.02em]"
             style={{ color: "var(--text-secondary)" }}
           >
             Smart picks
@@ -136,7 +136,7 @@ const TeamRecommendations = ({
             />
           </span>
           <span
-            className="w-8 text-right text-[0.62rem] font-semibold uppercase tracking-[0.08em]"
+            className="w-8 text-right text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
             style={{
               color: isSmartPicksOn ? "#86efac" : "var(--text-muted)",
               textShadow: isSmartPicksOn ? "0 0 14px rgba(74, 222, 128, 0.28)" : "none",
@@ -151,7 +151,7 @@ const TeamRecommendations = ({
         <button
           type="button"
           onClick={() => setIsRecommendationSettingsOpen((prev) => !prev)}
-          className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.08em] transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.06em] transition-colors"
           style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-secondary)" }}
           aria-expanded={isRecommendationSettingsOpen}
           aria-controls="smart-picks-settings-panel"
@@ -172,11 +172,11 @@ const TeamRecommendations = ({
           }`}
         >
           <div className="space-y-2 rounded-xl border p-2.5" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
-            <p className="rounded-lg border px-2.5 py-2 text-[0.66rem] leading-relaxed" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>
+            <p className="rounded-lg border px-2.5 py-2 text-xs leading-relaxed" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>
               Smart Picks excludes <span className="font-semibold">legendaries/mythicals and starter lines</span> by default.
             </p>
             <label
-              className="inline-flex w-full items-center justify-between gap-3 rounded-lg border px-2.5 py-2 text-[0.66rem] font-semibold uppercase tracking-[0.08em]"
+              className="inline-flex w-full items-center justify-between gap-3 rounded-lg border px-2.5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
               style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}
             >
               Include Legendaries & Mythicals
@@ -189,7 +189,7 @@ const TeamRecommendations = ({
               />
             </label>
             <label
-              className="inline-flex w-full items-center justify-between gap-3 rounded-lg border px-2.5 py-2 text-[0.66rem] font-semibold uppercase tracking-[0.08em]"
+              className="inline-flex w-full items-center justify-between gap-3 rounded-lg border px-2.5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
               style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}
             >
               Include Starter Lines
@@ -210,7 +210,7 @@ const TeamRecommendations = ({
           {exposedTypes.slice(0, 5).map((type) => (
             <span
               key={type}
-              className="rounded-full px-2 py-0.5 text-[0.58rem] font-semibold uppercase"
+              className="rounded-full px-2 py-0.5 text-[0.68rem] font-semibold uppercase"
               style={{
                 background: "rgba(248, 113, 113, 0.14)",
                 border: "1px solid rgba(248, 113, 113, 0.28)",
@@ -224,7 +224,7 @@ const TeamRecommendations = ({
       )}
 
       <div className="mt-3">
-        <p className="mb-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
+        <p className="mb-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
           Role Filter
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -241,7 +241,7 @@ const TeamRecommendations = ({
                 key={entry.id}
                 type="button"
                 onClick={() => onRoleChange(entry.id)}
-                className="rounded-full px-2.5 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.08em]"
+                className="rounded-full px-2.5 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.06em]"
                 style={{
                   border: isActive ? "1px solid rgba(218, 44, 67, 0.36)" : "1px solid var(--border)",
                   background: isActive ? "var(--accent-soft)" : "var(--surface-2)",
@@ -268,7 +268,7 @@ const TeamRecommendations = ({
           {recommendations.map(({ pokemon, score, covers, risky, reason }, index) => (
             <article
               key={pokemon.id}
-              className="panel-soft animate-fade-in-up flex h-[20rem] flex-col p-3"
+              className="panel-soft animate-fade-in-up flex min-h-[18rem] flex-col p-3"
               style={{ animationDelay: `${index * 70}ms` }}
             >
               <div className="flex items-start gap-2.5">
@@ -284,32 +284,23 @@ const TeamRecommendations = ({
                     <h3 className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                       {pokemon.name}
                     </h3>
-                    <span className="font-mono text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
+                    <span className="font-mono text-[0.7rem]" style={{ color: "var(--text-muted)" }}>
                       #{pokemon.id}
                     </span>
                   </div>
 
-                  <p className="mt-0.5 text-[0.66rem]" style={{ color: "var(--text-secondary)" }}>
+                  <p className="mt-0.5 text-xs" style={{ color: "var(--text-secondary)" }}>
                     Fit score: <span className="font-semibold">{score.toFixed(1)}</span>
                   </p>
-                  <p
-                    className="mt-1 min-h-[2rem] text-[0.66rem] leading-relaxed"
-                    style={{
-                      color: "var(--text-muted)",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
-                  >
+                  <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
                     {reason}
                   </p>
 
-                  <div className="mt-2 flex min-h-[4.25rem] flex-wrap content-start gap-1 overflow-hidden">
+                  <div className="mt-2 flex flex-wrap content-start gap-1">
                     {covers.slice(0, 3).map((type) => (
                       <span
                         key={`${pokemon.id}-cover-${type}`}
-                        className="rounded-full px-2 py-0.5 text-[0.56rem] font-semibold uppercase"
+                        className="rounded-full px-2 py-0.5 text-[0.66rem] font-semibold uppercase"
                         style={{
                           background: "rgba(74, 222, 128, 0.14)",
                           border: "1px solid rgba(74, 222, 128, 0.28)",
@@ -321,7 +312,7 @@ const TeamRecommendations = ({
                     ))}
                     {covers.length > 3 && (
                       <span
-                        className="rounded-full px-2 py-0.5 text-[0.56rem] font-semibold uppercase"
+                        className="rounded-full px-2 py-0.5 text-[0.66rem] font-semibold uppercase"
                         style={{
                           background: "rgba(148, 163, 184, 0.16)",
                           border: "1px solid rgba(148, 163, 184, 0.3)",
@@ -335,7 +326,7 @@ const TeamRecommendations = ({
                     {risky.slice(0, 1).map((type) => (
                       <span
                         key={`${pokemon.id}-risk-${type}`}
-                        className="rounded-full px-2 py-0.5 text-[0.56rem] font-semibold uppercase"
+                        className="rounded-full px-2 py-0.5 text-[0.66rem] font-semibold uppercase"
                         style={{
                           background: "rgba(248, 113, 113, 0.12)",
                           border: "1px solid rgba(248, 113, 113, 0.24)",

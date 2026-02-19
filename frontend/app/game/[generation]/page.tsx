@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { GENERATION_META, getGenerationMeta } from "@/lib/pokemon";
+import { getPokemonPoolsForGeneration } from "@/lib/pokeapi";
 import TeamBuilder from "@/components/team/TeamBuilder";
 
 export async function generateStaticParams() {
@@ -29,12 +30,14 @@ export default async function GenerationPage({ params }: { params: Promise<{ gen
     notFound();
   }
 
+  const initialPoolsByGame = await getPokemonPoolsForGeneration(generation);
+
   return (
     <div className="min-h-screen" style={{ background: "var(--surface-0)" }}>
       <TeamBuilder
         generation={generation}
         games={gen.games}
-        initialPoolsByGame={{}}
+        initialPoolsByGame={initialPoolsByGame}
       />
     </div>
   );

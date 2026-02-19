@@ -115,7 +115,7 @@ function PokemonSpriteStrip({ team }: { team: ProfileSavedTeam }) {
                 className="h-7 w-7 object-contain"
               />
             ) : (
-              <span className="text-[0.62rem] uppercase" style={{ color: "var(--text-muted)" }}>
+              <span className="text-[0.72rem] uppercase" style={{ color: "var(--text-muted)" }}>
                 {pokemon.name.slice(0, 2)}
               </span>
             )}
@@ -174,7 +174,7 @@ export default async function PublicProfilePage({
               Slate<span style={{ color: "var(--accent)" }}>dex</span>
             </Link>
             <span
-              className="hidden rounded-md px-2 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em] sm:inline-block"
+              className="hidden rounded-md px-2 py-0.5 text-[0.7rem] font-semibold uppercase tracking-[0.08em] sm:inline-block"
               style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
             >
               Trainer Profile
@@ -182,7 +182,7 @@ export default async function PublicProfilePage({
           </div>
           <Link
             href="/play"
-            className="hidden rounded-xl border px-3.5 py-2 text-[0.72rem] font-semibold sm:inline-flex items-center gap-1.5"
+            className="hidden rounded-xl border px-3.5 py-2 text-[0.82rem] font-semibold sm:inline-flex items-center gap-1.5"
             style={{ borderColor: "var(--border)", color: "var(--text-secondary)", background: "var(--surface-2)" }}
           >
             Open Builder
@@ -227,7 +227,7 @@ export default async function PublicProfilePage({
               <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
                 @{profile.username} • Joined {joinedDate}
               </p>
-              <p className="text-[0.62rem] uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
+              <p className="text-[0.72rem] uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
                 {avatarFrame} frame
               </p>
             </div>
