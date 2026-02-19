@@ -101,16 +101,16 @@ const PokemonCard = ({
           />
         </div>
 
-        <h3 className="text-center text-[0.65rem] font-semibold leading-tight sm:text-xs" style={{ color: "var(--text-primary)" }}>
+        <h3 className="text-center text-[0.76rem] font-semibold leading-tight sm:text-sm" style={{ color: "var(--text-primary)" }}>
           {pokemon.name}
         </h3>
-        <p className="mt-0.5 font-mono text-[0.5rem] leading-none" style={{ color: "var(--text-muted)" }}>
+        <p className="mt-0.5 font-mono text-[0.6rem] leading-none" style={{ color: "var(--text-muted)" }}>
           #{pokemon.id.toString().padStart(3, "0")}
         </p>
 
         <div className="mt-1 flex flex-wrap justify-center gap-0.5">
           {pokemon.types.map((type: string) => (
-            <span key={type} className={`rounded px-1.5 py-0 text-[0.52rem] font-semibold leading-none text-white sm:text-[0.48rem] ${TYPE_COLORS[type]}`}>
+            <span key={type} className={`rounded px-1.5 py-0 text-[0.62rem] font-semibold leading-none text-white sm:text-[0.58rem] ${TYPE_COLORS[type]}`}>
               {type.charAt(0).toUpperCase() + type.slice(1)}
             </span>
           ))}
@@ -173,12 +173,12 @@ const PokemonCard = ({
             <h3 className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
               {pokemon.name}
             </h3>
-            <span className="shrink-0 font-mono text-[0.6rem]" style={{ color: "var(--text-muted)" }}>
+            <span className="shrink-0 font-mono text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
               #{pokemon.id.toString().padStart(3, "0")}
             </span>
             {isVersionExclusive && (
               <span
-                className="shrink-0 rounded px-1.5 py-0.5 text-[0.52rem] font-semibold uppercase tracking-[0.08em]"
+                className="shrink-0 rounded px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.06em]"
                 style={{
                   background: "rgba(234, 179, 8, 0.16)",
                   border: "1px solid rgba(234, 179, 8, 0.34)",
@@ -194,7 +194,7 @@ const PokemonCard = ({
 
           <div className="mb-2 flex gap-1">
             {pokemon.types.map((type: string) => (
-              <span key={type} className={`rounded px-2 py-0.5 text-[0.6rem] font-semibold text-white ${TYPE_COLORS[type]}`}>
+              <span key={type} className={`rounded px-2 py-0.5 text-[0.68rem] font-semibold text-white ${TYPE_COLORS[type]}`}>
                 {type.charAt(0).toUpperCase() + type.slice(1)}
               </span>
             ))}
@@ -208,10 +208,10 @@ const PokemonCard = ({
               return (
                 <div key={stat} className="min-w-0 flex-1">
                   <div className="mb-0.5 flex items-baseline justify-between">
-                    <span className="text-[0.5rem] font-semibold uppercase" style={{ color: "var(--text-muted)" }}>
+                    <span className="text-[0.6rem] font-semibold uppercase" style={{ color: "var(--text-muted)" }}>
                       {STAT_LABELS[stat]}
                     </span>
-                    <span className="font-mono text-[0.55rem] font-semibold tabular-nums" style={{ color: STAT_COLORS[stat] }}>
+                    <span className="font-mono text-[0.65rem] font-semibold tabular-nums" style={{ color: STAT_COLORS[stat] }}>
                       {value}
                     </span>
                   </div>

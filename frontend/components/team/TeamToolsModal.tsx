@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FiCopy, FiFolder, FiLink, FiShare2, FiUploadCloud, FiX } from "react-icons/fi";
 import SavedTeamsPanel from "./SavedTeamsPanel";
 import { encodeSharedTeamPayload, parseSharedTeamInput, type SharedTeamPayload } from "@/lib/teamShare";
@@ -55,6 +55,8 @@ const TeamToolsModal = ({
   const [importInput, setImportInput] = useState("");
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [tabTransitionKey, setTabTransitionKey] = useState(0);
+  const modalRef = useRef<HTMLElement | null>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   const token = useMemo(() => encodeSharedTeamPayload(payload), [payload]);
   const { shouldRender, isAnimatingOut, onAnimationEnd } = useAnimatedUnmount(isOpen, 200);
@@ -62,12 +64,62 @@ const TeamToolsModal = ({
   useEffect(() => {
     if (!isOpen) return;
 
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    const focusFirstInteractive = () => {
+      if (!modalRef.current) return;
+      const firstFocusable = modalRef.current.querySelector<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (firstFocusable) {
+        firstFocusable.focus();
+      } else {
+        modalRef.current.focus();
+      }
+    };
+
+    const frame = window.requestAnimationFrame(focusFirstInteractive);
+
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+
+      if (event.key !== "Tab" || !modalRef.current) return;
+
+      const focusable = Array.from(
+        modalRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => !el.hasAttribute("disabled") && el.getAttribute("aria-hidden") !== "true");
+
+      if (focusable.length === 0) {
+        event.preventDefault();
+        modalRef.current.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
 
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", onKeyDown);
+      previousFocusRef.current?.focus();
+    };
   }, [isOpen, onClose]);
 
   useEffect(() => {
@@ -141,6 +193,8 @@ const TeamToolsModal = ({
       />
 
       <section
+        ref={modalRef}
+        tabIndex={-1}
         className={`panel relative w-full max-w-3xl overflow-hidden p-5 max-h-[min(88dvh,52rem)] ${isAnimatingOut ? "animate-scale-out" : "animate-scale-in"}`}
         onAnimationEnd={onAnimationEnd}
         aria-labelledby="team-tools-modal-title"
@@ -150,7 +204,7 @@ const TeamToolsModal = ({
             <h3 id="team-tools-modal-title" className="font-display text-lg" style={{ color: "var(--text-primary)" }}>
               Team Tools
             </h3>
-            <p className="mt-1 text-[0.78rem]" style={{ color: "var(--text-muted)" }}>
+            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
               Manage saved teams or share/import your current team.
             </p>
           </div>
@@ -169,7 +223,7 @@ const TeamToolsModal = ({
           <button
             type="button"
             onClick={() => setActiveTab("saved")}
-            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[0.68rem] font-semibold transition-colors duration-200"
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[0.78rem] font-semibold transition-colors duration-200"
             style={{
               background: activeTab === "saved" ? "var(--accent-soft)" : "transparent",
               border: activeTab === "saved" ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
@@ -182,7 +236,7 @@ const TeamToolsModal = ({
           <button
             type="button"
             onClick={() => setActiveTab("share")}
-            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[0.68rem] font-semibold transition-colors duration-200"
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[0.78rem] font-semibold transition-colors duration-200"
             style={{
               background: activeTab === "share" ? "var(--accent-soft)" : "transparent",
               border: activeTab === "share" ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
@@ -230,14 +284,14 @@ const TeamToolsModal = ({
               </div>
 
               <label className="mt-4 block">
-                <span className="mb-1 block text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
+                <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
                   Import Payload
                 </span>
                 <textarea
                   value={importInput}
                   onChange={(event) => setImportInput(event.target.value)}
                   rows={5}
-                  className="auth-input resize-y !text-[0.74rem]"
+                  className="auth-input resize-y !text-sm"
                   placeholder="Paste a share link, base64 token, or JSON payload"
                 />
               </label>
@@ -253,7 +307,7 @@ const TeamToolsModal = ({
               </div>
 
               {shareStatus && (
-                <p className="mt-2 text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
+                <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>
                   {shareStatus}
                 </p>
               )}

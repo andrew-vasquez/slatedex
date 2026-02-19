@@ -45,7 +45,7 @@ const nextConfig = {
   },
   // Best practice §2.1: optimize barrel file imports for react-icons
   experimental: {
-    optimizePackageImports: ["react-icons"],
+    optimizePackageImports: ["react-icons", "@dnd-kit/core", "@dnd-kit/sortable"],
   },
   async headers() {
     return [

@@ -208,7 +208,7 @@ const GameSelector = () => {
                     <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="1.8" />
                   </svg>
                 </div>
-                <p className="font-display text-[0.62rem] font-semibold uppercase tracking-[0.18em] sm:tracking-[0.26em]" style={{ color: "var(--text-muted)" }}>
+                <p className="font-display text-[0.72rem] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
                   Tactical Team Builder
                 </p>
               </div>
@@ -232,20 +232,20 @@ const GameSelector = () => {
               <div className="mt-5 rounded-2xl border p-3.5 sm:p-4" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
+                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
                       Continue Last Session
                     </p>
                     <p className="mt-0.5 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                       Gen {resumeSession.generation} • {resumeSession.gameName}
                     </p>
-                    <p className="text-[0.68rem]" style={{ color: "var(--text-muted)" }}>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                       {resumeSession.filledSlots}/6 slots filled • edited {formatRelativeTime(resumeSession.updatedAt)}
                     </p>
                   </div>
 
                   <Link
                     href={`/game/${resumeSession.generation}`}
-                    className="inline-flex items-center justify-center rounded-xl border px-3.5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.08em]"
+                    className="inline-flex items-center justify-center rounded-xl border px-3.5 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.06em]"
                     style={{
                       borderColor: "rgba(218, 44, 67, 0.34)",
                       background: "var(--accent-soft)",
@@ -269,10 +269,10 @@ const GameSelector = () => {
                     color: "var(--text-secondary)",
                   }}
                 >
-                  <span className="mb-1.5 flex h-5 w-5 items-center justify-center rounded-full text-[0.62rem] font-bold" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                  <span className="mb-1.5 flex h-5 w-5 items-center justify-center rounded-full text-[0.72rem] font-bold" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
                     {i + 1}
                   </span>
-                  <p className="text-[0.65rem] font-medium leading-snug sm:text-xs">{step}</p>
+                  <p className="text-[0.75rem] font-medium leading-snug sm:text-sm">{step}</p>
                 </div>
               ))}
             </div>
@@ -286,7 +286,7 @@ const GameSelector = () => {
               ].map((label) => (
                 <span
                   key={label}
-                  className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.62rem] font-semibold sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[0.68rem]"
+                  className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.72rem] font-semibold sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[0.76rem]"
                   style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-secondary)" }}
                 >
                   <span style={{ color: "var(--accent)", fontSize: "0.45rem" }}>◈</span>
@@ -304,7 +304,7 @@ const GameSelector = () => {
             Select a Generation
           </h2>
           <span
-            className="rounded-full border px-2 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.14em]"
+            className="rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold uppercase tracking-[0.08em]"
             style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}
           >
             Gen I – IX
@@ -315,14 +315,14 @@ const GameSelector = () => {
         </p>
 
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-[0.58rem] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
             Popular:
           </span>
           {POPULAR_GENERATIONS.map((gen) => (
             <Link
               key={`popular-${gen}`}
               href={`/game/${gen}`}
-              className="rounded-full border px-2.5 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.08em]"
+              className="rounded-full border px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
               style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-secondary)" }}
             >
               Gen {gen}
@@ -333,7 +333,7 @@ const GameSelector = () => {
             <Link
               key={`recent-${session.gameId}`}
               href={`/game/${session.generation}`}
-              className="rounded-full border px-2.5 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.08em]"
+              className="rounded-full border px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
               style={{ borderColor: "rgba(59, 130, 246, 0.34)", background: "rgba(59, 130, 246, 0.12)", color: "#93c5fd" }}
             >
               Recent: Gen {session.generation}
@@ -371,19 +371,19 @@ const GameSelector = () => {
                     <div>
                       <div className="mb-1 flex flex-wrap items-center gap-1.5">
                         {isPopular && (
-                          <span className="rounded-full border px-2 py-0.5 text-[0.52rem] font-semibold uppercase tracking-[0.1em]" style={{ borderColor: "rgba(234, 179, 8, 0.38)", background: "rgba(234, 179, 8, 0.16)", color: "#fef08a" }}>
+                          <span className="rounded-full border px-2 py-0.5 text-[0.64rem] font-semibold uppercase tracking-[0.08em]" style={{ borderColor: "rgba(234, 179, 8, 0.38)", background: "rgba(234, 179, 8, 0.16)", color: "#fef08a" }}>
                             Popular
                           </span>
                         )}
                         {isRecent && (
-                          <span className="rounded-full border px-2 py-0.5 text-[0.52rem] font-semibold uppercase tracking-[0.1em]" style={{ borderColor: "rgba(59, 130, 246, 0.38)", background: "rgba(59, 130, 246, 0.16)", color: "#93c5fd" }}>
+                          <span className="rounded-full border px-2 py-0.5 text-[0.64rem] font-semibold uppercase tracking-[0.08em]" style={{ borderColor: "rgba(59, 130, 246, 0.38)", background: "rgba(59, 130, 246, 0.16)", color: "#93c5fd" }}>
                             Recent
                           </span>
                         )}
                       </div>
 
                       <p
-                        className="font-display text-[0.62rem] uppercase tracking-[0.2em]"
+                        className="font-display text-[0.72rem] uppercase tracking-[0.12em]"
                         style={{ color: "var(--text-muted)" }}
                       >
                         Generation {gen.generation}
@@ -391,26 +391,26 @@ const GameSelector = () => {
                       <h3 className="font-display mt-1 text-2xl sm:text-[1.85rem]" style={{ color: "var(--text-primary)" }}>
                         {gen.primaryName}
                       </h3>
-                      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em]" style={{ color: colors.accent }}>
+                      <p className="text-[0.78rem] font-semibold uppercase tracking-[0.12em]" style={{ color: colors.accent }}>
                         {gen.region}
                       </p>
 
                       <div className="mt-2.5 flex flex-wrap gap-1.5">
                         <span
-                          className="rounded-lg px-2 py-0.5 text-[0.55rem] font-semibold uppercase tracking-[0.08em]"
+                          className="rounded-lg px-2 py-0.5 text-[0.66rem] font-semibold uppercase tracking-[0.06em]"
                           style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
                         >
                           {meta.versionCount} versions
                         </span>
                         <span
-                          className="rounded-lg px-2 py-0.5 text-[0.55rem] font-semibold uppercase tracking-[0.08em]"
+                          className="rounded-lg px-2 py-0.5 text-[0.66rem] font-semibold uppercase tracking-[0.06em]"
                           style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: meta.hasRegionalDex ? "#86efac" : "var(--text-muted)" }}
                         >
                           {meta.hasRegionalDex ? "regional dex" : "no regional dex"}
                         </span>
                         {meta.exclusivesCount > 0 && (
                           <span
-                            className="rounded-lg px-2 py-0.5 text-[0.55rem] font-semibold uppercase tracking-[0.08em]"
+                            className="rounded-lg px-2 py-0.5 text-[0.66rem] font-semibold uppercase tracking-[0.06em]"
                             style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "#fef08a" }}
                           >
                             {meta.exclusivesCount} exclusives
@@ -423,7 +423,7 @@ const GameSelector = () => {
                           {gen.games.map((g: Game) => (
                             <span
                               key={g.id}
-                              className="rounded-lg px-2.5 py-1 text-[0.65rem] font-semibold"
+                              className="rounded-lg px-2.5 py-1 text-[0.76rem] font-semibold"
                               style={{
                                 background: colors.soft,
                                 border: `1px solid ${colors.edge}`,

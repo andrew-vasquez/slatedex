@@ -104,7 +104,7 @@ export default function SettingsPage() {
           {SETTINGS_SECTIONS.map((section) => (
             <section key={section.title}>
               <h2
-                className="mb-2 text-[0.62rem] font-semibold uppercase tracking-[0.2em]"
+                className="mb-2 text-[0.72rem] font-semibold uppercase tracking-[0.12em]"
                 style={{ color: "var(--text-muted)" }}
               >
                 {section.title}
@@ -131,7 +131,7 @@ export default function SettingsPage() {
                       <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                         {item.label}
                       </p>
-                      <p className="mt-0.5 text-[0.7rem] leading-snug" style={{ color: "var(--text-muted)" }}>
+                      <p className="mt-0.5 text-xs leading-snug" style={{ color: "var(--text-muted)" }}>
                         {item.description}
                       </p>
                     </div>
@@ -146,14 +146,14 @@ export default function SettingsPage() {
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
             href="/teams"
-            className="btn-secondary text-[0.72rem]"
+            className="btn-secondary text-xs"
           >
             My Teams
           </Link>
           {user?.username && (
             <Link
               href={`/u/${user.username}`}
-              className="btn-secondary text-[0.72rem]"
+              className="btn-secondary text-xs"
             >
               Public Profile
             </Link>

@@ -269,12 +269,12 @@ const PokemonSelection = ({
               <h2 id="available-pokemon-heading" className="font-display text-lg" style={{ color: "var(--text-primary)" }}>
                 Step 1: Pick Pokémon
               </h2>
-              <p className="mt-1 text-[0.68rem]" style={{ color: "var(--text-muted)" }}>
+              <p className="mt-1 text-xs sm:text-sm" style={{ color: "var(--text-muted)" }}>
                 Search, then refine with game and advanced filters.
               </p>
             </div>
             <span
-              className="shrink-0 rounded-md px-2 py-0.5 text-[0.65rem] font-semibold tabular-nums"
+              className="shrink-0 rounded-md px-2 py-0.5 text-[0.75rem] font-semibold tabular-nums"
               style={{ background: "var(--surface-1)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
               aria-label={`${filteredPokemon.length} Pokémon available`}
             >
@@ -324,7 +324,7 @@ const PokemonSelection = ({
               )}
             </div>
 
-            <div className="hidden flex-wrap gap-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.09em] sm:flex">
+            <div className="hidden flex-wrap gap-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.06em] sm:flex">
               <span className="rounded-md border px-2 py-0.5" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
                 Dex {dexMode === "regional" ? "Regional" : "National"}
               </span>
@@ -344,7 +344,7 @@ const PokemonSelection = ({
 
             {hasMultipleGames && (
               <div>
-                <p className="mb-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
+                <p className="mb-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
                   Game
                 </p>
                 <div className="custom-scrollbar -mx-0.5 overflow-x-auto pb-1">
@@ -363,7 +363,7 @@ const PokemonSelection = ({
                           role="radio"
                           aria-checked={isSelected}
                           onClick={() => onGameChange?.(game.id)}
-                          className="min-w-[8.2rem] rounded-lg px-2.5 py-2 text-[0.66rem] font-semibold leading-tight"
+                          className="min-w-[8.2rem] rounded-lg px-2.5 py-2 text-[0.78rem] font-semibold leading-tight"
                           style={{
                             background: isSelected ? "var(--accent-soft)" : "transparent",
                             color: isSelected ? "var(--text-primary)" : "var(--text-muted)",
@@ -373,7 +373,7 @@ const PokemonSelection = ({
                         >
                           <span className="block">{game.name}</span>
                           <span
-                            className="mt-0.5 block text-[0.55rem] font-normal uppercase tracking-[0.12em]"
+                            className="mt-0.5 block text-[0.66rem] font-normal uppercase tracking-[0.08em]"
                             style={{ color: isSelected ? "var(--accent)" : "var(--text-muted)", opacity: isSelected ? 1 : 0.7 }}
                           >
                             {game.region}
@@ -390,7 +390,7 @@ const PokemonSelection = ({
               <button
                 type="button"
                 onClick={() => setIsAdvancedOpen((prev) => !prev)}
-                className="btn-secondary !w-full !justify-between !px-2.5 !py-1.5 !text-[0.62rem]"
+                className="btn-secondary !w-full !justify-between !px-2.5 !py-1.5 !text-[0.78rem]"
                 aria-expanded={isAdvancedOpen}
                 aria-controls="advanced-filters-panel"
               >
@@ -411,7 +411,7 @@ const PokemonSelection = ({
               >
                 <div className="space-y-2.5 pb-0.5">
                   <div>
-                    <p className="mb-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
+                    <p className="mb-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
                       Dex Mode
                     </p>
                     <div className="inline-flex w-full rounded-xl border p-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
@@ -420,7 +420,7 @@ const PokemonSelection = ({
                         onClick={() => onDexModeChange("regional")}
                         disabled={!regionalAvailable}
                         aria-pressed={dexMode === "regional"}
-                        className="flex-1 rounded-lg px-2 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em] disabled:pointer-events-none disabled:opacity-45"
+                        className="flex-1 rounded-lg px-2 py-1.5 text-[0.78rem] font-semibold uppercase tracking-[0.06em] disabled:pointer-events-none disabled:opacity-45"
                         style={{
                           background: dexMode === "regional" ? "var(--accent-soft)" : "transparent",
                           color: dexMode === "regional" ? "var(--text-primary)" : "var(--text-muted)",
@@ -433,7 +433,7 @@ const PokemonSelection = ({
                         type="button"
                         onClick={() => onDexModeChange("national")}
                         aria-pressed={dexMode === "national"}
-                        className="flex-1 rounded-lg px-2 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em]"
+                        className="flex-1 rounded-lg px-2 py-1.5 text-[0.78rem] font-semibold uppercase tracking-[0.06em]"
                         style={{
                           background: dexMode === "national" ? "var(--accent-soft)" : "transparent",
                           color: dexMode === "national" ? "var(--text-primary)" : "var(--text-muted)",
@@ -447,7 +447,7 @@ const PokemonSelection = ({
 
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
                     <label className="flex items-center gap-2 rounded-xl border px-2.5 py-2" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
-                      <span className="text-[0.65rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
+                      <span className="text-[0.78rem] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-muted)" }}>
                         Version
                       </span>
                       <select
@@ -466,7 +466,7 @@ const PokemonSelection = ({
                     </label>
 
                     <label
-                      className="inline-flex items-center gap-2 rounded-xl border px-2.5 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.08em] md:hover:cursor-pointer"
+                      className="inline-flex items-center gap-2 rounded-xl border px-2.5 py-2 text-[0.78rem] font-semibold uppercase tracking-[0.06em] md:hover:cursor-pointer"
                       style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-muted)" }}
                     >
                       <input
@@ -482,10 +482,10 @@ const PokemonSelection = ({
 
                   {onTypeFilterChange && (
                     <div>
-                      <p className="mb-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
+                      <p className="mb-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
                         Type Filter
                       </p>
-                      <p className="mb-1 text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
+                      <p className="mb-1 text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
                         Select multiple types to match Pokémon that have all selected types.
                       </p>
                       <div className="custom-scrollbar -mx-0.5 overflow-x-auto pb-1 sm:mx-0 sm:overflow-visible sm:pb-0">
@@ -503,7 +503,7 @@ const PokemonSelection = ({
                                   }
                                   onTypeFilterChange([...activeTypeFilters, type]);
                                 }}
-                                className={`rounded-md px-2 py-0.5 text-[0.6rem] font-semibold transition-all duration-150 sm:px-2.5 sm:py-1 sm:text-[0.62rem] ${TYPE_COLORS[type]} ${isActive ? "" : "hover:opacity-90"}`}
+                                className={`rounded-md px-2 py-0.5 text-[0.7rem] font-semibold transition-all duration-150 sm:px-2.5 sm:py-1 sm:text-[0.74rem] ${TYPE_COLORS[type]} ${isActive ? "" : "hover:opacity-90"}`}
                                 style={{
                                   color: "#fff",
                                   border: isActive ? "1px solid rgba(255, 255, 255, 0.6)" : "1px solid transparent",
@@ -521,7 +521,7 @@ const PokemonSelection = ({
                             <button
                               type="button"
                               onClick={() => onTypeFilterChange([])}
-                              className="rounded-md px-2 py-0.5 text-[0.6rem] font-semibold"
+                              className="rounded-md px-2 py-0.5 text-[0.72rem] font-semibold"
                               style={{ background: "var(--surface-3)", color: "var(--text-muted)", border: "1px solid var(--border)" }}
                             >
                               Clear
@@ -539,13 +539,13 @@ const PokemonSelection = ({
       </div>
 
       {dexNotice && (
-        <p className="mb-2 text-[0.68rem]" style={{ color: "#fca5a5" }}>
+        <p className="mb-2 text-xs" style={{ color: "#fca5a5" }}>
           {dexNotice}
         </p>
       )}
 
       {!isStepOneTipDismissed && (
-        <div className="mb-3 rounded-xl border px-3 py-2 text-[0.7rem]" style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}>
+        <div className="mb-3 rounded-xl border px-3 py-2 text-xs sm:text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}>
           <div className="flex items-start justify-between gap-2">
             <p className="pr-2">
               <span className="font-semibold">Tip:</span> Search first, then use Advanced filters for dex, version, or type.

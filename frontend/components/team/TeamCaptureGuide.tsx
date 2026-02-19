@@ -42,6 +42,8 @@ interface GuideState {
   data: CaptureGuideData | null;
 }
 
+const CAPTURE_GUIDE_CACHE_VERSION = "3";
+
 function normalizeCaptureGuideData(raw: unknown, fallback: { id: number; name: string }): CaptureGuideData {
   const data = raw && typeof raw === "object" ? (raw as Partial<CaptureGuideData>) : {};
 
@@ -187,7 +189,7 @@ const TeamCaptureGuide = ({
     Promise.allSettled(
       pending.map(async (pokemon) => {
         const response = await fetch(
-          `/api/pokemon-capture-guide?pokemonId=${pokemon.id}&versionId=${encodeURIComponent(selectedVersionId)}`,
+          `/api/pokemon-capture-guide?pokemonId=${pokemon.id}&versionId=${encodeURIComponent(selectedVersionId)}&cv=${CAPTURE_GUIDE_CACHE_VERSION}`,
           { cache: "force-cache" }
         );
         if (!response.ok) {
@@ -239,19 +241,19 @@ const TeamCaptureGuide = ({
         aria-controls="team-capture-guide-panel"
       >
         <span>
-          <span className="flex items-center gap-1.5 text-[0.66rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-primary)" }}>
+          <span className="flex items-center gap-1.5 text-[0.76rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-primary)" }}>
             <FiMapPin size={12} aria-hidden="true" />
             Capture Guide
             {compactMode ? (
               <span
-                className="rounded-full px-1.5 py-0.5 text-[0.54rem] font-semibold uppercase tracking-[0.1em]"
+                className="rounded-full px-1.5 py-0.5 text-[0.64rem] font-semibold uppercase tracking-[0.08em]"
                 style={{ border: "1px solid var(--border)", color: "var(--text-muted)", background: "var(--surface-1)" }}
               >
                 compact
               </span>
             ) : null}
           </span>
-          <span className="mt-0.5 block text-[0.64rem]" style={{ color: "var(--text-muted)" }}>
+          <span className="mt-0.5 block text-[0.74rem]" style={{ color: "var(--text-muted)" }}>
             Route and encounter methods for {selectedVersionLabel}.
           </span>
         </span>
@@ -276,20 +278,20 @@ const TeamCaptureGuide = ({
           <div className="space-y-2.5">
             {bestRoutePlan ? (
               <article className="rounded-lg border p-2.5" style={{ borderColor: "rgba(59, 130, 246, 0.4)", background: "rgba(59, 130, 246, 0.1)" }}>
-                <p className="text-[0.64rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "#bfdbfe" }}>
+                <p className="text-[0.74rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "#bfdbfe" }}>
                   Best Route Plan
                 </p>
                 <p className="mt-1 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                   {bestRoutePlan.location}
                 </p>
-                <p className="mt-0.5 text-[0.64rem]" style={{ color: "var(--text-secondary)" }}>
+                <p className="mt-0.5 text-[0.74rem]" style={{ color: "var(--text-secondary)" }}>
                   Covers {bestRoutePlan.members.length}/{teamPokemon.length} team members from one spot.
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {bestRoutePlan.members.map((member, index) => (
                     <span
                       key={`${member.pokemonName}-${index}`}
-                      className="rounded-full border px-2 py-0.5 text-[0.58rem] font-semibold"
+                      className="rounded-full border px-2 py-0.5 text-[0.68rem] font-semibold"
                       style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}
                       title={`${member.method}${member.levelText ? ` · ${member.levelText}` : ""}`}
                     >
@@ -323,19 +325,19 @@ const TeamCaptureGuide = ({
                           {pokemon.name}
                         </p>
                         {guide?.status === "loading" && (
-                          <p className="text-[0.66rem]" style={{ color: "var(--text-muted)" }}>
+                          <p className="text-[0.74rem]" style={{ color: "var(--text-muted)" }}>
                             Loading encounter data...
                           </p>
                         )}
                         {guide?.status === "error" && (
-                          <p className="text-[0.66rem]" style={{ color: "#fca5a5" }}>
+                          <p className="text-[0.74rem]" style={{ color: "#fca5a5" }}>
                             Couldn&apos;t load encounter data right now.
                           </p>
                         )}
                         {guide?.status === "ready" && guide.data && (
                           <div className="space-y-1.5">
                             {guide.data.requiresEvolution && (
-                              <p className="text-[0.64rem]" style={{ color: "var(--text-secondary)" }}>
+                              <p className="text-[0.74rem]" style={{ color: "var(--text-secondary)" }}>
                                 Catch <span className="font-semibold">{guide.data.sourcePokemonName}</span>
                                 {" "}and evolve to {guide.data.pokemonName}.
                               </p>
@@ -343,12 +345,12 @@ const TeamCaptureGuide = ({
 
                             {!compactMode && evolutionSteps.length > 0 ? (
                               <div className="rounded-md border px-2 py-1.5" style={{ borderColor: "var(--border)", background: "rgba(8, 15, 34, 0.42)" }}>
-                                <p className="text-[0.56rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
+                                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
                                   Evolution Path
                                 </p>
                                 <div className="mt-1 space-y-0.5">
                                   {evolutionSteps.map((step, stepIndex) => (
-                                    <p key={`${pokemon.id}-step-${stepIndex}`} className="text-[0.62rem]" style={{ color: "var(--text-secondary)" }}>
+                                    <p key={`${pokemon.id}-step-${stepIndex}`} className="text-[0.72rem]" style={{ color: "var(--text-secondary)" }}>
                                       {step.from} → {step.to}: {step.trigger}
                                       {step.requirement ? ` (${step.requirement})` : ""}
                                     </p>
@@ -358,7 +360,7 @@ const TeamCaptureGuide = ({
                             ) : null}
 
                             {guide.data.note ? (
-                              <p className="text-[0.64rem]" style={{ color: "var(--text-muted)" }}>
+                              <p className="text-[0.74rem]" style={{ color: "var(--text-muted)" }}>
                                 {guide.data.note}
                               </p>
                             ) : null}
@@ -371,10 +373,10 @@ const TeamCaptureGuide = ({
                                     className="rounded-md border px-2 py-1.5"
                                     style={{ borderColor: "var(--border)", background: "rgba(8, 15, 34, 0.42)" }}
                                   >
-                                    <p className="text-[0.66rem] font-semibold" style={{ color: "var(--text-primary)" }}>
+                                    <p className="text-[0.76rem] font-semibold" style={{ color: "var(--text-primary)" }}>
                                       {encounter.location}
                                     </p>
-                                    <p className="text-[0.62rem]" style={{ color: "var(--text-secondary)" }}>
+                                    <p className="text-[0.72rem]" style={{ color: "var(--text-secondary)" }}>
                                       {encounter.method}
                                       {encounter.levelText ? ` · ${encounter.levelText}` : ""}
                                       {encounter.chance !== null ? ` · ${encounter.chance}%` : ""}
@@ -383,13 +385,13 @@ const TeamCaptureGuide = ({
                                   </div>
                                 ))}
                                 {compactMode && encounters.length > 1 ? (
-                                  <p className="text-[0.58rem]" style={{ color: "var(--text-muted)" }}>
+                                  <p className="text-[0.68rem]" style={{ color: "var(--text-muted)" }}>
                                     +{encounters.length - 1} more locations available
                                   </p>
                                 ) : null}
                               </div>
                             ) : (
-                              <p className="text-[0.64rem]" style={{ color: "var(--text-muted)" }}>
+                              <p className="text-[0.74rem]" style={{ color: "var(--text-muted)" }}>
                                 No wild encounter locations were found for this version.
                               </p>
                             )}
