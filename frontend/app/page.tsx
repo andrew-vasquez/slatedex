@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FiShield, FiZap, FiGrid, FiStar } from "react-icons/fi";
-import { LandingNav, HeroAuthButtons, AuthCTASection, FooterAuthLinks } from "@/components/landing/AuthSection";
+import { LandingNav, HeroAuthButtons, AuthCTASection, FooterAuthLinks } from "@/app/AuthSection";
 
 export const metadata: Metadata = {
   title: "Slatedex — Pokémon Team Builder",
@@ -107,9 +107,7 @@ export default function LandingPage() {
               className="landing-reveal font-display text-5xl leading-[1.04] sm:text-6xl lg:text-7xl"
               style={{ letterSpacing: "-0.03em", color: "var(--text-primary)", animationDelay: "60ms" }}
             >
-              Build the team that
-              <br />
-              <span style={{ color: "var(--accent)" }}>wins before you play.</span>
+              Build your <span style={{ color: "var(--accent)" }}>six before you start.</span>
             </h1>
 
             {/* Subhead */}
@@ -117,7 +115,7 @@ export default function LandingPage() {
               className="landing-reveal mx-auto mt-5 max-w-lg text-base leading-relaxed sm:text-lg"
               style={{ color: "var(--text-secondary)", animationDelay: "120ms" }}
             >
-              Slatedex is a tactical Pokémon team builder with live type coverage analysis, smart recommendations, and full generation support from Kanto to Paldea.
+              Plan your six, check your coverage, and lock in your squad before you start the run.
             </p>
 
             {/* CTAs — client island */}

@@ -19,8 +19,8 @@ import {
 } from "@/lib/profile";
 import { normalizeAvatarUrl } from "@/lib/avatar";
 import { useAuth } from "@/components/providers/AuthProvider";
-import AvatarPickerModal from "@/components/profile/AvatarPickerModal";
-import FavoritePokemonPicker from "@/components/profile/FavoritePokemonPicker";
+import AvatarPickerModal from "@/app/settings/profile/AvatarPickerModal";
+import FavoritePokemonPicker from "@/app/settings/profile/FavoritePokemonPicker";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";

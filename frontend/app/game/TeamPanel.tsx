@@ -2,7 +2,7 @@
 
 import { FiTool } from "react-icons/fi";
 import TeamSlot from "./TeamSlot";
-import PokemonCard from "@/components/ui/PokemonCard";
+import PokemonCard from "@/app/game/PokemonCard";
 import type { Pokemon } from "@/lib/types";
 
 interface TeamPanelProps {

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FiCopy, FiFolder, FiLink, FiShare2, FiUploadCloud, FiX } from "react-icons/fi";
 import SavedTeamsPanel from "./SavedTeamsPanel";
 import { encodeSharedTeamPayload, parseSharedTeamInput, type SharedTeamPayload } from "@/lib/teamShare";
-import { useAnimatedUnmount } from "@/hooks/useAnimatedUnmount";
+import { useAnimatedUnmount } from "@/app/game/hooks/useAnimatedUnmount";
 import type { SavedTeam } from "@/lib/api";
 
 type TeamToolsTab = "saved" | "share";

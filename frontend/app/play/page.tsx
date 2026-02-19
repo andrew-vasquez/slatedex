@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import GameSelector from "@/components/game/GameSelector";
+import GameSelector from "@/app/play/GameSelector";
 
 export const metadata: Metadata = {
   title: "Pick a Generation | Slatedex",

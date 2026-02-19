@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { GENERATION_META, getGenerationMeta } from "@/lib/pokemon";
 import { getPokemonPoolsForGeneration } from "@/lib/pokeapi";
-import TeamBuilder from "@/components/team/TeamBuilder";
+import TeamBuilder from "@/app/game/TeamBuilder";
 
 export async function generateStaticParams() {
   return GENERATION_META.map((gen) => ({
