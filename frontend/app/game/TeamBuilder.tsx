@@ -14,8 +14,8 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { FiCornerDownLeft, FiCornerDownRight, FiRepeat } from "react-icons/fi";
-import PokemonDragPreview from "@/components/ui/PokemonDragPreview";
-import AnimatedNumber from "@/components/ui/AnimatedNumber";
+import PokemonDragPreview from "@/app/game/PokemonDragPreview";
+import AnimatedNumber from "@/app/game/AnimatedNumber";
 import TeamBuilderHeader from "./TeamBuilderHeader";
 import ClearTeamDialog from "./ClearTeamDialog";
 import PokemonSelection from "./PokemonSelection";
@@ -23,13 +23,13 @@ import TeamPanel from "./TeamPanel";
 import TeamCaptureGuide from "./TeamCaptureGuide";
 import MobileTeamSheet from "./MobileTeamSheet";
 import TeamToolsModal from "./TeamToolsModal";
-import UndoToast from "@/components/ui/UndoToast";
-import PokemonDetailDrawer from "@/components/ui/PokemonDetailDrawer";
-import { useAnimatedUnmount } from "@/hooks/useAnimatedUnmount";
+import UndoToast from "@/app/game/UndoToast";
+import PokemonDetailDrawer from "@/app/game/PokemonDetailDrawer";
+import { useAnimatedUnmount } from "@/app/game/hooks/useAnimatedUnmount";
 import { TYPE_EFFECTIVENESS, TYPE_RESISTANCES } from "@/lib/constants";
 import { getTeamDefensiveCoverage, getTeamOffensiveCoverage } from "@/lib/teamAnalysis";
-import { useTeamPersistence } from "@/hooks/useTeamPersistence";
-import { useBuilderSettings } from "@/hooks/useBuilderSettings";
+import { useTeamPersistence } from "@/app/game/hooks/useTeamPersistence";
+import { useBuilderSettings } from "@/app/game/hooks/useBuilderSettings";
 import {
   getLockedSlotsStorageKey,
   getSelectedGameStorageKey,

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import OpenCookiePreferencesButton from "@/components/privacy/OpenCookiePreferencesButton";
+import OpenCookiePreferencesButton from "@/app/privacy/OpenCookiePreferencesButton";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 
 export const metadata: Metadata = {

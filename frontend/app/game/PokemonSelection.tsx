@@ -2,8 +2,8 @@
 
 import { FiChevronDown, FiSearch, FiX } from "react-icons/fi";
 import { type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import PokemonCard from "@/components/ui/PokemonCard";
-import AnimatedNumber from "@/components/ui/AnimatedNumber";
+import PokemonCard from "@/app/game/PokemonCard";
+import AnimatedNumber from "@/app/game/AnimatedNumber";
 import { getAvailableTypes, TYPE_COLORS } from "@/lib/constants";
 import type { CardDensity, DexMode, Pokemon, Game } from "@/lib/types";
 

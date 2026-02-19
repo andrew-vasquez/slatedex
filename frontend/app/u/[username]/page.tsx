@@ -4,7 +4,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { FiArrowLeft } from "react-icons/fi";
 import { AVATAR_FRAME_OPTIONS, getAvatarFrameStyles, getGameDecoration, type AvatarFrameKey } from "@/lib/profile";
-import FavoritePokemonDisplay from "@/components/profile/FavoritePokemonDisplay";
+import FavoritePokemonDisplay from "@/app/u/[username]/FavoritePokemonDisplay";
 import { getVersionLabel } from "@/lib/pokemon";
 import { normalizeAvatarUrl } from "@/lib/avatar";
 
