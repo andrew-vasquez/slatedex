@@ -3,8 +3,10 @@ import { cors } from "hono/cors";
 import { rateLimiter } from "hono-rate-limiter";
 import { auth } from "./lib/auth";
 import { config, isAllowedOrigin } from "./lib/config";
+import { shutdownPostHog } from "./lib/posthog";
 import teams from "./routes/teams";
 import profiles from "./routes/profiles";
+import ai from "./routes/ai";
 
 const app = new Hono();
 const API_CSP = "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'";
@@ -114,10 +116,22 @@ app.use(
   })
 );
 
+// AI API: tighter limits due model cost.
+app.use(
+  "/api/ai/*",
+  rateLimiter({
+    windowMs: 10 * 60 * 1000,
+    limit: 20,
+    keyGenerator: getClientKey,
+    skip: shouldSkipRateLimit,
+  })
+);
+
 app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 app.route("/api/teams", teams);
 app.route("/api/profiles", profiles);
+app.route("/api/ai", ai);
 
 app.onError((error, c) => {
   const url = new URL(c.req.url);
@@ -136,7 +150,62 @@ app.get("/", (c) => {
   return c.text(`Poke Builder API running on port ${config.port}`);
 });
 
-export default {
+const SERVER_SYMBOL = Symbol.for("poke-builder.server");
+const SHUTDOWN_HANDLER_SYMBOL = Symbol.for("poke-builder.shutdown-handler");
+const SHUTTING_DOWN_SYMBOL = Symbol.for("poke-builder.shutting-down");
+type BunServer = ReturnType<typeof Bun.serve>;
+type ShutdownHandler = (signal: "SIGINT" | "SIGTERM") => void;
+type GlobalWithServer = typeof globalThis & {
+  [SERVER_SYMBOL]?: BunServer;
+  [SHUTDOWN_HANDLER_SYMBOL]?: ShutdownHandler;
+  [SHUTTING_DOWN_SYMBOL]?: boolean;
+};
+const globalWithServer = globalThis as GlobalWithServer;
+
+if (globalWithServer[SERVER_SYMBOL]) {
+  globalWithServer[SERVER_SYMBOL]?.stop(true);
+}
+if (globalWithServer[SHUTDOWN_HANDLER_SYMBOL]) {
+  process.off("SIGINT", globalWithServer[SHUTDOWN_HANDLER_SYMBOL]);
+  process.off("SIGTERM", globalWithServer[SHUTDOWN_HANDLER_SYMBOL]);
+}
+
+const server = Bun.serve({
   port: config.port,
   fetch: app.fetch,
+});
+globalWithServer[SERVER_SYMBOL] = server;
+globalWithServer[SHUTTING_DOWN_SYMBOL] = false;
+
+const handleShutdown: ShutdownHandler = (signal) => {
+  if (globalWithServer[SHUTTING_DOWN_SYMBOL]) return;
+  globalWithServer[SHUTTING_DOWN_SYMBOL] = true;
+  console.debug(`[server] shutting down (${signal})`);
+
+  void (async () => {
+    try {
+      await shutdownPostHog();
+    } catch (error) {
+      console.error("[posthog] shutdown error", error);
+    }
+
+    try {
+      server.stop(true);
+    } catch (error) {
+      console.error("[server] stop error", error);
+    }
+
+    if (globalWithServer[SERVER_SYMBOL] === server) {
+      delete globalWithServer[SERVER_SYMBOL];
+    }
+    delete globalWithServer[SHUTTING_DOWN_SYMBOL];
+    process.exit(0);
+  })();
 };
+
+globalWithServer[SHUTDOWN_HANDLER_SYMBOL] = handleShutdown;
+process.on("SIGINT", handleShutdown);
+process.on("SIGTERM", handleShutdown);
+console.debug(`Started server: ${server.url}`);
+
+export { app };

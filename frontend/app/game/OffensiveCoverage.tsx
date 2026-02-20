@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { ALL_TYPES } from "@/lib/constants";
+import { pokemonSpriteSrc } from "@/lib/image";
 import type { OffensiveCoverageMap } from "@/lib/types";
 
 interface OffensiveCoverageProps {
@@ -60,7 +61,8 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
 
   const fallbackType = gaps[0]?.type || strengths[0]?.type || activeSummaries[0]?.type || ALL_TYPES[0];
   const activeType = hoveredType || selectedType || fallbackType;
-  const activeData = typeSummaries.find((t) => t.type === activeType) || typeSummaries[0];
+  const displayType = useDeferredValue(activeType);
+  const activeData = typeSummaries.find((t) => t.type === displayType) || typeSummaries[0];
 
   const getCellBg = (hitCount: number): string => {
     if (hitCount === 0) return "var(--surface-2)";
@@ -75,9 +77,17 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
     return "rgba(19, 111, 58, 0.4)";
   };
 
-  const previewType = (type: string) => setHoveredType(type);
-  const clearPreview = () => setHoveredType(null);
-  const selectType = (type: string) => setSelectedType(type);
+  const previewType = useCallback((type: string) => {
+    setHoveredType((previous) => (previous === type ? previous : type));
+  }, []);
+
+  const clearPreview = useCallback(() => {
+    setHoveredType(null);
+  }, []);
+
+  const selectType = useCallback((type: string) => {
+    setSelectedType(type);
+  }, []);
 
   useEffect(() => {
     const nextSignature: Record<string, string> = {};
@@ -132,7 +142,7 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
           <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "#f87171" }}>
             Coverage Gaps
           </p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="mt-2 flex flex-wrap gap-1.5" onPointerLeave={clearPreview}>
             {gaps.length > 0 ? (
               gaps.map((item) => {
                 const isActive = item.type === activeType;
@@ -140,8 +150,7 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
                   <button
                     key={item.type}
                     type="button"
-                    onMouseEnter={() => previewType(item.type)}
-                    onMouseLeave={clearPreview}
+                    onPointerEnter={() => previewType(item.type)}
                     onFocus={() => previewType(item.type)}
                     onBlur={clearPreview}
                     onClick={() => selectType(item.type)}
@@ -169,7 +178,7 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
           <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "#4ade80" }}>
             Strongest Hits
           </p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="mt-2 flex flex-wrap gap-1.5" onPointerLeave={clearPreview}>
             {strengths.length > 0 ? (
               strengths.map((item) => {
                 const isActive = item.type === activeType;
@@ -177,8 +186,7 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
                   <button
                     key={item.type}
                     type="button"
-                    onMouseEnter={() => previewType(item.type)}
-                    onMouseLeave={clearPreview}
+                    onPointerEnter={() => previewType(item.type)}
                     onFocus={() => previewType(item.type)}
                     onBlur={clearPreview}
                     onClick={() => selectType(item.type)}
@@ -204,14 +212,14 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div>
-          <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-9 sm:gap-2" role="grid" aria-label="Offensive coverage heatmap">
+        <div className="lg:h-full">
+          <div className="coverage-heatmap-grid grid grid-cols-6 gap-1.5 sm:grid-cols-9 sm:gap-2" role="grid" aria-label="Offensive coverage heatmap" onPointerLeave={clearPreview}>
             {typeSummaries.map(({ type, hitCount, isLocked }) => {
               if (isLocked) {
                 return (
                   <div
                     key={type}
-                    className="relative flex aspect-square flex-col items-center justify-center rounded-lg"
+                    className="coverage-type-cell relative flex aspect-square flex-col items-center justify-center rounded-lg"
                     style={{
                       background: "var(--surface-2)",
                       border: "1px dashed rgba(148, 163, 184, 0.35)",
@@ -242,17 +250,13 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
                 <button
                   key={type}
                   type="button"
-                  className={`heatmap-cell relative flex aspect-square flex-col items-center justify-center rounded-lg ${pulsedTypes.has(type) ? "coverage-cell-pulse" : ""}`}
+                  className={`coverage-type-cell heatmap-cell relative flex aspect-square flex-col items-center justify-center rounded-lg ${pulsedTypes.has(type) ? "coverage-cell-pulse" : ""}`}
+                  data-active={isActive ? "true" : "false"}
                   style={{
                     background: getCellBg(hitCount),
                     border: `1px solid ${getCellBorder(hitCount)}`,
-                    boxShadow: isActive
-                      ? "0 0 0 2px var(--heatmap-ring), inset 0 0 0 1px rgba(226, 232, 240, 0.22)"
-                      : undefined,
-                    transform: isActive ? "translateY(-1px) scale(1.06)" : undefined,
                   }}
-                  onMouseEnter={() => previewType(type)}
-                  onMouseLeave={clearPreview}
+                  onPointerEnter={() => previewType(type)}
                   onFocus={() => previewType(type)}
                   onBlur={clearPreview}
                   onClick={() => selectType(type)}
@@ -273,7 +277,7 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
           </div>
         </div>
 
-        <aside className="panel-soft h-fit p-3.5 lg:sticky lg:top-24" aria-live="polite">
+        <aside className="panel-soft coverage-detail-panel h-fit p-3.5 lg:sticky lg:top-24" aria-live="polite">
           <div className="mb-3 flex items-center gap-2">
             <span
               className="inline-flex h-6 w-6 items-center justify-center rounded-md text-[0.6rem] font-bold text-white"
@@ -291,53 +295,59 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
             )}
           </div>
 
-          {activeData.isLocked ? (
-            <p className="text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
-              This type was not introduced until a later generation.
-            </p>
-          ) : (
-            <>
-              <div className="mb-3">
-                <div className="rounded-md px-2 py-1.5" style={{
-                  background: activeData.hitCount > 0 ? "rgba(74, 222, 128, 0.12)" : "rgba(248, 113, 113, 0.12)",
-                  border: `1px solid ${activeData.hitCount > 0 ? "rgba(74, 222, 128, 0.28)" : "rgba(248, 113, 113, 0.28)"}`,
-                }}>
-                  <p className="text-[0.55rem] font-semibold uppercase" style={{ color: activeData.hitCount > 0 ? "#86efac" : "#fca5a5" }}>
-                    {activeData.hitCount > 0 ? "Super Effective" : "No Coverage"}
-                  </p>
-                  <p className="font-mono text-xs" style={{ color: activeData.hitCount > 0 ? "#86efac" : "#fca5a5" }}>
-                    {activeData.hitCount > 0 ? `${activeData.hitCount} hitter${activeData.hitCount !== 1 ? "s" : ""}` : "Gap"}
-                  </p>
-                </div>
+          <div className="coverage-detail-body">
+            {activeData.isLocked ? (
+              <div className="coverage-detail-state">
+                <p className="text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
+                  This type was not introduced until a later generation.
+                </p>
               </div>
-
-              {activeData.hitCount > 0 ? (
-                <div>
-                  <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "#86efac" }}>
-                    Can Hit ({activeData.hitCount})
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {activeData.hitters.map((pokemon) => (
-                      <Image
-                        key={pokemon.id}
-                        src={pokemon.sprite}
-                        alt={pokemon.name}
-                        width={30}
-                        height={30}
-                        className="rounded border"
-                        style={{ borderColor: "rgba(74, 222, 128, 0.35)", background: "rgba(74, 222, 128, 0.14)" }}
-                        title={`${pokemon.name} — STAB super-effective`}
-                      />
-                    ))}
+            ) : (
+              <>
+                <div className="mb-3">
+                  <div className="rounded-md px-2 py-1.5" style={{
+                    background: activeData.hitCount > 0 ? "rgba(74, 222, 128, 0.12)" : "rgba(248, 113, 113, 0.12)",
+                    border: `1px solid ${activeData.hitCount > 0 ? "rgba(74, 222, 128, 0.28)" : "rgba(248, 113, 113, 0.28)"}`,
+                  }}>
+                    <p className="text-[0.55rem] font-semibold uppercase" style={{ color: activeData.hitCount > 0 ? "#86efac" : "#fca5a5" }}>
+                      {activeData.hitCount > 0 ? "Super Effective" : "No Coverage"}
+                    </p>
+                    <p className="font-mono text-xs" style={{ color: activeData.hitCount > 0 ? "#86efac" : "#fca5a5" }}>
+                      {activeData.hitCount > 0 ? `${activeData.hitCount} hitter${activeData.hitCount !== 1 ? "s" : ""}` : "Gap"}
+                    </p>
                   </div>
                 </div>
-              ) : (
-                <p className="text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
-                  No team member has a STAB type that hits {activeData.type} super-effectively. Consider adding a Pok&eacute;mon with a type advantage.
-                </p>
-              )}
-            </>
-          )}
+
+                {activeData.hitCount > 0 ? (
+                  <div>
+                    <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "#86efac" }}>
+                      Can Hit ({activeData.hitCount})
+                    </p>
+                    <div className="coverage-sprite-list flex flex-wrap gap-1">
+                      {activeData.hitters.map((pokemon) => (
+                        <Image
+                          key={pokemon.id}
+                          src={pokemonSpriteSrc(pokemon.sprite, pokemon.id)}
+                          alt={pokemon.name}
+                          width={30}
+                          height={30}
+                          className="rounded border"
+                          style={{ borderColor: "rgba(74, 222, 128, 0.35)", background: "rgba(74, 222, 128, 0.14)" }}
+                          title={`${pokemon.name} — STAB super-effective`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="coverage-detail-state">
+                    <p className="text-[0.72rem]" style={{ color: "var(--text-muted)" }}>
+                      No team member has a STAB type that hits {activeData.type} super-effectively. Consider adding a Pok&eacute;mon with a type advantage.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </aside>
       </div>
     </div>

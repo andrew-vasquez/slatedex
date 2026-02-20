@@ -5,12 +5,14 @@ import { useDraggable } from "@dnd-kit/core";
 import { memo } from "react";
 import { FiInfo } from "react-icons/fi";
 import { TYPE_COLORS } from "@/lib/constants";
+import { pokemonSpriteSrc } from "@/lib/image";
 import type { Pokemon } from "@/lib/types";
 
 interface PokemonCardProps {
   pokemon: Pokemon;
   isDraggable?: boolean;
   isCompact?: boolean;
+  isTeamSlot?: boolean;
   isAboveFold?: boolean;
   dragId?: string | null;
   onTap?: ((pokemon: Pokemon) => void) | null;
@@ -36,6 +38,7 @@ const PokemonCard = ({
   pokemon,
   isDraggable: isDraggableProp = true,
   isCompact = false,
+  isTeamSlot = false,
   isAboveFold = false,
   dragId = null,
   onTap = null,
@@ -78,7 +81,7 @@ const PokemonCard = ({
     ? `Exclusive to: ${exclusiveVersionLabels.join(", ")}`
     : "";
 
-  if (isCompact) {
+  if (isTeamSlot) {
     return (
       <div
         ref={setNodeRef}
@@ -91,43 +94,97 @@ const PokemonCard = ({
       >
         <div className="relative mb-1 h-12 w-12 sm:h-14 sm:w-14">
           <Image
-            src={pokemon.sprite}
+            src={pokemonSpriteSrc(pokemon.sprite, pokemon.id)}
             alt={pokemon.name}
             width={56}
             height={56}
-            loading={isAboveFold ? "eager" : "lazy"}
-            fetchPriority={isAboveFold ? "high" : "auto"}
+            loading="eager"
+            fetchPriority="high"
             className="h-full w-full object-contain drop-shadow-md"
           />
         </div>
-
         <h3 className="text-center text-[0.76rem] font-semibold leading-tight sm:text-sm" style={{ color: "var(--text-primary)" }}>
           {pokemon.name}
         </h3>
         <p className="mt-0.5 font-mono text-[0.6rem] leading-none" style={{ color: "var(--text-muted)" }}>
           #{pokemon.id.toString().padStart(3, "0")}
         </p>
-
-        <div className="mt-1 flex flex-wrap justify-center gap-0.5">
+        <div className="mt-1 flex flex-wrap justify-center gap-1">
           {pokemon.types.map((type: string) => (
-            <span key={type} className={`rounded px-1.5 py-0 text-[0.62rem] font-semibold leading-none text-white sm:text-[0.58rem] ${TYPE_COLORS[type]}`}>
+            <span key={type} className={`rounded-md px-1.5 py-px text-[0.6rem] font-semibold text-white ${TYPE_COLORS[type]}`}>
               {type.charAt(0).toUpperCase() + type.slice(1)}
             </span>
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (isCompact) {
+    return (
+      <div
+        ref={setNodeRef}
+        suppressHydrationWarning
+        data-dragging={isDragging ? "true" : undefined}
+        style={{ ...style, background: "var(--surface-2)", border: "1px solid var(--border)" }}
+        {...(shouldEnableDrag ? listeners : {})}
+        {...(shouldEnableDrag ? attributes : {})}
+        onClick={handleTap}
+        className={`group pokemon-card-lift relative flex items-center gap-2.5 overflow-hidden rounded-lg border px-2 py-1.5 ${interactiveClass} ${isDragging ? "rotate-1" : ""}`}
+        aria-label={`${pokemon.name} card`}
+      >
+        <div
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+          style={{ background: "var(--surface-1)", border: "1px solid var(--border)" }}
+        >
+          <Image
+            src={pokemonSpriteSrc(pokemon.sprite, pokemon.id)}
+            alt={pokemon.name}
+            width={32}
+            height={32}
+            loading={isAboveFold ? "eager" : "lazy"}
+            fetchPriority={isAboveFold ? "high" : "auto"}
+            className="h-7 w-7 object-contain drop-shadow-sm transition-transform duration-200 group-hover:scale-110"
+          />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <h3 className="truncate text-[0.74rem] font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
+              {pokemon.name}
+            </h3>
+            <span className="shrink-0 font-mono text-[0.58rem] leading-none" style={{ color: "var(--text-muted)" }}>
+              #{pokemon.id.toString().padStart(3, "0")}
+            </span>
+          </div>
+
+          <div className="mt-0.5 flex gap-0.5">
+            {pokemon.types.map((type: string) => (
+              <span key={type} className={`rounded px-1 py-px text-[0.54rem] font-semibold leading-tight text-white ${TYPE_COLORS[type]}`}>
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </span>
+            ))}
+            {isVersionExclusive && (
+              <span
+                className="rounded px-1 py-px text-[0.5rem] font-bold uppercase tracking-wide"
+                style={{ background: "rgba(234,179,8,0.16)", color: "#fde047" }}
+                title={exclusivityText}
+              >
+                EX
+              </span>
+            )}
+          </div>
         </div>
 
         {onInspect && (
           <button
             type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onInspect(pokemon);
-            }}
-            className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full"
-            style={{ background: "rgba(59, 130, 246, 0.14)", color: "#3b82f6", border: "1px solid rgba(59, 130, 246, 0.28)" }}
+            onClick={(e) => { e.stopPropagation(); onInspect(pokemon); }}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+            style={{ background: "rgba(59,130,246,0.12)", color: "#3b82f6", border: "1px solid rgba(59,130,246,0.25)" }}
             aria-label={`View details for ${pokemon.name}`}
           >
-            <FiInfo size={10} />
+            <FiInfo size={9} />
           </button>
         )}
       </div>
@@ -138,18 +195,18 @@ const PokemonCard = ({
     <div
       ref={setNodeRef}
       suppressHydrationWarning
-      style={{ ...style, transition: "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease" }}
+      data-dragging={isDragging ? "true" : undefined}
+      style={{ ...style }}
       {...(shouldEnableDrag ? listeners : {})}
       {...(shouldEnableDrag ? attributes : {})}
       onClick={handleTap}
-      className={`group relative overflow-hidden rounded-xl border ${interactiveClass} ${isDragging ? "rotate-1" : ""}`}
+      className={`group pokemon-card-lift relative overflow-hidden rounded-xl border ${interactiveClass} ${isDragging ? "rotate-1" : ""}`}
       aria-label={`${pokemon.name} card`}
     >
       <div
         className="flex items-center gap-3 p-3"
         style={{
           background: "var(--surface-2)",
-          borderColor: "var(--border)",
           border: "1px solid var(--border)",
         }}
       >
@@ -158,7 +215,7 @@ const PokemonCard = ({
           style={{ background: "var(--surface-1)", border: "1px solid var(--border)" }}
         >
           <Image
-            src={pokemon.sprite}
+            src={pokemonSpriteSrc(pokemon.sprite, pokemon.id)}
             alt={pokemon.name}
             width={48}
             height={48}
@@ -194,14 +251,14 @@ const PokemonCard = ({
 
           <div className="mb-2 flex gap-1">
             {pokemon.types.map((type: string) => (
-              <span key={type} className={`rounded px-2 py-0.5 text-[0.68rem] font-semibold text-white ${TYPE_COLORS[type]}`}>
+              <span key={type} className={`type-badge rounded px-2 py-0.5 text-[0.68rem] font-semibold text-white ${TYPE_COLORS[type]}`}>
                 {type.charAt(0).toUpperCase() + type.slice(1)}
               </span>
             ))}
           </div>
 
           <div className="flex gap-2">
-            {(["hp", "attack", "defense"] as const).map((stat) => {
+            {(["hp", "attack", "defense"] as const).map((stat, si) => {
               const value = pokemon[stat];
               const pct = Math.min((value / 160) * 100, 100);
 
@@ -216,7 +273,14 @@ const PokemonCard = ({
                     </span>
                   </div>
                   <div className="stat-bar">
-                    <div className="stat-bar-fill" style={{ width: `${pct}%`, background: STAT_COLORS[stat] }} />
+                    <div
+                      className="stat-bar-fill stat-bar-fill--animated"
+                      style={{
+                        width: `${pct}%`,
+                        background: STAT_COLORS[stat],
+                        "--stat-delay": `${si * 60}ms`,
+                      } as React.CSSProperties}
+                    />
                   </div>
                 </div>
               );

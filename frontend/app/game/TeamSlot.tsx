@@ -19,6 +19,7 @@ interface TeamSlotProps {
   isReplaceTarget?: boolean;
   onSelectForReplace?: (() => void) | null;
   index?: number;
+  droppableDisabled?: boolean;
 }
 
 const TeamSlot = ({
@@ -34,8 +35,9 @@ const TeamSlot = ({
   isReplaceTarget = false,
   onSelectForReplace = null,
   index = 0,
+  droppableDisabled = false,
 }: TeamSlotProps) => {
-  const { setNodeRef } = useDroppable({ id });
+  const { setNodeRef } = useDroppable({ id, disabled: droppableDisabled });
 
   // Track pokemon presence for enter/exit animations
   const hasPokemon = pokemon !== null;
@@ -91,7 +93,7 @@ const TeamSlot = ({
   let border = "2px solid var(--border)";
 
   if (isOver) {
-    border = "2px solid rgba(218, 44, 67, 0.4)";
+    border = "2px solid var(--version-color-border, rgba(218, 44, 67, 0.4))";
   } else if (isEmpty && !shouldRenderContent) {
     border = "2px dashed rgba(148, 163, 184, 0.32)";
   }
@@ -109,7 +111,7 @@ const TeamSlot = ({
         background: isReplaceTarget
           ? "rgba(59, 130, 246, 0.12)"
           : isOver
-            ? "rgba(218, 44, 67, 0.12)"
+            ? "var(--version-color-soft, rgba(218, 44, 67, 0.12))"
             : isEmpty && !shouldRenderContent
               ? `radial-gradient(circle at 50% 40%, rgba(148, 163, 184, 0.06), var(--surface-2))`
               : "var(--surface-2)",

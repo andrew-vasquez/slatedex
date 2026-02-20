@@ -5,6 +5,7 @@ import { FiChevronUp } from "react-icons/fi";
 import Image from "next/image";
 import TeamPanel from "./TeamPanel";
 import TeamCaptureGuide from "./TeamCaptureGuide";
+import { pokemonSpriteSrc } from "@/lib/image";
 import type { Pokemon } from "@/lib/types";
 
 const PEEK_HEIGHT = 72;
@@ -236,24 +237,24 @@ export default function MobileTeamSheet({
 
           {/* Mini slot row */}
           <div className="flex items-center gap-2 px-4 pb-3">
-            <div className="flex flex-1 items-center gap-1.5">
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
               {team.map((pokemon, i) => (
                 <div
                   key={i}
                   className="mobile-sheet-mini-slot"
                   style={{
                     border: pokemon
-                      ? "1.5px solid rgba(218, 44, 67, 0.4)"
+                      ? "1.5px solid var(--version-color-border, rgba(218, 44, 67, 0.4))"
                       : "1.5px dashed rgba(148, 163, 184, 0.25)",
                     background: pokemon
-                      ? "rgba(218, 44, 67, 0.1)"
+                      ? "var(--version-color-soft, rgba(218, 44, 67, 0.1))"
                       : "rgba(148, 163, 184, 0.05)",
                   }}
                   aria-label={pokemon ? pokemon.name : "Empty slot"}
                 >
                   {pokemon ? (
                     <Image
-                      src={pokemon.sprite}
+                      src={pokemonSpriteSrc(pokemon.sprite, pokemon.id)}
                       alt={pokemon.name}
                       width={28}
                       height={28}
@@ -283,9 +284,9 @@ export default function MobileTeamSheet({
               <span
                 className="rounded-full px-2 py-0.5 text-[0.62rem] font-semibold tabular-nums"
                 style={{
-                  background: currentTeamLength > 0 ? "var(--accent-soft)" : "var(--surface-3)",
-                  border: "1px solid var(--border)",
-                  color: currentTeamLength > 0 ? "var(--accent)" : "var(--text-muted)",
+                  background: currentTeamLength > 0 ? "var(--version-color-soft, var(--accent-soft))" : "var(--surface-3)",
+                  border: `1px solid ${currentTeamLength > 0 ? "var(--version-color-border, var(--border))" : "var(--border)"}`,
+                  color: currentTeamLength > 0 ? "var(--version-color, var(--accent))" : "var(--text-muted)",
                 }}
               >
                 {currentTeamLength}/6
@@ -328,6 +329,8 @@ export default function MobileTeamSheet({
               selectedReplaceSlot={selectedReplaceSlot}
               onSelectReplaceSlot={onSelectReplaceSlot}
               onOpenTeamTools={onOpenTeamTools}
+              droppableDisabled={true}
+              slotIdPrefix="mobile-team-slot"
             />
 
             <TeamCaptureGuide

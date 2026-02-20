@@ -8,6 +8,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { fetchTeams, deleteTeam } from "@/lib/api";
 import type { SavedTeam } from "@/lib/api";
 import { GENERATION_META, getVersionLabel } from "@/lib/pokemon";
+import { safeImageSrc } from "@/lib/image";
 import UserMenu from "@/components/auth/UserMenu";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 
@@ -93,34 +94,38 @@ function TeamCard({
 
       {/* Pokemon sprite row */}
       <div className="flex items-center gap-1.5">
-        {team.pokemon.map((pokemon, i) => (
-          <div
-            key={i}
-            className="flex h-11 w-11 items-center justify-center rounded-xl flex-shrink-0"
-            style={{
-              background: pokemon ? "var(--surface-2)" : "rgba(148,163,184,0.06)",
-              border: pokemon ? "1px solid var(--border)" : "1px dashed rgba(148,163,184,0.2)",
-            }}
-          >
-            {pokemon?.sprite ? (
-              <Image
-                src={pokemon.sprite}
-                alt={pokemon.name}
-                width={36}
-                height={36}
-                className="object-contain"
-                style={{ imageRendering: "pixelated" }}
-                unoptimized
-              />
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: "var(--text-muted)", opacity: 0.3 }}>
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8" />
-                <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="1.8" />
-                <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
-              </svg>
-            )}
-          </div>
-        ))}
+        {team.pokemon.map((pokemon, i) => {
+          const spriteSrc = safeImageSrc(pokemon?.sprite);
+
+          return (
+            <div
+              key={i}
+              className="flex h-11 w-11 items-center justify-center rounded-xl flex-shrink-0"
+              style={{
+                background: pokemon ? "var(--surface-2)" : "rgba(148,163,184,0.06)",
+                border: pokemon ? "1px solid var(--border)" : "1px dashed rgba(148,163,184,0.2)",
+              }}
+            >
+              {spriteSrc ? (
+                <Image
+                  src={spriteSrc}
+                  alt={pokemon?.name ?? "Pokemon slot"}
+                  width={36}
+                  height={36}
+                  className="object-contain"
+                  style={{ imageRendering: "pixelated" }}
+                  unoptimized
+                />
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: "var(--text-muted)", opacity: 0.3 }}>
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8" />
+                  <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="1.8" />
+                  <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+                </svg>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Footer */}

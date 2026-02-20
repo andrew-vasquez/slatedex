@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import { FiPlus, FiX } from "react-icons/fi";
 import { TYPE_COLORS } from "@/lib/constants";
+import { pokemonSpriteSrc } from "@/lib/image";
 import type { Pokemon } from "@/lib/types";
 
 interface PokemonDetailDrawerProps {
@@ -93,7 +94,7 @@ const PokemonDetailDrawer = ({ pokemon, onClose, onAdd, canAdd }: PokemonDetailD
             style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}
           >
             <Image
-              src={activePokemon.sprite}
+              src={pokemonSpriteSrc(activePokemon.sprite, activePokemon.id)}
               alt={activePokemon.name}
               width={72}
               height={72}

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FiChevronDown, FiMapPin } from "react-icons/fi";
+import { pokemonSpriteSrc } from "@/lib/image";
 import type { Pokemon } from "@/lib/types";
 
 interface TeamCaptureGuideProps {
@@ -34,6 +35,11 @@ interface CaptureGuideData {
     trigger: string;
     requirement: string | null;
   }>;
+  alternativeSources: Array<{
+    pokemonName: string;
+    pokemonId: number;
+    encounters: CaptureGuideEncounter[];
+  }>;
   note: string | null;
 }
 
@@ -42,7 +48,7 @@ interface GuideState {
   data: CaptureGuideData | null;
 }
 
-const CAPTURE_GUIDE_CACHE_VERSION = "3";
+const CAPTURE_GUIDE_CACHE_VERSION = "4";
 
 function normalizeCaptureGuideData(raw: unknown, fallback: { id: number; name: string }): CaptureGuideData {
   const data = raw && typeof raw === "object" ? (raw as Partial<CaptureGuideData>) : {};
@@ -72,6 +78,25 @@ function normalizeCaptureGuideData(raw: unknown, fallback: { id: number; name: s
     }))
     : [];
 
+  const alternativeSources = Array.isArray(data.alternativeSources)
+    ? data.alternativeSources
+        .filter((src): src is { pokemonName: string; pokemonId: number; encounters: CaptureGuideEncounter[] } =>
+          typeof src?.pokemonName === "string" && typeof src?.pokemonId === "number")
+        .map((src) => ({
+          pokemonName: src.pokemonName,
+          pokemonId: src.pokemonId,
+          encounters: Array.isArray(src.encounters)
+            ? src.encounters.map((e) => ({
+                location: typeof e?.location === "string" ? e.location : "Unknown location",
+                method: typeof e?.method === "string" ? e.method : "Unknown method",
+                levelText: typeof e?.levelText === "string" ? e.levelText : null,
+                chance: typeof e?.chance === "number" && Number.isFinite(e.chance) ? e.chance : null,
+                conditions: Array.isArray(e?.conditions) ? e.conditions.filter((v): v is string => typeof v === "string") : [],
+              }))
+            : [],
+        }))
+    : [];
+
   return {
     pokemonId: typeof data.pokemonId === "number" ? data.pokemonId : fallback.id,
     pokemonName: typeof data.pokemonName === "string" ? data.pokemonName : fallback.name,
@@ -81,6 +106,7 @@ function normalizeCaptureGuideData(raw: unknown, fallback: { id: number; name: s
     evolutionPath,
     encounters,
     evolutionSteps,
+    alternativeSources,
     note: typeof data.note === "string" ? data.note : null,
   };
 }
@@ -318,7 +344,7 @@ const TeamCaptureGuide = ({
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border"
                         style={{ borderColor: "var(--border)", background: "rgba(8, 15, 34, 0.55)" }}
                       >
-                        <Image src={pokemon.sprite} alt={pokemon.name} width={32} height={32} className="h-8 w-8 object-contain" />
+                        <Image src={pokemonSpriteSrc(pokemon.sprite, pokemon.id)} alt={pokemon.name} width={32} height={32} className="h-8 w-8 object-contain" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
@@ -394,6 +420,34 @@ const TeamCaptureGuide = ({
                               <p className="text-[0.74rem]" style={{ color: "var(--text-muted)" }}>
                                 No wild encounter locations were found for this version.
                               </p>
+                            )}
+
+                            {!compactMode && guide.data.alternativeSources.length > 0 && (
+                              <div className="mt-1.5 space-y-1">
+                                {guide.data.alternativeSources.map((alt) => (
+                                  <div key={alt.pokemonId}>
+                                    <p className="text-[0.72rem] font-semibold" style={{ color: "var(--text-secondary)" }}>
+                                      Also catchable as <span style={{ color: "var(--version-color, var(--accent))" }}>{alt.pokemonName}</span>
+                                    </p>
+                                    {alt.encounters.slice(0, 2).map((encounter, ei) => (
+                                      <div
+                                        key={`${alt.pokemonId}-alt-${ei}`}
+                                        className="mt-0.5 rounded-md border px-2 py-1"
+                                        style={{ borderColor: "var(--border)", background: "rgba(8, 15, 34, 0.3)" }}
+                                      >
+                                        <p className="text-[0.72rem] font-semibold" style={{ color: "var(--text-primary)" }}>
+                                          {encounter.location}
+                                        </p>
+                                        <p className="text-[0.68rem]" style={{ color: "var(--text-secondary)" }}>
+                                          {encounter.method}
+                                          {encounter.levelText ? ` · ${encounter.levelText}` : ""}
+                                          {encounter.chance !== null ? ` · ${encounter.chance}%` : ""}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ))}
+                              </div>
                             )}
                           </div>
                         )}

@@ -5,7 +5,8 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { GENERATION_META } from "@/lib/pokemon";
 import { getCuratedExclusiveCount } from "@/lib/versionExclusives";
-import { getTeamStorageKey, getTeamUpdatedAtStorageKey } from "@/lib/storageKeys";
+import { LAST_VISITED_GENERATION_KEY } from "@/lib/storageKeys";
+import { FALLBACK_POKEMON_SPRITE } from "@/lib/image";
 import type { GenerationMeta, Game } from "@/lib/types";
 import UserMenu from "@/components/auth/UserMenu";
 
@@ -55,20 +56,11 @@ const SPRITE_IDS: Record<string, number> = {
 
 const POPULAR_GENERATIONS = [9, 3, 1];
 
-interface RecentSession {
-  generation: number;
-  gameId: number;
-  gameName: string;
-  region: string;
-  updatedAt: number;
-  filledSlots: number;
-}
-
 const getSpriteUrl = (name: string): string => {
   const id = SPRITE_IDS[name];
   return id
     ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
-    : "";
+    : FALLBACK_POKEMON_SPRITE;
 };
 
 const REGION_COLORS: Record<string, { accent: string; soft: string; edge: string }> = {
@@ -89,70 +81,19 @@ const STEPS = [
   "Use type coverage to patch weaknesses",
 ];
 
-function formatRelativeTime(timestamp: number): string {
-  const deltaMs = timestamp - Date.now();
-  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-
-  const minutes = Math.round(deltaMs / (60 * 1000));
-  if (Math.abs(minutes) < 60) return rtf.format(minutes, "minute");
-
-  const hours = Math.round(deltaMs / (60 * 60 * 1000));
-  if (Math.abs(hours) < 24) return rtf.format(hours, "hour");
-
-  const days = Math.round(deltaMs / (24 * 60 * 60 * 1000));
-  return rtf.format(days, "day");
-}
-
-function countFilledSlots(rawTeam: string | null): number {
-  if (!rawTeam) return 0;
-  try {
-    const parsed = JSON.parse(rawTeam) as Array<unknown>;
-    if (!Array.isArray(parsed)) return 0;
-    return parsed.filter((entry) => entry !== null).length;
-  } catch {
-    return 0;
-  }
-}
 
 const GameSelector = () => {
-  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
+  const [lastVisitedGen, setLastVisitedGen] = useState<number | null>(null);
 
   useEffect(() => {
-    const sessions: RecentSession[] = [];
-
-    GENERATION_META.forEach((generationMeta) => {
-      generationMeta.games.forEach((game) => {
-        const updatedAtRaw = localStorage.getItem(
-          getTeamUpdatedAtStorageKey(generationMeta.generation, game.id)
-        );
-
-        if (!updatedAtRaw) return;
-
-        const updatedAt = Number(updatedAtRaw);
-        if (!Number.isFinite(updatedAt)) return;
-
-        const rawTeam = localStorage.getItem(getTeamStorageKey(generationMeta.generation, game.id));
-        const filledSlots = countFilledSlots(rawTeam);
-
-        sessions.push({
-          generation: generationMeta.generation,
-          gameId: game.id,
-          gameName: game.name,
-          region: game.region,
-          updatedAt,
-          filledSlots,
-        });
-      });
-    });
-
-    sessions.sort((a, b) => b.updatedAt - a.updatedAt);
-    setRecentSessions(sessions.slice(0, 5));
+    try {
+      const raw = localStorage.getItem(LAST_VISITED_GENERATION_KEY);
+      if (raw) {
+        const gen = Number(raw);
+        if (Number.isFinite(gen)) setLastVisitedGen(gen);
+      }
+    } catch {}
   }, []);
-
-  const sessionGenSet = useMemo(
-    () => new Set(recentSessions.map((session) => session.generation)),
-    [recentSessions]
-  );
 
   const generationMetaSummary = useMemo(() => {
     return Object.fromEntries(
@@ -172,8 +113,6 @@ const GameSelector = () => {
       })
     ) as Record<number, { versionCount: number; hasRegionalDex: boolean; exclusivesCount: number }>;
   }, []);
-
-  const resumeSession = recentSessions[0] ?? null;
 
   return (
     <div className="min-h-screen pb-14 sm:pb-20">
@@ -227,36 +166,6 @@ const GameSelector = () => {
             <p className="mt-3.5 max-w-xl text-sm leading-relaxed sm:text-base" style={{ color: "var(--text-secondary)" }}>
               Pick a generation, draft your six, and instantly see where your team holds strong or breaks. Type coverage, defensive analysis, and smart picks — all at a glance.
             </p>
-
-            {resumeSession && (
-              <div className="mt-5 rounded-2xl border p-3.5 sm:p-4" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
-                      Continue Last Session
-                    </p>
-                    <p className="mt-0.5 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                      Gen {resumeSession.generation} • {resumeSession.gameName}
-                    </p>
-                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      {resumeSession.filledSlots}/6 slots filled • edited {formatRelativeTime(resumeSession.updatedAt)}
-                    </p>
-                  </div>
-
-                  <Link
-                    href={`/game/${resumeSession.generation}`}
-                    className="inline-flex items-center justify-center rounded-xl border px-3.5 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.06em]"
-                    style={{
-                      borderColor: "rgba(218, 44, 67, 0.34)",
-                      background: "var(--accent-soft)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    Resume Team
-                  </Link>
-                </div>
-              </div>
-            )}
 
             <div className="mt-6 grid grid-cols-3 gap-2">
               {STEPS.map((step, i) => (
@@ -329,16 +238,6 @@ const GameSelector = () => {
             </Link>
           ))}
 
-          {recentSessions.slice(0, 3).map((session) => (
-            <Link
-              key={`recent-${session.gameId}`}
-              href={`/game/${session.generation}`}
-              className="rounded-full border px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
-              style={{ borderColor: "rgba(59, 130, 246, 0.34)", background: "rgba(59, 130, 246, 0.12)", color: "#93c5fd" }}
-            >
-              Recent: Gen {session.generation}
-            </Link>
-          ))}
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:mt-5 sm:grid-cols-2">
@@ -346,7 +245,7 @@ const GameSelector = () => {
             const colors = REGION_COLORS[gen.region] || REGION_COLORS.Kanto;
             const meta = generationMetaSummary[gen.generation];
             const isPopular = POPULAR_GENERATIONS.includes(gen.generation);
-            const isRecent = sessionGenSet.has(gen.generation);
+            const isRecent = gen.generation === lastVisitedGen;
 
             return (
               <Link

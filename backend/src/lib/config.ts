@@ -1,5 +1,12 @@
 const DEFAULT_PORT = 3001;
 const DEFAULT_FRONTEND_ORIGIN = "http://localhost:3000";
+const DEFAULT_AI_MODEL = "gpt-4o-mini";
+const DEFAULT_AI_CHAT_MODEL = "gpt-4o-mini";
+const DEFAULT_AI_ANALYZE_MODEL = "gpt-4.1-mini";
+const DEFAULT_AI_TIMEOUT_MS = 30_000;
+const DEFAULT_AI_MAX_OUTPUT_TOKENS = 700;
+const DEFAULT_AI_CHAT_MAX_OUTPUT_TOKENS = 420;
+const DEFAULT_AI_ANALYZE_MAX_OUTPUT_TOKENS = 560;
 const DEV_FALLBACK_ORIGINS = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
@@ -120,14 +127,67 @@ function parsePort(raw: string | undefined): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PORT;
 }
 
+function parseBoolean(raw: string | undefined, fallback: boolean): boolean {
+  if (!raw) return fallback;
+  const value = raw.trim().toLowerCase();
+  if (value === "1" || value === "true" || value === "yes" || value === "on") return true;
+  if (value === "0" || value === "false" || value === "no" || value === "off") return false;
+  return fallback;
+}
+
+function parsePositiveInteger(raw: string | undefined, fallback: number): number {
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
 const frontendOrigins = parseOrigins(process.env.FRONTEND_URL?.trim());
+const aiEnabled = parseBoolean(process.env.ENABLE_AI_COACH, true);
+const aiApiKey = process.env.OPENAI_API_KEY?.trim() || "";
+const aiGlobalModel = process.env.OPENAI_MODEL?.trim() || "";
+const aiModelFallback = aiGlobalModel || DEFAULT_AI_MODEL;
+const aiChatModel = process.env.OPENAI_MODEL_CHAT?.trim() || aiGlobalModel || DEFAULT_AI_CHAT_MODEL;
+const aiAnalyzeModel =
+  process.env.OPENAI_MODEL_ANALYZE?.trim() || aiGlobalModel || DEFAULT_AI_ANALYZE_MODEL;
+const aiTimeoutMs = parsePositiveInteger(process.env.AI_REQUEST_TIMEOUT_MS, DEFAULT_AI_TIMEOUT_MS);
+const aiGlobalMaxOutputTokensRaw = process.env.AI_MAX_OUTPUT_TOKENS;
+const aiMaxOutputTokensFallback = parsePositiveInteger(aiGlobalMaxOutputTokensRaw, DEFAULT_AI_MAX_OUTPUT_TOKENS);
+const aiChatMaxOutputTokens = parsePositiveInteger(
+  process.env.AI_MAX_OUTPUT_TOKENS_CHAT,
+  aiGlobalMaxOutputTokensRaw ? aiMaxOutputTokensFallback : DEFAULT_AI_CHAT_MAX_OUTPUT_TOKENS
+);
+const aiAnalyzeMaxOutputTokens = parsePositiveInteger(
+  process.env.AI_MAX_OUTPUT_TOKENS_ANALYZE,
+  aiGlobalMaxOutputTokensRaw ? aiMaxOutputTokensFallback : DEFAULT_AI_ANALYZE_MAX_OUTPUT_TOKENS
+);
+
 validateProductionAuthEnv();
 validateBetterAuthSecret();
+
+if (process.env.NODE_ENV === "production" && aiEnabled && !aiApiKey) {
+  throw new Error("OPENAI_API_KEY is required in production when ENABLE_AI_COACH is enabled.");
+}
 
 export const config = {
   port: parsePort(process.env.PORT),
   frontendOrigins,
   primaryFrontendOrigin: frontendOrigins[0] ?? DEFAULT_FRONTEND_ORIGIN,
+  ai: {
+    enabled: aiEnabled,
+    apiKey: aiApiKey,
+    model: aiModelFallback,
+    models: {
+      chat: aiChatModel,
+      analyze: aiAnalyzeModel,
+    },
+    requestTimeoutMs: aiTimeoutMs,
+    maxOutputTokens: aiMaxOutputTokensFallback,
+    maxOutputTokensByTask: {
+      chat: aiChatMaxOutputTokens,
+      analyze: aiAnalyzeMaxOutputTokens,
+    },
+  },
 };
 
 export function isAllowedOrigin(origin: string | undefined): boolean {

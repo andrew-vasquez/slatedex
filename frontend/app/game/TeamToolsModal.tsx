@@ -31,6 +31,7 @@ interface TeamToolsModalProps {
   onImport: (payload: SharedTeamPayload) => string;
   gameVersions?: VersionOption[];
   selectedVersionId?: string | null;
+  initialTab?: TeamToolsTab;
 }
 
 const TeamToolsModal = ({
@@ -50,6 +51,7 @@ const TeamToolsModal = ({
   onImport,
   gameVersions,
   selectedVersionId,
+  initialTab = "saved",
 }: TeamToolsModalProps) => {
   const [activeTab, setActiveTab] = useState<TeamToolsTab>("saved");
   const [importInput, setImportInput] = useState("");
@@ -135,12 +137,14 @@ const TeamToolsModal = ({
 
   useEffect(() => {
     if (!isOpen) {
-      setActiveTab("saved");
+      setActiveTab(initialTab);
       setImportInput("");
       setShareStatus(null);
       setTabTransitionKey(0);
+      return;
     }
-  }, [isOpen]);
+    setActiveTab(initialTab);
+  }, [initialTab, isOpen]);
 
   useEffect(() => {
     setTabTransitionKey((prev) => prev + 1);

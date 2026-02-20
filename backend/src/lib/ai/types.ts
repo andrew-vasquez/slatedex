@@ -1,0 +1,46 @@
+export interface TeamPokemonContext {
+  id: number;
+  name: string;
+  types: string[];
+  generation: number;
+  hp: number;
+  attack: number;
+  defense: number;
+  specialAttack: number;
+  specialDefense: number;
+  speed: number;
+}
+
+export type DexMode = "regional" | "national";
+
+export interface TeamContextPayload {
+  generation: number;
+  gameId: number;
+  selectedVersionId: string | null;
+  team: TeamPokemonContext[];
+  filters?: {
+    dexMode?: DexMode;
+    versionFilterEnabled?: boolean;
+    typeFilter?: string[];
+    regionalDexName?: string | null;
+  };
+  allowedPokemonNames?: string[];
+}
+
+export type BossStage = "gym" | "elite4" | "champion";
+
+export interface BossGuideEntry {
+  name: string;
+  stage: BossStage;
+  primaryTypes: string[];
+  notes?: string;
+}
+
+export type AiMessageRole = "user" | "assistant" | "system_event";
+export type AiMessageKind = "chat" | "analysis";
+
+export interface PersistedAiMessage {
+  role: AiMessageRole;
+  kind: AiMessageKind;
+  content: string;
+}

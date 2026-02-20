@@ -51,6 +51,7 @@ const SavedTeamsPanel = ({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const hasMultipleVersions = gameVersions.length > 1;
+  const combinedVersionsLabel = gameVersions.length === 2 ? "Both versions" : "All versions";
 
   const currentVersionLabel = selectedVersionId
     ? gameVersions.find((v) => v.id === selectedVersionId)?.label ?? null
@@ -228,7 +229,7 @@ const SavedTeamsPanel = ({
                 color: "var(--text-secondary)",
               }}
             >
-              Both versions
+              {combinedVersionsLabel}
             </button>
           </div>
 
