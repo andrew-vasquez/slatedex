@@ -64,9 +64,9 @@ const TeamPanel = ({
           <span
             className="rounded-full px-2.5 py-1 text-[0.75rem] font-semibold tabular-nums sm:text-[0.8rem]"
             style={{
-              background: currentTeamLength > 0 ? "var(--accent-soft)" : "var(--surface-2)",
-              border: "1px solid var(--border)",
-              color: currentTeamLength > 0 ? "var(--accent)" : "var(--text-muted)",
+              background: currentTeamLength > 0 ? "var(--version-color-soft, var(--accent-soft))" : "var(--surface-2)",
+              border: `1px solid ${currentTeamLength > 0 ? "var(--version-color-border, var(--border))" : "var(--border)"}`,
+              color: currentTeamLength > 0 ? "var(--version-color, var(--accent))" : "var(--text-muted)",
             }}
             aria-label={`${currentTeamLength} out of 6 team slots filled`}
           >

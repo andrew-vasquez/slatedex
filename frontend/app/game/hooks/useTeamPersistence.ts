@@ -180,6 +180,14 @@ export function useTeamPersistence({
         if (cancelled) return;
         setSavedTeams(teams);
 
+        const localDraft = loadLocalTeam(generation, gameId);
+        const hasLocalDraft = localDraft.some((slot) => slot !== null);
+        if (hasLocalDraft) {
+          setTeamState(localDraft);
+          setActiveTeamId(teams[0]?.id ?? null);
+          return;
+        }
+
         if (teams.length > 0) {
           const mostRecent = teams[0]; // already sorted by updatedAt desc
           setTeamState(normalizeTeam(mostRecent.pokemon));

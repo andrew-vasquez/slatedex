@@ -1528,15 +1528,13 @@ html[data-motion="reduced"] *::after {
 }
 
 .mobile-sheet-mini-slot {
-  /* Responsive: fills available space evenly, capped at 42px */
-  flex: 1 1 0;
-  max-width: 42px;
-  aspect-ratio: 1;
+  width: clamp(28px, calc((100vw - 160px) / 6), 38px);
+  height: clamp(28px, calc((100vw - 160px) / 6), 38px);
   border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 1;
+  flex-shrink: 0;
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
 }
 

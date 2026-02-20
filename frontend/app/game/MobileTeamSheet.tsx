@@ -284,9 +284,9 @@ export default function MobileTeamSheet({
               <span
                 className="rounded-full px-2 py-0.5 text-[0.62rem] font-semibold tabular-nums"
                 style={{
-                  background: currentTeamLength > 0 ? "var(--accent-soft)" : "var(--surface-3)",
-                  border: "1px solid var(--border)",
-                  color: currentTeamLength > 0 ? "var(--accent)" : "var(--text-muted)",
+                  background: currentTeamLength > 0 ? "var(--version-color-soft, var(--accent-soft))" : "var(--surface-3)",
+                  border: `1px solid ${currentTeamLength > 0 ? "var(--version-color-border, var(--border))" : "var(--border)"}`,
+                  color: currentTeamLength > 0 ? "var(--version-color, var(--accent))" : "var(--text-muted)",
                 }}
               >
                 {currentTeamLength}/6

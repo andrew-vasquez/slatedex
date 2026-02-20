@@ -25,6 +25,11 @@ interface CaptureGuideResponse {
     requirement: string | null;
   }>;
   encounters: EncounterEntry[];
+  alternativeSources: Array<{
+    pokemonName: string;
+    pokemonId: number;
+    encounters: EncounterEntry[];
+  }>;
   note: string | null;
 }
 
@@ -540,16 +545,26 @@ async function resolveCaptureGuide(pokemonId: number, versionId: string): Promis
   let sourcePokemonId = targetPokemon.id;
   let encounters: EncounterEntry[] = [];
   let hadEncounterLookupError = false;
+  const alternativeSources: CaptureGuideResponse["alternativeSources"] = [];
 
   for (const speciesName of lineage) {
     try {
       const encounterResult = await fetchEncounterEntriesForPokemon(speciesName, versionId);
       if (encounterResult.encounters.length > 0) {
-        sourcePokemonName = encounterResult.pokemonName;
-        sourceSpeciesName = speciesName;
-        sourcePokemonId = encounterResult.pokemonId;
-        encounters = encounterResult.encounters;
-        break;
+        if (encounters.length === 0) {
+          // Primary source (closest to target in the chain)
+          sourcePokemonName = encounterResult.pokemonName;
+          sourceSpeciesName = speciesName;
+          sourcePokemonId = encounterResult.pokemonId;
+          encounters = encounterResult.encounters;
+        } else {
+          // Additional catchable pre-evolution
+          alternativeSources.push({
+            pokemonName: titleCase(encounterResult.pokemonName),
+            pokemonId: encounterResult.pokemonId,
+            encounters: encounterResult.encounters.slice(0, 3),
+          });
+        }
       }
     } catch {
       hadEncounterLookupError = true;
@@ -607,6 +622,7 @@ async function resolveCaptureGuide(pokemonId: number, versionId: string): Promis
     evolutionPath,
     evolutionSteps,
     encounters: encounters.slice(0, 6),
+    alternativeSources,
     note,
   };
 }
