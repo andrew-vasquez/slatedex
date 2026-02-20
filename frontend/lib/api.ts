@@ -13,12 +13,17 @@ function getApiUrl(): string {
     return "http://localhost:3001";
   }
 
+  const unquoted = rawUrl.replace(/^['"]+|['"]+$/g, "");
   const withProtocol =
-    !rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")
-      ? `https://${rawUrl}`
-      : rawUrl;
+    !unquoted.startsWith("http://") && !unquoted.startsWith("https://")
+      ? `https://${unquoted}`
+      : unquoted;
 
-  return withProtocol.replace(/\/+$/, "");
+  let normalized = withProtocol.replace(/\/+$/, "");
+  if (/(\/api)+$/i.test(normalized)) {
+    normalized = normalized.replace(/(\/api)+$/i, "");
+  }
+  return normalized;
 }
 
 const API_URL = getApiUrl();
@@ -112,7 +117,8 @@ export interface AiTeamContextPayload {
 }
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+  const requestUrl = `${API_URL}${path}`;
+  const res = await fetch(requestUrl, {
     ...options,
     credentials: "include",
     headers: {
@@ -123,6 +129,11 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
+    if (res.status === 404 && path.startsWith("/api/ai/")) {
+      throw new Error(
+        `AI endpoint returned 404 at ${requestUrl}. Check NEXT_PUBLIC_API_URL points to backend base URL (no /api suffix/path) and backend is deployed with /api/ai routes.`
+      );
+    }
     throw new Error(body.error ?? `Request failed: ${res.status}`);
   }
 

@@ -105,6 +105,7 @@ interface UseTeamPersistenceReturn {
   savedTeams: SavedTeam[];
   activeTeamId: string | null;
   saveTeamAs: (name: string, versionIds?: string[]) => Promise<void>;
+  overwriteSavedTeam: (teamId: string) => Promise<void>;
   loadSavedTeam: (teamId: string) => void;
   deleteSavedTeam: (teamId: string) => Promise<void>;
   renameSavedTeam: (teamId: string, name: string) => Promise<void>;
@@ -280,6 +281,25 @@ export function useTeamPersistence({
     [isAuthenticated, generation, gameId, team, refreshSavedTeams]
   );
 
+  const overwriteSavedTeam = useCallback(
+    async (teamId: string) => {
+      if (!isAuthenticated) return;
+      if (!team.some((slot) => slot !== null)) {
+        throw new Error("Add at least one Pokemon before overwriting.");
+      }
+
+      setIsSaving(true);
+      try {
+        await updateTeam(teamId, { pokemon: team });
+        setActiveTeamId(teamId);
+        await refreshSavedTeams();
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [isAuthenticated, team, refreshSavedTeams]
+  );
+
   const loadSavedTeam = useCallback(
     (teamId: string) => {
       const found = savedTeams.find((t) => t.id === teamId);
@@ -355,6 +375,7 @@ export function useTeamPersistence({
     savedTeams,
     activeTeamId,
     saveTeamAs,
+    overwriteSavedTeam,
     loadSavedTeam,
     deleteSavedTeam,
     renameSavedTeam,

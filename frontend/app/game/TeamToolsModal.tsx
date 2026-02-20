@@ -23,6 +23,7 @@ interface TeamToolsModalProps {
   activeTeamId: string | null;
   onSaveAs: (name: string, versionIds?: string[]) => Promise<void>;
   onLoadSavedTeam: (teamId: string) => void;
+  onOverwriteSavedTeam: (teamId: string) => Promise<void>;
   onDeleteSavedTeam: (teamId: string) => Promise<void>;
   onRenameSavedTeam: (teamId: string, name: string) => Promise<void>;
   onRefreshSavedTeams: () => Promise<void>;
@@ -43,6 +44,7 @@ const TeamToolsModal = ({
   activeTeamId,
   onSaveAs,
   onLoadSavedTeam,
+  onOverwriteSavedTeam,
   onDeleteSavedTeam,
   onRenameSavedTeam,
   onRefreshSavedTeams,
@@ -262,6 +264,7 @@ const TeamToolsModal = ({
                 activeTeamId={activeTeamId}
                 onSaveAs={onSaveAs}
                 onLoad={onLoadSavedTeam}
+                onOverwrite={onOverwriteSavedTeam}
                 onDelete={onDeleteSavedTeam}
                 onRename={onRenameSavedTeam}
                 onRefresh={onRefreshSavedTeams}

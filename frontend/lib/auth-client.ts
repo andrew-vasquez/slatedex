@@ -13,12 +13,17 @@ function getBaseURL(): string {
   }
 
   // Ensure the URL has a protocol prefix
+  const unquoted = rawUrl.replace(/^['"]+|['"]+$/g, "");
   const withProtocol =
-    !rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")
-      ? `https://${rawUrl}`
-      : rawUrl;
+    !unquoted.startsWith("http://") && !unquoted.startsWith("https://")
+      ? `https://${unquoted}`
+      : unquoted;
 
-  return withProtocol.replace(/\/+$/, "");
+  let normalized = withProtocol.replace(/\/+$/, "");
+  if (/(\/api)+$/i.test(normalized)) {
+    normalized = normalized.replace(/(\/api)+$/i, "");
+  }
+  return normalized;
 }
 
 export const authClient = createAuthClient({
