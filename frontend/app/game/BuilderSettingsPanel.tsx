@@ -10,6 +10,7 @@ interface BuilderSettingsPanelProps {
   onCardDensityChange: (value: CardDensity) => void;
   onReduceMotionChange: (value: boolean) => void;
   onDragBehaviorChange: (value: DragBehavior) => void;
+  onVersionThemingChange: (value: boolean) => void;
   onReset: () => void;
 }
 
@@ -22,6 +23,7 @@ const BuilderSettingsPanel = ({
   onCardDensityChange,
   onReduceMotionChange,
   onDragBehaviorChange,
+  onVersionThemingChange,
   onReset,
 }: BuilderSettingsPanelProps) => {
   return (
@@ -174,6 +176,27 @@ const BuilderSettingsPanel = ({
             onChange={(e) => onReduceMotionChange(e.target.checked)}
             className="h-3.5 w-3.5 accent-[var(--accent)]"
             aria-label="Toggle reduced motion"
+          />
+        </label>
+
+        <label
+          className="inline-flex items-center justify-between gap-3 rounded-xl border px-3 py-2"
+          style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
+        >
+          <span>
+            <span className="block text-[0.62rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-secondary)" }}>
+              Version Colors
+            </span>
+            <span className="text-[0.66rem]" style={{ color: "var(--text-muted)" }}>
+              Tint UI with the selected game&apos;s color.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={settings.versionTheming}
+            onChange={(e) => onVersionThemingChange(e.target.checked)}
+            className="h-3.5 w-3.5 accent-[var(--accent)]"
+            aria-label="Toggle version color theming"
           />
         </label>
       </div>

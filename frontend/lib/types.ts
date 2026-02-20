@@ -31,6 +31,7 @@ export interface BuilderSettings {
   cardDensity: CardDensity;
   reduceMotion: boolean;
   dragBehavior: DragBehavior;
+  versionTheming: boolean;
 }
 
 export interface PokemonPools {

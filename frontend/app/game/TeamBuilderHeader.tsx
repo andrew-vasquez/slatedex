@@ -20,6 +20,7 @@ interface TeamBuilderHeaderProps {
   onSettingsCardDensityChange: (value: CardDensity) => void;
   onSettingsReduceMotionChange: (value: boolean) => void;
   onSettingsDragBehaviorChange: (value: DragBehavior) => void;
+  onSettingsVersionThemingChange: (value: boolean) => void;
   onSettingsReset: () => void;
 }
 
@@ -35,6 +36,7 @@ const TeamBuilderHeader = ({
   onSettingsCardDensityChange,
   onSettingsReduceMotionChange,
   onSettingsDragBehaviorChange,
+  onSettingsVersionThemingChange,
   onSettingsReset,
 }: TeamBuilderHeaderProps) => {
   const completion = Math.round((teamLength / 6) * 100);
@@ -103,7 +105,7 @@ const TeamBuilderHeader = ({
               <div className="flex min-w-0 items-center gap-2.5">
                 <Link
                   href="/play"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-xl shrink-0"
+                  className="game-nav-back-link inline-flex h-8 w-8 items-center justify-center rounded-xl shrink-0"
                   style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
                   aria-label="Go back to game selection"
                 >
@@ -114,7 +116,7 @@ const TeamBuilderHeader = ({
                   <div className="flex items-center gap-2">
                     <Link
                       href="/"
-                      className="font-display shrink-0 text-[0.95rem] leading-none"
+                      className="game-nav-logo-link font-display shrink-0 text-[0.95rem] leading-none"
                       style={{ letterSpacing: "-0.02em", color: "var(--text-primary)", textDecoration: "none" }}
                       aria-label="Slatedex home"
                     >
@@ -157,9 +159,9 @@ const TeamBuilderHeader = ({
                                 onClick={() => setIsGenerationMenuOpen(false)}
                                 className="flex items-center justify-between rounded-lg px-2.5 py-2 text-[0.74rem] font-semibold transition-colors"
                                 style={{
-                                  background: isActive ? "var(--accent-soft)" : "transparent",
+                                  background: isActive ? "var(--version-color-soft, var(--accent-soft))" : "transparent",
                                   color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
-                                  border: isActive ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
+                                  border: isActive ? "1px solid var(--version-color-border, rgba(218, 44, 67, 0.34))" : "1px solid transparent",
                                 }}
                                 role="menuitem"
                               >
@@ -195,8 +197,8 @@ const TeamBuilderHeader = ({
                 className="h-full rounded-full"
                 style={{
                   width: `${completion}%`,
-                  background: "linear-gradient(90deg, var(--accent) 0%, #ef6f40 100%)",
-                  transition: "width 0.3s ease",
+                  background: "linear-gradient(90deg, var(--version-color, var(--accent)) 0%, color-mix(in srgb, var(--version-color, var(--accent)) 60%, #ef6f40) 100%)",
+                  transition: "width 0.3s ease, background 0.35s ease",
                 }}
               />
             </div>
@@ -236,6 +238,7 @@ const TeamBuilderHeader = ({
                     onCardDensityChange={onSettingsCardDensityChange}
                     onReduceMotionChange={onSettingsReduceMotionChange}
                     onDragBehaviorChange={onSettingsDragBehaviorChange}
+                    onVersionThemingChange={onSettingsVersionThemingChange}
                     onReset={onSettingsReset}
                   />
                 </div>
@@ -270,7 +273,7 @@ const TeamBuilderHeader = ({
           <div className={`min-w-0 flex items-center ${isDesktopCompact ? "gap-3" : "gap-3.5"}`} style={{ transition: "gap 0.2s ease" }}>
             <Link
               href="/play"
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+              className="game-nav-back-link inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
               style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
               aria-label="Go back to game selection"
             >
@@ -279,7 +282,7 @@ const TeamBuilderHeader = ({
 
             <Link
               href="/"
-              className={`font-display shrink-0 leading-none transition-all duration-200 ${isDesktopCompact ? "text-[0.9rem]" : "text-[1.05rem]"}`}
+              className={`game-nav-logo-link font-display shrink-0 leading-none transition-all duration-200 ${isDesktopCompact ? "text-[0.9rem]" : "text-[1.05rem]"}`}
               style={{ letterSpacing: "-0.02em", color: "var(--text-primary)", textDecoration: "none" }}
               aria-label="Slatedex home"
             >
@@ -331,9 +334,9 @@ const TeamBuilderHeader = ({
                             onClick={() => setIsGenerationMenuOpen(false)}
                             className="flex items-center justify-between rounded-lg px-2.5 py-2 text-[0.74rem] font-semibold transition-colors"
                             style={{
-                              background: isActive ? "var(--accent-soft)" : "transparent",
+                              background: isActive ? "var(--version-color-soft, var(--accent-soft))" : "transparent",
                               color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
-                              border: isActive ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
+                              border: isActive ? "1px solid var(--version-color-border, rgba(218, 44, 67, 0.34))" : "1px solid transparent",
                             }}
                             role="menuitem"
                           >
@@ -363,8 +366,8 @@ const TeamBuilderHeader = ({
                       className="h-full rounded-full"
                       style={{
                         width: `${completion}%`,
-                        background: "linear-gradient(90deg, var(--accent) 0%, #ef6f40 100%)",
-                        transition: "width 0.3s ease",
+                        background: "linear-gradient(90deg, var(--version-color, var(--accent)) 0%, color-mix(in srgb, var(--version-color, var(--accent)) 60%, #ef6f40) 100%)",
+                        transition: "width 0.3s ease, background 0.35s ease",
                       }}
                     />
                   </div>
@@ -407,6 +410,7 @@ const TeamBuilderHeader = ({
                     onCardDensityChange={onSettingsCardDensityChange}
                     onReduceMotionChange={onSettingsReduceMotionChange}
                     onDragBehaviorChange={onSettingsDragBehaviorChange}
+                    onVersionThemingChange={onSettingsVersionThemingChange}
                     onReset={onSettingsReset}
                   />
                 </div>

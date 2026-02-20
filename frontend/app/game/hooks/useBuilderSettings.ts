@@ -6,10 +6,11 @@ import type { BuilderSettings, CardDensity, DexMode, DragBehavior } from "@/lib/
 
 export const DEFAULT_BUILDER_SETTINGS: BuilderSettings = {
   defaultDexMode: "regional",
-  defaultVersionFilter: false,
+  defaultVersionFilter: true,
   cardDensity: "comfortable",
   reduceMotion: false,
   dragBehavior: "auto",
+  versionTheming: true,
 };
 
 function isDexMode(value: unknown): value is DexMode {
@@ -46,6 +47,10 @@ function normalizeSettings(input: unknown): BuilderSettings {
     dragBehavior: isDragBehavior(candidate.dragBehavior)
       ? candidate.dragBehavior
       : DEFAULT_BUILDER_SETTINGS.dragBehavior,
+    versionTheming:
+      typeof candidate.versionTheming === "boolean"
+        ? candidate.versionTheming
+        : DEFAULT_BUILDER_SETTINGS.versionTheming,
   };
 }
 
