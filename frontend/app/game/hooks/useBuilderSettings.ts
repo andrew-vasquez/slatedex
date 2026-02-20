@@ -56,6 +56,7 @@ function normalizeSettings(input: unknown): BuilderSettings {
 
 export function useBuilderSettings() {
   const [settings, setSettings] = useState<BuilderSettings>(DEFAULT_BUILDER_SETTINGS);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     try {
@@ -64,16 +65,19 @@ export function useBuilderSettings() {
       setSettings(normalizeSettings(JSON.parse(raw)));
     } catch {
       // ignore invalid persisted settings
+    } finally {
+      setHydrated(true);
     }
   }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     try {
       localStorage.setItem(getBuilderSettingsStorageKey(), JSON.stringify(settings));
     } catch {
       // ignore storage errors
     }
-  }, [settings]);
+  }, [hydrated, settings]);
 
   useEffect(() => {
     document.documentElement.dataset.motion = settings.reduceMotion ? "reduced" : "default";

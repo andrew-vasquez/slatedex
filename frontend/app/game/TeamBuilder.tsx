@@ -36,10 +36,12 @@ import { useTeamPersistence } from "@/app/game/hooks/useTeamPersistence";
 import { useBuilderSettings } from "@/app/game/hooks/useBuilderSettings";
 import {
   getAiConversationTeamStorageKey,
+  getPlayBuilderPreferencesStorageKey,
   getLockedSlotsStorageKey,
   getSelectedGameStorageKey,
   getSelectedVersionStorageKey,
   getVersionFilterStorageKey,
+  LAST_VISITED_GENERATION_KEY,
 } from "@/lib/storageKeys";
 import {
   decodeSharedTeamPayload,
@@ -54,6 +56,7 @@ const TeamRecommendations = dynamic(() => import("./TeamRecommendations"), { loa
 const HISTORY_LIMIT = 40;
 const SMART_PICKS_INCLUDE_LEGENDARIES_KEY = "smart_picks_include_legendaries_v1";
 const SMART_PICKS_INCLUDE_STARTERS_KEY = "smart_picks_include_starters_v1";
+const PLAY_BUILDER_PREFERENCES_KEY = getPlayBuilderPreferencesStorageKey();
 const VERSION_THEME_FALLBACK = {
   color: "#da2c43",
   soft: "rgba(218, 44, 67, 0.12)",
@@ -62,6 +65,13 @@ const VERSION_THEME_FALLBACK = {
 
 type RecommendationRole = "all" | "bulky" | "fast" | "physical" | "special";
 type TeamToolsTab = "saved" | "share";
+interface PersistedPlayBuilderPreferences {
+  preferredDexMode?: DexMode;
+  preferredVersionFilter?: boolean;
+  recommendationsEnabled?: boolean;
+  recommendationRole?: RecommendationRole;
+  typeFilter?: string[];
+}
 
 interface Recommendation {
   pokemon: Pokemon;
@@ -190,6 +200,10 @@ function getRoleFitScore(pokemon: Pokemon, role: RecommendationRole): number {
   return bst / 90 + strongest / 110;
 }
 
+function isRecommendationRole(value: unknown): value is RecommendationRole {
+  return value === "all" || value === "bulky" || value === "fast" || value === "physical" || value === "special";
+}
+
 const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -209,11 +223,14 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const [allowStarterRecommendations, setAllowStarterRecommendations] = useState(false);
   const [recommendationRole, setRecommendationRole] = useState<RecommendationRole>("all");
   const [dexMode, setDexMode] = useState<DexMode>("national");
+  const [preferredDexMode, setPreferredDexMode] = useState<DexMode | null>(null);
   const [selectedVersionId, setSelectedVersionId] = useState<string>("");
   const [versionFilterEnabled, setVersionFilterEnabled] = useState(true);
+  const [preferredVersionFilter, setPreferredVersionFilter] = useState<boolean | null>(null);
   const [canUsePointerDrag, setCanUsePointerDrag] = useState(false);
   const [isDesktopScreen, setIsDesktopScreen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  const [playPreferencesReady, setPlayPreferencesReady] = useState(false);
   const [detailPokemon, setDetailPokemon] = useState<Pokemon | null>(null);
   const [lockedSlots, setLockedSlots] = useState<boolean[]>(createEmptyLockedSlots);
   const [replaceMode, setReplaceMode] = useState(false);
@@ -244,6 +261,10 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   useEffect(() => {
     poolsByGameRef.current = poolsByGame;
   }, [poolsByGame]);
+
+  useEffect(() => {
+    try { localStorage.setItem(LAST_VISITED_GENERATION_KEY, String(generation)); } catch {}
+  }, [generation]);
 
   const ensureGamePool = useCallback(
     async (gameId: number): Promise<PokemonPools | null> => {
@@ -401,6 +422,66 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   }, [generation, selectedGameId]);
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PLAY_BUILDER_PREFERENCES_KEY);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw) as PersistedPlayBuilderPreferences;
+      const knownTypes = new Set(Object.keys(TYPE_EFFECTIVENESS));
+
+      if (parsed.preferredDexMode === "regional" || parsed.preferredDexMode === "national") {
+        setPreferredDexMode(parsed.preferredDexMode);
+      }
+      if (typeof parsed.preferredVersionFilter === "boolean") {
+        setPreferredVersionFilter(parsed.preferredVersionFilter);
+      }
+      if (typeof parsed.recommendationsEnabled === "boolean") {
+        setRecommendationsEnabled(parsed.recommendationsEnabled);
+      }
+      if (isRecommendationRole(parsed.recommendationRole)) {
+        setRecommendationRole(parsed.recommendationRole);
+      }
+      if (Array.isArray(parsed.typeFilter)) {
+        const normalizedTypes = [...new Set(
+          parsed.typeFilter.filter((value): value is string => typeof value === "string" && knownTypes.has(value))
+        )];
+        setTypeFilter(normalizedTypes);
+      }
+    } catch {
+      // ignore invalid persisted preferences
+    } finally {
+      setPlayPreferencesReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!playPreferencesReady) return;
+
+    const payload: PersistedPlayBuilderPreferences = {
+      preferredDexMode: preferredDexMode ?? settings.defaultDexMode,
+      preferredVersionFilter: preferredVersionFilter ?? settings.defaultVersionFilter,
+      recommendationsEnabled,
+      recommendationRole,
+      typeFilter,
+    };
+
+    try {
+      localStorage.setItem(PLAY_BUILDER_PREFERENCES_KEY, JSON.stringify(payload));
+    } catch {
+      // ignore storage errors
+    }
+  }, [
+    playPreferencesReady,
+    preferredDexMode,
+    preferredVersionFilter,
+    recommendationRole,
+    recommendationsEnabled,
+    settings.defaultDexMode,
+    settings.defaultVersionFilter,
+    typeFilter,
+  ]);
+
+  useEffect(() => {
     void ensureGamePool(selectedGameId);
   }, [ensureGamePool, selectedGameId]);
 
@@ -500,13 +581,13 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
   useEffect(() => {
     if (!isSelectedGamePoolReady) return;
-    const preferred = settings.defaultDexMode;
+    const preferred = preferredDexMode ?? settings.defaultDexMode;
     if (preferred === "regional" && !pokemonPools.regionalResolved) {
       setDexMode("national");
       return;
     }
     setDexMode(preferred);
-  }, [isSelectedGamePoolReady, pokemonPools.regionalResolved, selectedGame.id, settings.defaultDexMode]);
+  }, [isSelectedGamePoolReady, pokemonPools.regionalResolved, preferredDexMode, selectedGame.id, settings.defaultDexMode]);
 
   useEffect(() => {
     if (dragEnabled) return;
@@ -531,17 +612,12 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   }, [selectedGame.id, selectedGame.versions]);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(getVersionFilterStorageKey(selectedGame.id));
-      if (saved === null) {
-        setVersionFilterEnabled(settings.defaultVersionFilter);
-      } else {
-        setVersionFilterEnabled(saved === "true");
-      }
-    } catch {
+    if (preferredVersionFilter === null) {
       setVersionFilterEnabled(settings.defaultVersionFilter);
+      return;
     }
-  }, [selectedGame.id, settings.defaultVersionFilter]);
+    setVersionFilterEnabled(preferredVersionFilter);
+  }, [preferredVersionFilter, selectedGame.id, settings.defaultVersionFilter]);
 
   useEffect(() => {
     const storageKey = getLockedSlotsStorageKey(generation, selectedGame.id);
@@ -580,6 +656,10 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       // ignore storage errors
     }
   }, [selectedGame.id, selectedVersionId]);
+
+  useEffect(() => {
+    setPreferredVersionFilter((previous) => (previous === versionFilterEnabled ? previous : versionFilterEnabled));
+  }, [versionFilterEnabled]);
 
   useEffect(() => {
     try {
@@ -645,7 +725,6 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const executeGameSwitch = useCallback((gameId: number) => {
     setSelectedGameId(gameId);
     setSearchTerm("");
-    setTypeFilter([]);
     setPendingGameSwitch(null);
     void ensureGamePool(gameId);
   }, [ensureGamePool]);
@@ -780,6 +859,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       }
 
       setDexMode(nextMode);
+      setPreferredDexMode(nextMode);
     },
     [isSelectedGamePoolReady, pokemonPools.regionalResolved]
   );

@@ -28,6 +28,12 @@ export function getBuilderSettingsStorageKey(): string {
   return `builder_settings_v${STORAGE_VERSION}`;
 }
 
+export function getPlayBuilderPreferencesStorageKey(): string {
+  return `play_builder_preferences_v${STORAGE_VERSION}`;
+}
+
 export function getAiConversationTeamStorageKey(generation: number, gameId: number): string {
   return `ai_conversation_team_gen_${generation}_game_${gameId}_v${STORAGE_VERSION}`;
 }
+
+export const LAST_VISITED_GENERATION_KEY = `last_visited_generation_v${STORAGE_VERSION}`;
