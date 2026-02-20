@@ -1,8 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useCallback } from "react";
-import { FiSave, FiFolder, FiTrash2, FiEdit2, FiCheck, FiX, FiRefreshCw } from "react-icons/fi";
+import { FiSave, FiFolder, FiTrash2, FiEdit2, FiCheck, FiX, FiRefreshCw, FiDownload } from "react-icons/fi";
 import { getVersionLabel } from "@/lib/pokemon";
+import { pokemonSpriteSrc } from "@/lib/image";
 import type { SavedTeam } from "@/lib/api";
 
 interface VersionOption {
@@ -16,6 +18,7 @@ interface SavedTeamsPanelProps {
   activeTeamId: string | null;
   onSaveAs: (name: string, versionIds?: string[]) => Promise<void>;
   onLoad: (teamId: string) => void;
+  onOverwrite: (teamId: string) => Promise<void>;
   onDelete: (teamId: string) => Promise<void>;
   onRename: (teamId: string, name: string) => Promise<void>;
   onRefresh: () => Promise<void>;
@@ -34,6 +37,7 @@ const SavedTeamsPanel = ({
   activeTeamId,
   onSaveAs,
   onLoad,
+  onOverwrite,
   onDelete,
   onRename,
   onRefresh,
@@ -48,6 +52,7 @@ const SavedTeamsPanel = ({
   const [editName, setEditName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [deletingTeamIds, setDeletingTeamIds] = useState<string[]>([]);
+  const [overwriteConfirmId, setOverwriteConfirmId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const hasMultipleVersions = gameVersions.length > 1;
@@ -131,7 +136,7 @@ const SavedTeamsPanel = ({
     [deletingTeamIds, onDelete]
   );
 
-  const confirmRename = useCallback(
+   const confirmRename = useCallback(
     async (teamId: string) => {
       const name = editName.trim();
       if (name) {
@@ -140,6 +145,16 @@ const SavedTeamsPanel = ({
       setEditingId(null);
     },
     [editName, onRename]
+  );
+
+  const handleOverwrite = useCallback(
+    async (teamId: string) => {
+      setOverwriteConfirmId(null);
+      try {
+        await onOverwrite(teamId);
+      } catch {}
+    },
+    [onOverwrite]
   );
 
   const filledCount = (team: SavedTeam) => {
@@ -259,100 +274,176 @@ const SavedTeamsPanel = ({
           No saved teams yet. Build a team and save it above.
         </p>
       ) : (
-        <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto custom-scrollbar">
-          {savedTeams.map((team) => (
-            <article
-              key={team.id}
-              className="flex items-center gap-2 rounded-lg px-2.5 py-2 transition-[opacity,transform,max-height,margin,padding] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]"
-              style={{
-                opacity: deletingTeamIds.includes(team.id) ? 0 : 1,
-                transform: deletingTeamIds.includes(team.id) ? "translateY(-6px) scale(0.98)" : "none",
-                maxHeight: deletingTeamIds.includes(team.id) ? "0px" : "96px",
-                marginTop: deletingTeamIds.includes(team.id) ? "0px" : undefined,
-                marginBottom: deletingTeamIds.includes(team.id) ? "0px" : undefined,
-                paddingTop: deletingTeamIds.includes(team.id) ? "0px" : undefined,
-                paddingBottom: deletingTeamIds.includes(team.id) ? "0px" : undefined,
-                overflow: "hidden",
-                background: team.id === activeTeamId ? "var(--accent-soft)" : "var(--surface-2)",
-                border: `1px solid ${team.id === activeTeamId ? "rgba(218, 44, 67, 0.3)" : "var(--border)"}`,
-              }}
-            >
-              {editingId === team.id ? (
-                <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  <input
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="auth-input !py-1 !text-xs flex-1"
-                    maxLength={50}
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") confirmRename(team.id);
-                      if (e.key === "Escape") setEditingId(null);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => confirmRename(team.id)}
-                    className="inline-flex h-6 w-6 items-center justify-center rounded"
-                    style={{ color: "#22c55e" }}
-                    aria-label="Confirm rename"
-                  >
-                    <FiCheck size={12} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditingId(null)}
-                    className="inline-flex h-6 w-6 items-center justify-center rounded"
-                    style={{ color: "var(--text-muted)" }}
-                    aria-label="Cancel rename"
-                  >
-                    <FiX size={12} />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => onLoad(team.id)}
-                    disabled={deletingTeamIds.includes(team.id)}
-                    className="flex-1 min-w-0 text-left"
-                  >
-                    <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>
-                      {team.name}
+        <div className="flex flex-col gap-1.5 max-h-72 overflow-y-auto custom-scrollbar">
+          {savedTeams.map((team) => {
+            const isDeleting = deletingTeamIds.includes(team.id);
+            const isActive = team.id === activeTeamId;
+            const sprites = Array.isArray(team.pokemon) ? team.pokemon : [];
+
+            return (
+              <article
+                key={team.id}
+                className="rounded-lg transition-[opacity,transform,max-height,margin,padding] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                style={{
+                  opacity: isDeleting ? 0 : 1,
+                  transform: isDeleting ? "translateY(-6px) scale(0.98)" : "none",
+                  maxHeight: isDeleting ? "0px" : "200px",
+                  marginTop: isDeleting ? "0px" : undefined,
+                  marginBottom: isDeleting ? "0px" : undefined,
+                  paddingTop: isDeleting ? "0px" : undefined,
+                  paddingBottom: isDeleting ? "0px" : undefined,
+                  overflow: "hidden",
+                  background: isActive ? "var(--accent-soft)" : "var(--surface-2)",
+                  border: `1px solid ${isActive ? "rgba(218, 44, 67, 0.3)" : "var(--border)"}`,
+                }}
+              >
+                {overwriteConfirmId === team.id ? (
+                  <div className="px-3 py-2.5">
+                    <p className="text-[0.7rem] font-semibold" style={{ color: "var(--text-primary)" }}>
+                      Overwrite &ldquo;{team.name}&rdquo; with your current team?
                     </p>
-                    <p className="text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
-                      {filledCount(team)}/6 Pokémon · {getVersionLabel(team.gameId, team.selectedVersionId)}
-                    </p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => startRename(team)}
-                    disabled={deletingTeamIds.includes(team.id)}
-                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded"
-                    style={{ color: "var(--text-muted)" }}
-                    aria-label={`Rename ${team.name}`}
-                  >
-                    <FiEdit2 size={11} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleDelete(team.id)}
-                    disabled={deletingTeamIds.includes(team.id)}
-                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded"
-                    style={{ color: "#ef4444" }}
-                    aria-label={`Delete ${team.name}`}
-                  >
-                    {deletingTeamIds.includes(team.id) ? (
-                      <FiRefreshCw size={11} className="animate-spin" />
-                    ) : (
-                      <FiTrash2 size={11} />
-                    )}
-                  </button>
-                </>
-              )}
-            </article>
-          ))}
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void handleOverwrite(team.id)}
+                        disabled={isSaving}
+                        className="rounded-lg border px-3 py-1.5 text-[0.68rem] font-semibold transition-colors disabled:opacity-50"
+                        style={{
+                          background: "var(--accent-soft)",
+                          borderColor: "rgba(218,44,67,0.3)",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        Overwrite
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOverwriteConfirmId(null)}
+                        className="btn-secondary !py-1.5 !px-3 !text-[0.68rem]"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : editingId === team.id ? (
+                  <div className="flex items-center gap-1.5 px-2.5 py-2 min-w-0">
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="auth-input !py-1 !text-xs flex-1"
+                      maxLength={50}
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") confirmRename(team.id);
+                        if (e.key === "Escape") setEditingId(null);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => confirmRename(team.id)}
+                      className="inline-flex h-6 w-6 items-center justify-center rounded"
+                      style={{ color: "#22c55e" }}
+                      aria-label="Confirm rename"
+                    >
+                      <FiCheck size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingId(null)}
+                      className="inline-flex h-6 w-6 items-center justify-center rounded"
+                      style={{ color: "var(--text-muted)" }}
+                      aria-label="Cancel rename"
+                    >
+                      <FiX size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="px-2.5 py-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onLoad(team.id)}
+                        disabled={isDeleting}
+                        className="flex-1 min-w-0 text-left"
+                      >
+                        <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+                          {team.name}
+                        </p>
+                        <p className="text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
+                          {filledCount(team)}/6 Pokémon · {getVersionLabel(team.gameId, team.selectedVersionId)}
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOverwriteConfirmId(team.id)}
+                        disabled={isDeleting || !teamHasPokemon}
+                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded disabled:opacity-30"
+                        style={{ color: "var(--version-color, var(--accent))" }}
+                        aria-label={`Overwrite ${team.name} with current team`}
+                        title="Overwrite with current team"
+                      >
+                        <FiDownload size={11} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => startRename(team)}
+                        disabled={isDeleting}
+                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded"
+                        style={{ color: "var(--text-muted)" }}
+                        aria-label={`Rename ${team.name}`}
+                      >
+                        <FiEdit2 size={11} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDelete(team.id)}
+                        disabled={isDeleting}
+                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded"
+                        style={{ color: "#ef4444" }}
+                        aria-label={`Delete ${team.name}`}
+                      >
+                        {isDeleting ? (
+                          <FiRefreshCw size={11} className="animate-spin" />
+                        ) : (
+                          <FiTrash2 size={11} />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Sprite preview row */}
+                    <div className="mt-1.5 flex items-center gap-0.5">
+                      {Array.from({ length: 6 }).map((_, idx) => {
+                        const mon = sprites[idx];
+                        return (
+                          <div
+                            key={idx}
+                            className="flex h-7 w-7 items-center justify-center rounded-md"
+                            style={{
+                              background: mon ? "var(--surface-3)" : "var(--surface-1)",
+                              border: `1px solid ${mon ? "var(--border)" : "transparent"}`,
+                            }}
+                          >
+                            {mon ? (
+                              <Image
+                                src={pokemonSpriteSrc(mon.sprite, mon.id)}
+                                alt={mon.name}
+                                width={22}
+                                height={22}
+                                className="h-[22px] w-[22px] object-contain"
+                              />
+                            ) : (
+                              <span className="text-[0.4rem]" style={{ color: "var(--text-muted)", opacity: 0.3 }}>·</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
       )}
     </section>

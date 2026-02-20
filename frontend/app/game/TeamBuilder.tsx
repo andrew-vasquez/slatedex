@@ -317,6 +317,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     savedTeams,
     activeTeamId,
     saveTeamAs,
+    overwriteSavedTeam,
     loadSavedTeam,
     deleteSavedTeam,
     renameSavedTeam,
@@ -1812,6 +1813,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
         activeTeamId={activeTeamId}
         onSaveAs={saveTeamAs}
         onLoadSavedTeam={handleLoadSavedTeam}
+        onOverwriteSavedTeam={overwriteSavedTeam}
         onDeleteSavedTeam={deleteSavedTeam}
         onRenameSavedTeam={renameSavedTeam}
         onRefreshSavedTeams={refreshSavedTeams}
