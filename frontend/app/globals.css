@@ -917,6 +917,11 @@ a:focus-visible {
 .pokemon-list-item {
   content-visibility: auto;
   contain-intrinsic-size: auto 70px;
+  overflow: visible;
+}
+
+.pokemon-card-row:has(.pokemon-card-lift:hover) {
+  z-index: 10;
 }
 
 @media (max-width: 768px) {
@@ -1523,14 +1528,15 @@ html[data-motion="reduced"] *::after {
 }
 
 .mobile-sheet-mini-slot {
-  /* Responsive: shrinks gracefully on 320px screens, max 38px on wider ones */
-  width: clamp(28px, calc((100vw - 160px) / 6), 38px);
-  height: clamp(28px, calc((100vw - 160px) / 6), 38px);
+  /* Responsive: fills available space evenly, capped at 42px */
+  flex: 1 1 0;
+  max-width: 42px;
+  aspect-ratio: 1;
   border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  flex-shrink: 1;
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
 }
 
@@ -2453,6 +2459,8 @@ html[data-motion="reduced"] *::after {
   transform: translateY(-3px);
   box-shadow: 0 10px 28px rgba(2, 6, 20, 0.45), 0 0 0 1px var(--border-hover);
   border-color: var(--border-hover) !important;
+  z-index: 10;
+  position: relative;
 }
 
 .pokemon-card-lift:active:not([data-dragging="true"]) {

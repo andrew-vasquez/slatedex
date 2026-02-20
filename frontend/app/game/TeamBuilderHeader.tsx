@@ -11,6 +11,7 @@ import UserMenu from "@/components/auth/UserMenu";
 interface TeamBuilderHeaderProps {
   game: Game;
   generation: number;
+  onBackToGameSelect: () => void;
   onShuffle: () => void;
   onClear: () => void;
   teamLength: number;
@@ -27,6 +28,7 @@ interface TeamBuilderHeaderProps {
 const TeamBuilderHeader = ({
   game,
   generation,
+  onBackToGameSelect,
   onShuffle,
   onClear,
   teamLength,
@@ -104,7 +106,11 @@ const TeamBuilderHeader = ({
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-center gap-2.5">
                 <Link
-                  href="/play"
+                  href="#"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onBackToGameSelect();
+                  }}
                   className="game-nav-back-link inline-flex h-8 w-8 items-center justify-center rounded-xl shrink-0"
                   style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
                   aria-label="Go back to game selection"
@@ -272,7 +278,11 @@ const TeamBuilderHeader = ({
         <div className="hidden items-center justify-between gap-5 lg:flex" role="toolbar" aria-label="Team management">
           <div className={`min-w-0 flex items-center ${isDesktopCompact ? "gap-3" : "gap-3.5"}`} style={{ transition: "gap 0.2s ease" }}>
             <Link
-              href="/play"
+              href="#"
+              onClick={(event) => {
+                event.preventDefault();
+                onBackToGameSelect();
+              }}
               className="game-nav-back-link inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
               style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
               aria-label="Go back to game selection"

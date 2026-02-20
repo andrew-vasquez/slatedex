@@ -3,6 +3,7 @@ import Pokedex from "pokedex-promise-v2";
 import type { Game, Pokemon, PokemonPools } from "@/lib/types";
 import { resolveVersionExclusivity } from "@/lib/versionExclusives";
 import { GENERATION_META, getGamesForGeneration } from "@/lib/pokemon";
+import { FALLBACK_POKEMON_SPRITE } from "@/lib/image";
 
 const pokedex = new Pokedex({
   cacheLimit: 300 * 1000, // 5-minute cache — covers full build duration
@@ -472,7 +473,7 @@ function mapPokemonData(
     specialAttack: stats.specialAttack || 0,
     specialDefense: stats.specialDefense || 0,
     speed: stats.speed || 0,
-    sprite: pokemon.sprites.front_default || "",
+    sprite: pokemon.sprites.front_default || FALLBACK_POKEMON_SPRITE,
     isLegendary,
     isMythical,
     gameIndexVersionIds: ((pokemon.game_indices ?? []) as Array<{ version?: { name?: string } }>)

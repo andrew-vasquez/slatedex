@@ -87,13 +87,22 @@ const PokemonSelection = ({
 
   useEffect(() => {
     const query = window.matchMedia("(min-width: 640px)");
-    const updateColumns = () => setColumns(query.matches ? 2 : 1);
+    const lgQuery = window.matchMedia("(min-width: 1024px)");
+    const updateColumns = () => {
+      if (cardDensity === "compact" && lgQuery.matches) setColumns(3);
+      else if (query.matches) setColumns(2);
+      else setColumns(1);
+    };
 
     updateColumns();
     query.addEventListener("change", updateColumns);
+    lgQuery.addEventListener("change", updateColumns);
 
-    return () => query.removeEventListener("change", updateColumns);
-  }, []);
+    return () => {
+      query.removeEventListener("change", updateColumns);
+      lgQuery.removeEventListener("change", updateColumns);
+    };
+  }, [cardDensity]);
 
   useEffect(() => {
     const node = scrollContainerRef.current;
@@ -207,7 +216,7 @@ const PokemonSelection = ({
   }, []);
 
   const rowCount = Math.ceil(filteredPokemon.length / columns);
-  const defaultRowHeight = cardDensity === "compact" ? 122 : 190;
+  const defaultRowHeight = cardDensity === "compact" ? 52 : 190;
   const { rowOffsets, totalHeight } = useMemo(() => {
     if (rowCount === 0) return { rowOffsets: [] as number[], totalHeight: 0 };
 
@@ -329,9 +338,6 @@ const PokemonSelection = ({
                 Dex {dexMode === "regional" ? "Regional" : "National"}
               </span>
               <span className="rounded-md border px-2 py-0.5" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
-                Version {versionLabelMap[selectedVersionId] ?? selectedVersionId}
-              </span>
-              <span className="rounded-md border px-2 py-0.5" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
                 {versionFilterEnabled ? "Version-only entries" : "All entries"}
               </span>
               {activeTypeFilters.length > 0 ? (
@@ -365,22 +371,85 @@ const PokemonSelection = ({
                           onClick={() => onGameChange?.(game.id)}
                           className="min-w-[8.2rem] rounded-lg px-2.5 py-2 text-[0.78rem] font-semibold leading-tight"
                           style={{
-                            background: isSelected ? "var(--accent-soft)" : "transparent",
+                            background: isSelected ? "var(--version-color-soft)" : "transparent",
                             color: isSelected ? "var(--text-primary)" : "var(--text-muted)",
-                            border: isSelected ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
+                            border: isSelected ? "1px solid var(--version-color-border)" : "1px solid transparent",
                             transition: "background 0.15s ease, border-color 0.15s ease, color 0.15s ease",
                           }}
                         >
                           <span className="block">{game.name}</span>
                           <span
                             className="mt-0.5 block text-[0.66rem] font-normal uppercase tracking-[0.08em]"
-                            style={{ color: isSelected ? "var(--accent)" : "var(--text-muted)", opacity: isSelected ? 1 : 0.7 }}
+                            style={{ color: isSelected ? "var(--version-color)" : "var(--text-muted)", opacity: isSelected ? 1 : 0.7 }}
                           >
                             {game.region}
                           </span>
                         </button>
                       );
                     })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {versions.length > 0 && (
+              <div>
+                <p className="mb-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
+                  Version
+                </p>
+                <div className="custom-scrollbar -mx-0.5 overflow-x-auto pb-1">
+                  <div
+                    className="inline-flex min-w-max items-center rounded-xl border p-1"
+                    style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+                    role="radiogroup"
+                    aria-label="Select game version"
+                  >
+                    {versions.map((version) => {
+                      const isSelected = version.id === selectedVersionId;
+                      return (
+                        <button
+                          key={version.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={isSelected}
+                          onClick={() => onVersionChange(version.id)}
+                          className="rounded-lg px-3 py-1.5 text-[0.78rem] font-semibold"
+                          style={{
+                            background: isSelected ? "var(--version-color-soft)" : "transparent",
+                            color: isSelected ? "var(--version-color)" : "var(--text-muted)",
+                            border: isSelected ? "1px solid var(--version-color-border)" : "1px solid transparent",
+                            transition: "background 0.15s ease, border-color 0.15s ease, color 0.15s ease",
+                          }}
+                        >
+                          {version.label}
+                        </button>
+                      );
+                    })}
+
+                    {/* Divider */}
+                    <div className="mx-1 h-5 w-px" style={{ background: "var(--border)" }} />
+
+                    {/* Filter toggle pill */}
+                    <button
+                      type="button"
+                      onClick={() => onVersionFilterChange(!versionFilterEnabled)}
+                      className="rounded-lg px-2.5 py-1.5 text-[0.72rem] font-semibold transition-all duration-150"
+                      style={{
+                        background: versionFilterEnabled
+                          ? "var(--version-color-soft)"
+                          : "rgba(234, 179, 8, 0.14)",
+                        color: versionFilterEnabled
+                          ? "var(--version-color)"
+                          : "#fde047",
+                        border: versionFilterEnabled
+                          ? "1px solid var(--version-color-border)"
+                          : "1px solid rgba(234, 179, 8, 0.34)",
+                      }}
+                      aria-pressed={versionFilterEnabled}
+                      aria-label={versionFilterEnabled ? "Showing only Pokémon from selected version — click to show all" : "Showing all Pokémon — click to filter by version"}
+                    >
+                      {versionFilterEnabled ? "Version Only ✓" : "Show All"}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -443,41 +512,6 @@ const PokemonSelection = ({
                         National
                       </button>
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
-                    <label className="flex items-center gap-2 rounded-xl border px-2.5 py-2" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
-                      <span className="text-[0.78rem] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-muted)" }}>
-                        Version
-                      </span>
-                      <select
-                        value={selectedVersionId}
-                        onChange={(e) => onVersionChange(e.target.value)}
-                        className="min-w-0 flex-1 bg-transparent text-xs font-semibold outline-none"
-                        style={{ color: "var(--text-primary)" }}
-                        aria-label="Select game version"
-                      >
-                        {versions.map((version) => (
-                          <option key={version.id} value={version.id} style={{ color: "#111827" }}>
-                            {version.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label
-                      className="inline-flex items-center gap-2 rounded-xl border px-2.5 py-2 text-[0.78rem] font-semibold uppercase tracking-[0.06em] md:hover:cursor-pointer"
-                      style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-muted)" }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={versionFilterEnabled}
-                        onChange={(e) => onVersionFilterChange(e.target.checked)}
-                        className="h-3.5 w-3.5 accent-[var(--accent)]"
-                        aria-label="Only show Pokemon available in selected version"
-                      />
-                      Show Pokémon from selected version
-                    </label>
                   </div>
 
                   {onTypeFilterChange && (
@@ -598,7 +632,7 @@ const PokemonSelection = ({
               <div
                 key={`row-${row}-${filterTransitionToken}`}
                 ref={getRowRef(row)}
-                className={isFilterTransitioning ? "animate-filter-row" : ""}
+                className={`pokemon-card-row ${isFilterTransitioning ? "animate-filter-row" : ""}`}
                 style={{
                   position: "absolute",
                   top,
@@ -607,6 +641,7 @@ const PokemonSelection = ({
                   display: "grid",
                   gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
                   columnGap: GRID_GAP_PX,
+                  overflow: "visible",
                   animationDelay: isFilterTransitioning ? `${Math.min(visibleRowIndex * 28, 220)}ms` : undefined,
                 }}
               >

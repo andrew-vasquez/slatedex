@@ -27,6 +27,7 @@ model User {
   teams         Team[]
   profile       Profile?
   usernameLogs  ProfileUsernameChange[]
+  aiConversations AiConversation[]
 
   @@unique([email])
   @@map("user")
@@ -105,6 +106,7 @@ model Team {
   pokemon           Json
   userId            String
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aiConversations   AiConversation[]
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -123,4 +125,44 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+enum AiMessageRole {
+  USER
+  ASSISTANT
+  SYSTEM_EVENT
+}
+
+enum AiMessageKind {
+  CHAT
+  ANALYSIS
+}
+
+model AiConversation {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId    String
+  team      Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  messages  AiMessage[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([userId, teamId])
+  @@index([userId, updatedAt])
+  @@map("ai_conversation")
+}
+
+model AiMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           AiMessageRole
+  kind           AiMessageKind
+  content        String
+  metadata       Json?
+  createdAt      DateTime       @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("ai_message")
 }

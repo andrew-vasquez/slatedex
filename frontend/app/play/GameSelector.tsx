@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { GENERATION_META } from "@/lib/pokemon";
 import { getCuratedExclusiveCount } from "@/lib/versionExclusives";
 import { getTeamStorageKey, getTeamUpdatedAtStorageKey } from "@/lib/storageKeys";
+import { FALLBACK_POKEMON_SPRITE } from "@/lib/image";
 import type { GenerationMeta, Game } from "@/lib/types";
 import UserMenu from "@/components/auth/UserMenu";
 
@@ -68,7 +69,7 @@ const getSpriteUrl = (name: string): string => {
   const id = SPRITE_IDS[name];
   return id
     ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
-    : "";
+    : FALLBACK_POKEMON_SPRITE;
 };
 
 const REGION_COLORS: Record<string, { accent: string; soft: string; edge: string }> = {

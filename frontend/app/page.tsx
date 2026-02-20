@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FiShield, FiZap, FiGrid, FiStar } from "react-icons/fi";
+import { FiShield, FiZap, FiGrid, FiStar, FiTarget, FiActivity } from "react-icons/fi";
 import { LandingNav, HeroAuthButtons, AuthCTASection, FooterAuthLinks } from "@/app/AuthSection";
+import HeroTypewriter from "@/app/landing/HeroTypewriter";
 
 export const metadata: Metadata = {
   title: "Slatedex — Pokémon Team Builder",
@@ -10,19 +11,29 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    icon: <FiTarget size={18} aria-hidden="true" />,
+    title: "Filter-Legal Suggestions",
+    body: "Recommendations follow your active game, dex mode, and version filters so AI advice stays legal.",
+  },
+  {
     icon: <FiShield size={18} aria-hidden="true" />,
-    title: "Defensive Coverage",
-    body: "Instantly see where your team is weak or resistant across all 18 types — before the battle starts.",
+    title: "Defensive Radar",
+    body: "See weak points and resist windows across the full 18-type matrix before you lock a team.",
   },
   {
     icon: <FiZap size={18} aria-hidden="true" />,
-    title: "Smart Picks",
-    body: "Get Pokémon recommendations that patch your team's specific holes, ranked by coverage score.",
+    title: "AI Team Coach",
+    body: "Chat for tactical guidance and run full analysis with contextual prompts tied to your current build.",
+  },
+  {
+    icon: <FiActivity size={18} aria-hidden="true" />,
+    title: "Capture Guide Context",
+    body: "See where your targets are found in your selected version while refining team swaps.",
   },
   {
     icon: <FiGrid size={18} aria-hidden="true" />,
-    title: "9 Generations",
-    body: "Full support for Gens 1–9 with accurate type history, regional dexes, and version exclusives.",
+    title: "Generation + Version Accurate",
+    body: "Built for multi-game generations and legacy type rules so your prep matches in-game reality.",
   },
   {
     icon: <FiStar size={18} aria-hidden="true" />,
@@ -32,9 +43,9 @@ const FEATURES = [
 ];
 
 const STEPS = [
-  { num: "01", title: "Pick a generation", body: "Choose from any main-series game across Gens 1–9." },
-  { num: "02", title: "Draft your six", body: "Search and add Pokémon. Drag to rearrange slots." },
-  { num: "03", title: "Analyze the coverage", body: "The heatmap shows gaps. Smart picks fill them." },
+  { num: "01", title: "Select your exact version", body: "Start with the game, dex mode, and filters you actually play." },
+  { num: "02", title: "Build and tune your party", body: "Draft six, lock slots, compare options, and test coverage live." },
+  { num: "03", title: "Run AI + capture validation", body: "Use coach analysis, then confirm where each pick is obtainable." },
 ];
 
 const STATS = [
@@ -46,7 +57,15 @@ const STATS = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen" style={{ background: "var(--bg-gradient)" }}>
+    <div className="landing-page-shell min-h-screen">
+      <div className="landing-page-blur-layer" aria-hidden="true" />
+      <div className="landing-page-atmosphere" aria-hidden="true">
+        <div className="landing-page-grid" />
+        <div className="landing-hero-orb landing-hero-orb-a" />
+        <div className="landing-hero-orb landing-hero-orb-b" />
+        <div className="landing-hero-orb landing-hero-orb-c" />
+        <div className="landing-hero-scanline" />
+      </div>
       {/* ── Sticky Nav ─────────────────────────────────────── */}
       <header className="glass sticky top-0 z-40 border-b" style={{ borderColor: "var(--border)" }}>
         <div className="mx-auto flex max-w-screen-xl items-center justify-between px-4 py-3 sm:px-6">
@@ -63,77 +82,89 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <main>
+      <main className="relative z-[1]">
         {/* ── Hero ─────────────────────────────────────────── */}
         <section className="relative overflow-hidden pb-20 pt-24 sm:pb-28 sm:pt-32">
-          {/* Background glows */}
-          <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-            <div
-              className="absolute -top-40 left-1/2 h-[44rem] w-[44rem] -translate-x-1/2 rounded-full"
-              style={{ background: "radial-gradient(circle, rgba(218,44,67,0.18) 0%, transparent 60%)", opacity: 0.7 }}
-            />
-            <div
-              className="absolute top-1/3 -left-32 h-80 w-80 rounded-full"
-              style={{ background: "radial-gradient(circle, rgba(59,130,246,0.16) 0%, transparent 70%)", opacity: 0.5 }}
-            />
-            <div
-              className="absolute bottom-0 left-1/2 h-px w-3/4 -translate-x-1/2"
-              style={{ background: "linear-gradient(90deg, transparent, rgba(218,44,67,0.3), transparent)" }}
-            />
-          </div>
+          <div className="relative mx-auto max-w-screen-xl px-4 sm:px-6">
+            <div className="grid items-end gap-8 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-10">
+              <div className="text-center lg:text-left">
+                <div
+                  className="landing-reveal mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-1.5"
+                  style={{
+                    borderColor: "rgba(218,44,67,0.3)",
+                    background: "var(--accent-soft)",
+                    animationDelay: "0ms",
+                  }}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--accent)" }} aria-hidden="true" />
+                  <span className="text-[0.6rem] font-semibold uppercase tracking-[0.22em]" style={{ color: "var(--accent)" }}>
+                    Team Prep Engine
+                  </span>
+                </div>
 
-          <div className="relative mx-auto max-w-screen-md px-4 text-center sm:px-6">
-            {/* Eyebrow badge */}
-            <div
-              className="landing-reveal mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-1.5"
-              style={{
-                borderColor: "rgba(218,44,67,0.3)",
-                background: "var(--accent-soft)",
-                animationDelay: "0ms",
-              }}
-            >
-              <span
-                className="h-1.5 w-1.5 rounded-full"
-                style={{ background: "var(--accent)" }}
-                aria-hidden="true"
-              />
-              <span className="text-[0.6rem] font-semibold uppercase tracking-[0.22em]" style={{ color: "var(--accent)" }}>
-                Free · No account required
-              </span>
-            </div>
+                <h1
+                  className="landing-reveal landing-hero-title font-display text-4xl leading-[1.04] sm:text-6xl lg:text-7xl"
+                  style={{ letterSpacing: "-0.03em", color: "var(--text-primary)", animationDelay: "50ms" }}
+                >
+                  <span className="landing-hero-title-static">Build before you play.</span>
+                  <span className="landing-type-row">
+                    <HeroTypewriter
+                      lines={[
+                        "Counter key threats first.",
+                        "Plan six fast.",
+                        "Lock coverage before battle.",
+                      ]}
+                    />
+                  </span>
+                </h1>
 
-            {/* Headline */}
-            <h1
-              className="landing-reveal font-display text-5xl leading-[1.04] sm:text-6xl lg:text-7xl"
-              style={{ letterSpacing: "-0.03em", color: "var(--text-primary)", animationDelay: "60ms" }}
-            >
-              Build your <span style={{ color: "var(--accent)" }}>six before you start.</span>
-            </h1>
+                <p
+                  className="landing-reveal mt-5 max-w-2xl text-base leading-relaxed sm:text-lg lg:mx-0"
+                  style={{ color: "var(--text-secondary)", animationDelay: "120ms" }}
+                >
+                  Slatedex helps you prep legal teams with version-aware data, coverage analysis, and AI guidance tuned to your current build context.
+                </p>
 
-            {/* Subhead */}
-            <p
-              className="landing-reveal mx-auto mt-5 max-w-lg text-base leading-relaxed sm:text-lg"
-              style={{ color: "var(--text-secondary)", animationDelay: "120ms" }}
-            >
-              Plan your six, check your coverage, and lock in your squad before you start the run.
-            </p>
+                <div className="landing-reveal" style={{ animationDelay: "180ms" }}>
+                  <HeroAuthButtons />
+                </div>
 
-            {/* CTAs — client island */}
-            <div className="landing-reveal" style={{ animationDelay: "180ms" }}>
-              <HeroAuthButtons />
-            </div>
+                <div
+                  className="landing-reveal mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 lg:justify-start"
+                  style={{ animationDelay: "240ms" }}
+                >
+                  {STATS.map((stat) => (
+                    <span key={stat} className="landing-stat-chip">
+                      <span className="landing-stat-dot" aria-hidden="true" />
+                      {stat}
+                    </span>
+                  ))}
+                </div>
+              </div>
 
-            {/* Stat strip */}
-            <div
-              className="landing-reveal mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2"
-              style={{ animationDelay: "240ms" }}
-            >
-              {STATS.map((stat) => (
-                <span key={stat} className="flex items-center gap-1.5 text-[0.72rem] font-semibold" style={{ color: "var(--text-muted)" }}>
-                  <span style={{ color: "var(--accent)", fontSize: "0.5rem" }} aria-hidden="true">◈</span>
-                  {stat}
-                </span>
-              ))}
+              <aside className="landing-reveal landing-hero-aside panel hidden p-4 sm:p-5 lg:block" style={{ animationDelay: "210ms" }}>
+                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em]" style={{ color: "var(--text-muted)" }}>
+                  Live Build Snapshot
+                </p>
+                <div className="mt-3 space-y-2.5">
+                  <div className="landing-snapshot-row">
+                    <span>Game</span>
+                    <strong>FireRed / LeafGreen</strong>
+                  </div>
+                  <div className="landing-snapshot-row">
+                    <span>Dex</span>
+                    <strong>Regional</strong>
+                  </div>
+                  <div className="landing-snapshot-row">
+                    <span>Coverage Gaps</span>
+                    <strong>Rock, Electric</strong>
+                  </div>
+                  <div className="landing-snapshot-row">
+                    <span>AI Confidence</span>
+                    <strong>High</strong>
+                  </div>
+                </div>
+              </aside>
             </div>
           </div>
         </section>
@@ -184,9 +215,9 @@ export default function LandingPage() {
               className="font-display mb-10 text-center text-2xl sm:text-3xl"
               style={{ color: "var(--text-primary)", letterSpacing: "-0.025em" }}
             >
-              Built for serious team planning.
+              Built for team planning.
             </h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {FEATURES.map((feat, i) => (
                 <div
                   key={feat.title}
@@ -217,7 +248,7 @@ export default function LandingPage() {
       </main>
 
       {/* ── Footer ────────────────────────────────────────── */}
-      <footer className="border-t py-8" style={{ borderColor: "var(--border)" }}>
+      <footer className="relative z-[1] border-t py-8" style={{ borderColor: "var(--border)" }}>
         <div className="mx-auto max-w-screen-xl px-4 sm:px-6">
           <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-between">
             <Link

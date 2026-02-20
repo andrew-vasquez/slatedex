@@ -3,11 +3,14 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { fetchTeams, createTeam, updateTeam, deleteTeam } from "@/lib/api";
+import { ALL_GAMES } from "@/lib/pokemon";
+import { pokemonSpriteSrc } from "@/lib/image";
 import { getTeamStorageKey, getTeamUpdatedAtStorageKey } from "@/lib/storageKeys";
 import type { SavedTeam } from "@/lib/api";
 import type { Pokemon } from "@/lib/types";
 
 const DEBOUNCE_MS = 1000;
+const MAX_TEAM_NAME_LENGTH = 80;
 
 function createEmptyTeam(): (Pokemon | null)[] {
   return Array(6).fill(null);
@@ -38,7 +41,7 @@ function normalizePokemon(raw: unknown): Pokemon | null {
     specialAttack: typeof candidate.specialAttack === "number" ? candidate.specialAttack : 0,
     specialDefense: typeof candidate.specialDefense === "number" ? candidate.specialDefense : 0,
     speed: typeof candidate.speed === "number" ? candidate.speed : 0,
-    sprite: typeof candidate.sprite === "string" ? candidate.sprite : "",
+    sprite: pokemonSpriteSrc(candidate.sprite, candidate.id),
     gameIndexVersionIds: candidate.gameIndexVersionIds,
     exclusiveStatus: candidate.exclusiveStatus,
     exclusiveToVersionIds: candidate.exclusiveToVersionIds,
@@ -71,6 +74,26 @@ function saveLocalTeam(generation: number, gameId: number, team: (Pokemon | null
   }
 }
 
+function formatCombinedVersionTeamName(baseName: string, gameId: number, versionIds: string[]): string {
+  const game = ALL_GAMES.find((entry) => entry.id === gameId);
+  if (!game || versionIds.length <= 1) return baseName;
+
+  const labels = versionIds
+    .map((id) => game.versions.find((version) => version.id === id)?.label)
+    .filter((label): label is string => Boolean(label));
+
+  if (labels.length <= 1) return baseName;
+
+  const suffix = ` (${labels.join("/")})`;
+  const availableBaseLength = MAX_TEAM_NAME_LENGTH - suffix.length;
+  if (availableBaseLength <= 0) {
+    return suffix.slice(0, MAX_TEAM_NAME_LENGTH);
+  }
+
+  const trimmedBase = baseName.slice(0, availableBaseLength).trim();
+  return `${trimmedBase}${suffix}`;
+}
+
 interface UseTeamPersistenceOptions {
   generation: number;
   gameId: number;
@@ -88,6 +111,8 @@ interface UseTeamPersistenceReturn {
   isAuthenticated: boolean;
   isSaving: boolean;
   refreshSavedTeams: () => Promise<void>;
+  carryTeamToGame: (targetGameId: number) => void;
+  discardUnsavedDraft: () => void;
 }
 
 export function useTeamPersistence({
@@ -221,22 +246,14 @@ export function useTeamPersistence({
       setIsSaving(true);
       try {
         if (versionIds && versionIds.length > 1) {
-          // Save one team per version when user chooses "save for all"
-          const suffix = (label: string) =>
-            versionIds.length > 1 ? `${name} (${label})` : name;
-
-          const results = await Promise.all(
-            versionIds.map((vid) =>
-              createTeam({
-                name: suffix(vid.charAt(0).toUpperCase() + vid.slice(1).replace(/-/g, " ")),
-                generation,
-                gameId,
-                pokemon: team,
-                selectedVersionId: vid,
-              })
-            )
-          );
-          setActiveTeamId(results[0].id);
+          const saved = await createTeam({
+            name: formatCombinedVersionTeamName(name, gameId, versionIds),
+            generation,
+            gameId,
+            pokemon: team,
+            selectedVersionId: null,
+          });
+          setActiveTeamId(saved.id);
         } else {
           const saved = await createTeam({
             name,
@@ -299,6 +316,24 @@ export function useTeamPersistence({
     [isAuthenticated, refreshSavedTeams]
   );
 
+  const carryTeamToGame = useCallback(
+    (targetGameId: number) => {
+      saveLocalTeam(generation, targetGameId, team);
+    },
+    [generation, team]
+  );
+
+  const discardUnsavedDraft = useCallback(() => {
+    if (activeTeamIdRef.current) return;
+    setTeamState(createEmptyTeam());
+    try {
+      localStorage.removeItem(getTeamStorageKey(generation, gameId));
+      localStorage.removeItem(getTeamUpdatedAtStorageKey(generation, gameId));
+    } catch {
+      // ignore storage errors
+    }
+  }, [gameId, generation]);
+
   // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
@@ -318,5 +353,7 @@ export function useTeamPersistence({
     isAuthenticated,
     isSaving,
     refreshSavedTeams,
+    carryTeamToGame,
+    discardUnsavedDraft,
   };
 }

@@ -17,6 +17,8 @@ interface TeamPanelProps {
   selectedReplaceSlot: number | null;
   onSelectReplaceSlot: (index: number | null) => void;
   onOpenTeamTools?: () => void;
+  droppableDisabled?: boolean;
+  slotIdPrefix?: string;
 }
 
 const TeamPanel = ({
@@ -31,16 +33,18 @@ const TeamPanel = ({
   selectedReplaceSlot,
   onSelectReplaceSlot,
   onOpenTeamTools,
+  droppableDisabled = false,
+  slotIdPrefix = "team-slot",
 }: TeamPanelProps) => {
   return (
     <section className="panel p-3.5 sm:p-5" aria-labelledby="team-heading">
       <div className="mb-2.5 flex items-start justify-between gap-3 sm:mb-5 sm:items-center">
         <div className="min-w-0">
           <h2 id="team-heading" className="font-display text-base leading-tight sm:text-lg" style={{ color: "var(--text-primary)" }}>
-            Step 2: Build Team
+            Your Team
           </h2>
           <p className="mt-1 text-xs leading-tight sm:mt-0.5 sm:text-sm" style={{ color: "var(--text-muted)" }}>
-            Fill all slots for full coverage analysis.
+            Fill all 6 slots to unlock full analysis.
           </p>
         </div>
 
@@ -75,10 +79,10 @@ const TeamPanel = ({
         {team.map((pokemon: Pokemon | null, index: number) => (
           <TeamSlot
             key={index}
-            id={`team-slot-${index}`}
+            id={`${slotIdPrefix}-${index}`}
             index={index}
             isEmpty={!pokemon}
-            isOver={activeDropId === `team-slot-${index}`}
+            isOver={activeDropId === `${slotIdPrefix}-${index}`}
             pokemon={pokemon}
             onRemove={pokemon && !lockedSlots[index] ? () => onRemove(index) : null}
             isLocked={lockedSlots[index]}
@@ -90,13 +94,14 @@ const TeamPanel = ({
                 ? () => onSelectReplaceSlot(selectedReplaceSlot === index ? null : index)
                 : null
             }
+            droppableDisabled={droppableDisabled}
           >
             {pokemon ? (
               <div className="h-full w-full p-1 sm:p-0.5">
                 <PokemonCard
                   pokemon={pokemon}
                   isDraggable={true}
-                  isCompact={true}
+                  isTeamSlot={true}
                   isAboveFold={true}
                   dragId={`team-${index}-${pokemon.id}`}
                   dragEnabled={dragEnabled}

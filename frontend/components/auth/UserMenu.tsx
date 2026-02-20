@@ -7,6 +7,7 @@ import { FiLogIn, FiLogOut, FiMoon, FiSettings, FiSun, FiUser, FiGrid } from "re
 import { signOut } from "@/lib/auth-client";
 import { fetchMyProfile } from "@/lib/api";
 import { normalizeAvatarUrl } from "@/lib/avatar";
+import { safeImageSrc } from "@/lib/image";
 import {
   AVATAR_FRAME_OPTIONS,
   getAvatarFrameStyles,
@@ -131,7 +132,8 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
   };
 
   const frameStyles = getAvatarFrameStyles(avatarFrame);
-  const effectiveAvatarUrl = normalizeAvatarUrl(avatarUrl?.trim() || user?.image || "");
+  const normalizedAvatarInput = safeImageSrc(avatarUrl) ?? safeImageSrc(user?.image) ?? "";
+  const effectiveAvatarUrl = normalizeAvatarUrl(normalizedAvatarInput);
 
   return (
     <div className={`user-menu-shell${compactOnMobile ? " user-menu-shell--compact-mobile" : ""} ${className}`.trim()}>

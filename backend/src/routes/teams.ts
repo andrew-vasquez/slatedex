@@ -17,6 +17,8 @@ const MAX_TEAM_PAYLOAD_BYTES = 64_000;
 const ALLOWED_EXCLUSIVE_STATUSES = new Set(["exclusive", "shared", "unknown"]);
 
 type TeamPokemonSlot = Record<string, unknown> | null;
+type TeamCreateData = Parameters<typeof prisma.team.create>[0]["data"];
+type TeamUpdateData = Parameters<typeof prisma.team.update>[0]["data"];
 
 const teams = new Hono<AuthEnv>();
 teams.use("*", authMiddleware);
@@ -268,7 +270,7 @@ teams.post("/", async (c) => {
       name,
       generation,
       gameId,
-      pokemon: parsedTeam.value,
+      pokemon: parsedTeam.value as unknown as TeamCreateData["pokemon"],
       selectedVersionId,
       userId: user.id,
     },
@@ -308,7 +310,7 @@ teams.put("/:id", async (c) => {
   if (payload.pokemon !== undefined) {
     const parsedTeam = parsePokemonTeam(payload.pokemon);
     if (!parsedTeam.value) return c.json({ error: parsedTeam.error ?? "pokemon is invalid" }, 400);
-    data.pokemon = parsedTeam.value;
+    data.pokemon = parsedTeam.value as unknown as TeamUpdateData["pokemon"];
   }
 
   if (payload.selectedVersionId !== undefined) {

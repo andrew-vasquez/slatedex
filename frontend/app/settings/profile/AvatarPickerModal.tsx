@@ -10,6 +10,7 @@ import {
   type AvatarFrameKey,
 } from "@/lib/profile";
 import { normalizeAvatarUrl } from "@/lib/avatar";
+import { safeImageSrc } from "@/lib/image";
 
 interface AvatarPickerModalProps {
   isOpen: boolean;
@@ -54,7 +55,7 @@ const AvatarPickerModal = ({
   }, [isOpen]);
 
   const frameStyles = useMemo(() => getAvatarFrameStyles(draftFrame), [draftFrame]);
-  const previewAvatar = normalizeAvatarUrl(draftAvatarUrl.trim());
+  const previewAvatar = normalizeAvatarUrl(safeImageSrc(draftAvatarUrl) ?? "");
 
   if (!isOpen) return null;
 

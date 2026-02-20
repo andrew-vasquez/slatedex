@@ -27,3 +27,7 @@ export function getLockedSlotsStorageKey(generation: number, gameId: number): st
 export function getBuilderSettingsStorageKey(): string {
   return `builder_settings_v${STORAGE_VERSION}`;
 }
+
+export function getAiConversationTeamStorageKey(generation: number, gameId: number): string {
+  return `ai_conversation_team_gen_${generation}_game_${gameId}_v${STORAGE_VERSION}`;
+}

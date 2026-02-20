@@ -559,7 +559,7 @@ export default function AiCoachPanel({
                           {isAssistant && (
                             <p
                               className="mb-1 flex items-center gap-1 text-[0.62rem] font-semibold uppercase tracking-[0.08em]"
-                              style={{ color: "var(--accent)" }}
+                              style={{ color: "var(--version-color, var(--accent))" }}
                             >
                               <FiMessageCircle size={9} />
                               Coach
@@ -644,7 +644,7 @@ export default function AiCoachPanel({
                 {isAnalyzing ? (
                   <FiLoader size={13} className="animate-spin" />
                 ) : (
-                  <FiZap size={13} style={{ color: canAnalyze ? "var(--accent)" : "var(--text-muted)" }} />
+                  <FiZap size={13} style={{ color: canAnalyze ? "var(--version-color, var(--accent))" : "var(--text-muted)" }} />
                 )}
                 {isAnalyzing ? "Analyzing..." : "Analyze My Team"}
               </button>

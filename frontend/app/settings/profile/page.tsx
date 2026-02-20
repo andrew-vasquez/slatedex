@@ -18,6 +18,7 @@ import {
   type AvatarFrameKey,
 } from "@/lib/profile";
 import { normalizeAvatarUrl } from "@/lib/avatar";
+import { safeImageSrc } from "@/lib/image";
 import { useAuth } from "@/components/providers/AuthProvider";
 import AvatarPickerModal from "@/app/settings/profile/AvatarPickerModal";
 import FavoritePokemonPicker from "@/app/settings/profile/FavoritePokemonPicker";
@@ -73,33 +74,37 @@ function TeamPreviewCard({
 
       <div className="mt-3 flex items-center gap-1.5">
         {team.pokemonPreview.length > 0 ? (
-          team.pokemonPreview.map((pokemon) => (
-            <div
-              key={`${team.id}-${pokemon.name}`}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border"
-              style={{
-                borderColor: "var(--border)",
-                background: "rgba(8, 15, 34, 0.6)",
-              }}
-              title={pokemon.name}
-            >
-              {pokemon.sprite ? (
-                <Image
-                  src={pokemon.sprite}
-                  alt={pokemon.name}
-                  width={28}
-                  height={28}
-                  sizes="28px"
-                  unoptimized
-                  className="h-7 w-7 object-contain"
-                />
-              ) : (
-                <span className="text-[0.62rem] uppercase" style={{ color: "var(--text-muted)" }}>
-                  {pokemon.name.slice(0, 2)}
-                </span>
-              )}
-            </div>
-          ))
+          team.pokemonPreview.map((pokemon) => {
+            const spriteSrc = safeImageSrc(pokemon.sprite);
+
+            return (
+              <div
+                key={`${team.id}-${pokemon.name}`}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border"
+                style={{
+                  borderColor: "var(--border)",
+                  background: "rgba(8, 15, 34, 0.6)",
+                }}
+                title={pokemon.name}
+              >
+                {spriteSrc ? (
+                  <Image
+                    src={spriteSrc}
+                    alt={pokemon.name}
+                    width={28}
+                    height={28}
+                    sizes="28px"
+                    unoptimized
+                    className="h-7 w-7 object-contain"
+                  />
+                ) : (
+                  <span className="text-[0.62rem] uppercase" style={{ color: "var(--text-muted)" }}>
+                    {pokemon.name.slice(0, 2)}
+                  </span>
+                )}
+              </div>
+            );
+          })
         ) : (
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>
             Empty team slots
@@ -283,7 +288,8 @@ export default function ProfileSettingsPage() {
     );
   }
 
-  const previewAvatar = normalizeAvatarUrl(avatarUrl.trim() || profile?.image || "");
+  const normalizedAvatarInput = safeImageSrc(avatarUrl) ?? safeImageSrc(profile?.image) ?? "";
+  const previewAvatar = normalizeAvatarUrl(normalizedAvatarInput);
   const avatarFrameStyles = getAvatarFrameStyles(avatarFrame);
 
   return (

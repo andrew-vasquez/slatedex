@@ -21,6 +21,7 @@ import AnimatedNumber from "@/app/game/AnimatedNumber";
 import TeamBuilderHeader from "./TeamBuilderHeader";
 import ClearTeamDialog from "./ClearTeamDialog";
 import GameSwitchDialog from "./GameSwitchDialog";
+import UnsavedTeamDialog from "./UnsavedTeamDialog";
 import PokemonSelection from "./PokemonSelection";
 import TeamPanel from "./TeamPanel";
 import TeamCaptureGuide from "./TeamCaptureGuide";
@@ -53,6 +54,11 @@ const TeamRecommendations = dynamic(() => import("./TeamRecommendations"), { loa
 const HISTORY_LIMIT = 40;
 const SMART_PICKS_INCLUDE_LEGENDARIES_KEY = "smart_picks_include_legendaries_v1";
 const SMART_PICKS_INCLUDE_STARTERS_KEY = "smart_picks_include_starters_v1";
+const VERSION_THEME_FALLBACK = {
+  color: "#da2c43",
+  soft: "rgba(218, 44, 67, 0.12)",
+  border: "rgba(218, 44, 67, 0.34)",
+} as const;
 
 type RecommendationRole = "all" | "bulky" | "fast" | "physical" | "special";
 type TeamToolsTab = "saved" | "share";
@@ -72,6 +78,11 @@ interface PendingImportState {
   selectedVersionId: string | null;
   dexMode: DexMode | null;
 }
+
+type PendingUnsavedAction =
+  | { type: "switch"; gameId: number }
+  | { type: "leave" }
+  | null;
 
 interface TeamBuilderProps {
   generation: number;
@@ -191,6 +202,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const [activeDropId, setActiveDropId] = useState<string | null>(null);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [pendingGameSwitch, setPendingGameSwitch] = useState<number | null>(null);
+  const [pendingUnsavedAction, setPendingUnsavedAction] = useState<PendingUnsavedAction>(null);
+  const [unsavedDialogError, setUnsavedDialogError] = useState<string | null>(null);
   const [recommendationsEnabled, setRecommendationsEnabled] = useState(true);
   const [allowLegendaryMythicalRecommendations, setAllowLegendaryMythicalRecommendations] = useState(false);
   const [allowStarterRecommendations, setAllowStarterRecommendations] = useState(false);
@@ -290,6 +303,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     isSaving,
     refreshSavedTeams,
     carryTeamToGame,
+    discardUnsavedDraft,
   } = useTeamPersistence({ generation, gameId: selectedGame.id });
 
   const sensors = useSensors(
@@ -640,15 +654,28 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     () => team.some((slot) => slot !== null),
     [team]
   );
+  const hasUnsavedTeam = useMemo(
+    () => hasPokemonInParty && !activeTeamId,
+    [activeTeamId, hasPokemonInParty]
+  );
 
   const handleGameChange = useCallback((gameId: number) => {
     if (gameId === selectedGameId) return;
-    if (hasPokemonInParty) {
+    if (hasUnsavedTeam) {
+      setUnsavedDialogError(null);
+      setPendingUnsavedAction({ type: "switch", gameId });
+      return;
+    }
+
+    const targetGame = games.find((game) => game.id === gameId);
+    const canCarryTeam = Boolean(targetGame && targetGame.region === selectedGame.region);
+
+    if (hasPokemonInParty && canCarryTeam) {
       setPendingGameSwitch(gameId);
       return;
     }
     executeGameSwitch(gameId);
-  }, [executeGameSwitch, hasPokemonInParty, selectedGameId]);
+  }, [executeGameSwitch, games, hasPokemonInParty, hasUnsavedTeam, selectedGame.region, selectedGameId]);
 
   useEffect(() => {
     if (pendingGameSwitch === null) return;
@@ -670,6 +697,67 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const handleGameSwitchCancel = useCallback(() => {
     setPendingGameSwitch(null);
   }, []);
+
+  const continueWithUnsavedAction = useCallback((action: PendingUnsavedAction) => {
+    if (!action) return;
+    if (action.type === "switch") {
+      executeGameSwitch(action.gameId);
+      return;
+    }
+    router.push("/play");
+  }, [executeGameSwitch, router]);
+
+  const handleBackToGameSelect = useCallback(() => {
+    if (hasUnsavedTeam) {
+      setUnsavedDialogError(null);
+      setPendingUnsavedAction({ type: "leave" });
+      return;
+    }
+    router.push("/play");
+  }, [hasUnsavedTeam, router]);
+
+  const handleUnsavedDialogCancel = useCallback(() => {
+    setUnsavedDialogError(null);
+    setPendingUnsavedAction(null);
+  }, []);
+
+  const handleUnsavedContinueWithoutSaving = useCallback(() => {
+    const pendingAction = pendingUnsavedAction;
+    setUnsavedDialogError(null);
+    setPendingUnsavedAction(null);
+    discardUnsavedDraft();
+    continueWithUnsavedAction(pendingAction);
+  }, [continueWithUnsavedAction, discardUnsavedDraft, pendingUnsavedAction]);
+
+  const handleUnsavedSaveAndContinue = useCallback(async () => {
+    const pendingAction = pendingUnsavedAction;
+    if (!pendingAction) return;
+
+    if (!isAuthenticated) {
+      setUnsavedDialogError("Sign in to save teams before leaving this page.");
+      return;
+    }
+
+    try {
+      setUnsavedDialogError(null);
+      const fallbackName = `${selectedGame.name} Team`;
+      await saveTeamAs(
+        fallbackName,
+        selectedVersionId ? [selectedVersionId] : undefined
+      );
+      setPendingUnsavedAction(null);
+      continueWithUnsavedAction(pendingAction);
+    } catch {
+      setUnsavedDialogError("Could not save team right now. Try again.");
+    }
+  }, [
+    continueWithUnsavedAction,
+    isAuthenticated,
+    pendingUnsavedAction,
+    saveTeamAs,
+    selectedGame.name,
+    selectedVersionId,
+  ]);
 
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const lowerSearch = deferredSearchTerm.toLowerCase();
@@ -727,11 +815,11 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   );
   const versionColor = useMemo(() => getVersionColor(selectedVersionId), [selectedVersionId]);
   const versionCssVars = useMemo(() => {
-    if (!settings.versionTheming) return {} as React.CSSProperties;
+    const theme = settings.versionTheming ? versionColor : VERSION_THEME_FALLBACK;
     return {
-      "--version-color": versionColor.color,
-      "--version-color-soft": versionColor.soft,
-      "--version-color-border": versionColor.border,
+      "--version-color": theme.color,
+      "--version-color-soft": theme.soft,
+      "--version-color-border": theme.border,
     } as React.CSSProperties;
   }, [versionColor, settings.versionTheming]);
   const aiAllowedPokemonNames = useMemo(() => {
@@ -1269,6 +1357,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   }, []);
 
   return (
+    <div style={versionCssVars}>
     <DndContext
       id={`team-builder-dnd-${selectedGame.id}`}
       sensors={sensors}
@@ -1277,10 +1366,11 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="min-h-screen" style={{ color: "var(--text-primary)", ...versionCssVars }}>
+      <div className="min-h-screen" style={{ color: "var(--text-primary)" }}>
         <TeamBuilderHeader
           game={selectedGame}
           generation={generation}
+          onBackToGameSelect={handleBackToGameSelect}
           onShuffle={shuffleTeam}
           onClear={openClearDialog}
           teamLength={currentTeam.length}
@@ -1375,7 +1465,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                     onClick={() => { setReplaceMode((prev) => !prev); setReplaceTargetSlot(null); }}
                     className="btn-secondary action-btn w-full"
                     style={{
-                      borderColor: replaceMode ? "rgba(59, 130, 246, 0.34)" : undefined,
+                      borderColor: replaceMode ? "rgba(59, 130, 246, 0.34)" : "var(--border)",
                       background: replaceMode ? "rgba(59, 130, 246, 0.14)" : undefined,
                       color: replaceMode ? "#93c5fd" : undefined,
                     }}
@@ -1442,7 +1532,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                       onClick={() => { setReplaceMode((prev) => !prev); setReplaceTargetSlot(null); }}
                       className="btn-secondary action-btn w-full sm:col-span-2"
                       style={{
-                        borderColor: replaceMode ? "rgba(59, 130, 246, 0.34)" : undefined,
+                        borderColor: replaceMode ? "rgba(59, 130, 246, 0.34)" : "var(--border)",
                         background: replaceMode ? "rgba(59, 130, 246, 0.14)" : undefined,
                         color: replaceMode ? "#93c5fd" : undefined,
                       }}
@@ -1616,6 +1706,22 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
         onCancel={handleGameSwitchCancel}
       />
 
+      <UnsavedTeamDialog
+        isOpen={pendingUnsavedAction !== null}
+        targetGameName={
+          pendingUnsavedAction?.type === "switch"
+            ? games.find((game) => game.id === pendingUnsavedAction.gameId)?.name
+            : undefined
+        }
+        leavingBuilder={pendingUnsavedAction?.type === "leave"}
+        canSave={isAuthenticated}
+        isSaving={isSaving}
+        errorMessage={unsavedDialogError}
+        onSaveAndContinue={handleUnsavedSaveAndContinue}
+        onContinueWithoutSaving={handleUnsavedContinueWithoutSaving}
+        onCancel={handleUnsavedDialogCancel}
+      />
+
       <TeamToolsModal
         isOpen={isTeamToolsOpen}
         onClose={() => setIsTeamToolsOpen(false)}
@@ -1691,6 +1797,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
         />
       )}
     </DndContext>
+    </div>
   );
 };
 

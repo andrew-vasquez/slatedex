@@ -94,3 +94,76 @@ export const TYPE_COLORS: Record<string, string> = {
   steel: 'bg-slate-500',
   fairy: 'bg-rose-400'
 };
+
+// ── Version-specific color theming ──────────────────────────────────────────
+
+export interface VersionColorTheme {
+  color: string;
+  soft: string;
+  border: string;
+}
+
+const FALLBACK_VERSION_COLOR: VersionColorTheme = {
+  color: "#da2c43",
+  soft: "rgba(218, 44, 67, 0.12)",
+  border: "rgba(218, 44, 67, 0.34)",
+};
+
+function vc(hex: string): VersionColorTheme {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return {
+    color: hex,
+    soft: `rgba(${r}, ${g}, ${b}, 0.12)`,
+    border: `rgba(${r}, ${g}, ${b}, 0.34)`,
+  };
+}
+
+export const VERSION_COLORS: Record<string, VersionColorTheme> = {
+  // Gen 1
+  red: vc("#DC2626"),
+  blue: vc("#2563EB"),
+  yellow: vc("#EAB308"),
+  // Gen 2
+  gold: vc("#D4A017"),
+  silver: vc("#94A3B8"),
+  crystal: vc("#22D3EE"),
+  // Gen 3
+  ruby: vc("#DC2626"),
+  sapphire: vc("#2563EB"),
+  emerald: vc("#10B981"),
+  firered: vc("#F97316"),
+  leafgreen: vc("#22C55E"),
+  // Gen 4
+  diamond: vc("#7DD3FC"),
+  pearl: vc("#F9A8D4"),
+  platinum: vc("#94A3B8"),
+  heartgold: vc("#D4A017"),
+  soulsilver: vc("#94A3B8"),
+  // Gen 5
+  black: vc("#6B7280"),
+  white: vc("#E5E7EB"),
+  // Gen 6
+  x: vc("#3B82F6"),
+  y: vc("#EF4444"),
+  "omega-ruby": vc("#DC2626"),
+  "alpha-sapphire": vc("#2563EB"),
+  // Gen 7
+  sun: vc("#F59E0B"),
+  moon: vc("#6366F1"),
+  "ultra-sun": vc("#F97316"),
+  "ultra-moon": vc("#7C3AED"),
+  "lets-go-pikachu": vc("#EAB308"),
+  "lets-go-eevee": vc("#92400E"),
+  // Gen 8
+  sword: vc("#3B82F6"),
+  shield: vc("#DC2626"),
+  // Gen 9
+  scarlet: vc("#DC2626"),
+  violet: vc("#7C3AED"),
+};
+
+export function getVersionColor(versionId: string): VersionColorTheme {
+  return VERSION_COLORS[versionId] ?? FALLBACK_VERSION_COLOR;
+}

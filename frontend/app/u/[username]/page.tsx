@@ -7,6 +7,7 @@ import { AVATAR_FRAME_OPTIONS, getAvatarFrameStyles, getGameDecoration, type Ava
 import FavoritePokemonDisplay from "@/app/u/[username]/FavoritePokemonDisplay";
 import { getVersionLabel } from "@/lib/pokemon";
 import { normalizeAvatarUrl } from "@/lib/avatar";
+import { safeImageSrc } from "@/lib/image";
 
 type ProfilePokemonPreview = {
   id: number | null;
@@ -104,9 +105,9 @@ function PokemonSpriteStrip({ team }: { team: ProfileSavedTeam }) {
             style={{ borderColor: "var(--border)", background: "rgba(9, 15, 35, 0.58)" }}
             title={pokemon.name}
           >
-            {pokemon.sprite ? (
+            {safeImageSrc(pokemon.sprite) ? (
               <Image
-                src={pokemon.sprite}
+                src={safeImageSrc(pokemon.sprite)!}
                 alt={pokemon.name}
                 width={28}
                 height={28}
@@ -147,7 +148,8 @@ export default async function PublicProfilePage({
     year: "numeric",
     month: "short",
   });
-  const avatar = normalizeAvatarUrl(profile.avatarUrl || profile.image || "");
+  const avatarInput = safeImageSrc(profile.avatarUrl) ?? safeImageSrc(profile.image) ?? "";
+  const avatar = normalizeAvatarUrl(avatarInput);
   const avatarFrame = toAvatarFrame(profile.avatarFrame);
   const avatarFrameStyles = getAvatarFrameStyles(avatarFrame);
 
