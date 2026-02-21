@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FiChevronDown, FiMapPin } from "react-icons/fi";
 import { pokemonSpriteSrc } from "@/lib/image";
 import type { Pokemon } from "@/lib/types";
@@ -48,7 +48,7 @@ interface GuideState {
   data: CaptureGuideData | null;
 }
 
-const CAPTURE_GUIDE_CACHE_VERSION = "4";
+const CAPTURE_GUIDE_CACHE_VERSION = "6";
 
 function normalizeCaptureGuideData(raw: unknown, fallback: { id: number; name: string }): CaptureGuideData {
   const data = raw && typeof raw === "object" ? (raw as Partial<CaptureGuideData>) : {};
@@ -111,6 +111,27 @@ function normalizeCaptureGuideData(raw: unknown, fallback: { id: number; name: s
   };
 }
 
+function parseRouteNumber(location: string): number | null {
+  const match = location.match(/Route\s+(\d+)/i);
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? value : null;
+}
+
+function parseMinLevel(levelText: string | null): number | null {
+  if (!levelText) return null;
+  const match = levelText.match(/\d+/);
+  if (!match) return null;
+  const value = Number(match[0]);
+  return Number.isFinite(value) ? value : null;
+}
+
+const GIFT_METHODS = new Set(["gift", "only one"]);
+
+function isGiftMethod(method: string): boolean {
+  return GIFT_METHODS.has(method.toLowerCase().replace(/-/g, " "));
+}
+
 const TeamCaptureGuide = ({
   team,
   selectedVersionId,
@@ -126,54 +147,105 @@ const TeamCaptureGuide = ({
     () => Array.from(new Map(teamPokemon.map((pokemon) => [pokemon.id, pokemon])).values()),
     [teamPokemon]
   );
-  const bestRoutePlan = useMemo(() => {
+  const [isChecklistVisible, setIsChecklistVisible] = useState(true);
+  const [checkedPokemonIds, setCheckedPokemonIds] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("capture_checklist_visible_v1");
+      if (stored === "false") setIsChecklistVisible(false);
+    } catch { /* noop */ }
+    try {
+      const stored = localStorage.getItem(`checklist_checked_${selectedVersionId}_v1`);
+      if (stored) {
+        const parsed = JSON.parse(stored) as unknown;
+        if (Array.isArray(parsed)) setCheckedPokemonIds(new Set(parsed.filter(Number.isFinite)));
+      } else {
+        setCheckedPokemonIds(new Set());
+      }
+    } catch { /* noop */ }
+  }, [selectedVersionId]);
+
+  const toggleChecklist = useCallback(() => {
+    setIsChecklistVisible((prev) => {
+      const next = !prev;
+      try { localStorage.setItem("capture_checklist_visible_v1", String(next)); } catch { /* noop */ }
+      return next;
+    });
+  }, []);
+
+  const togglePokemonChecked = useCallback((pokemonId: number) => {
+    setCheckedPokemonIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(pokemonId)) next.delete(pokemonId);
+      else next.add(pokemonId);
+      try { localStorage.setItem(`checklist_checked_${selectedVersionId}_v1`, JSON.stringify([...next])); } catch { /* noop */ }
+      return next;
+    });
+  }, [selectedVersionId]);
+
+  const routeChecklist = useMemo(() => {
     const byLocation = new Map<
       string,
       {
         location: string;
+        routeNumber: number | null;
         members: Array<{
-          pokemonName: string;
+          pokemonId: number;
+          targetName: string;
+          sourceName: string;
+          requiresEvolution: boolean;
           method: string;
           levelText: string | null;
           chance: number | null;
         }>;
-        chanceTotal: number;
-        chanceCount: number;
       }
     >();
 
     teamPokemon.forEach((pokemon) => {
       const state = guideByPokemonId[pokemon.id];
-      const encounters = state?.data?.encounters ?? [];
-      if (!state || state.status !== "ready" || !state.data || encounters.length === 0) return;
+      const data = state?.data;
+      const encounters = data?.encounters ?? [];
+      if (!state || state.status !== "ready" || !data || encounters.length === 0) return;
       const topEncounter = encounters[0];
       const current = byLocation.get(topEncounter.location) ?? {
         location: topEncounter.location,
+        routeNumber: parseRouteNumber(topEncounter.location),
         members: [],
-        chanceTotal: 0,
-        chanceCount: 0,
       };
       current.members.push({
-        pokemonName: pokemon.name,
+        pokemonId: pokemon.id,
+        targetName: pokemon.name,
+        sourceName: data.sourcePokemonName,
+        requiresEvolution: data.requiresEvolution,
         method: topEncounter.method,
         levelText: topEncounter.levelText,
         chance: topEncounter.chance,
       });
-      if (topEncounter.chance !== null) {
-        current.chanceTotal += topEncounter.chance;
-        current.chanceCount += 1;
-      }
       byLocation.set(topEncounter.location, current);
     });
 
-    if (byLocation.size === 0) return null;
+    if (byLocation.size === 0) return [];
 
     return Array.from(byLocation.values()).sort((a, b) => {
-      if (b.members.length !== a.members.length) return b.members.length - a.members.length;
-      const avgChanceA = a.chanceCount > 0 ? a.chanceTotal / a.chanceCount : 0;
-      const avgChanceB = b.chanceCount > 0 ? b.chanceTotal / b.chanceCount : 0;
-      return avgChanceB - avgChanceA;
-    })[0];
+      // Gifts/starters come first (received before any routes)
+      const giftA = a.members.some((m) => isGiftMethod(m.method));
+      const giftB = b.members.some((m) => isGiftMethod(m.method));
+      if (giftA && !giftB) return -1;
+      if (!giftA && giftB) return 1;
+
+      // Routes sorted by number
+      if (a.routeNumber !== null && b.routeNumber !== null) return a.routeNumber - b.routeNumber;
+      if (a.routeNumber !== null) return -1;
+      if (b.routeNumber !== null) return 1;
+
+      // Non-route locations sorted by lowest encounter level (earlier in game = lower level)
+      const minLevelA = Math.min(...a.members.map((m) => parseMinLevel(m.levelText) ?? 999));
+      const minLevelB = Math.min(...b.members.map((m) => parseMinLevel(m.levelText) ?? 999));
+      if (minLevelA !== minLevelB) return minLevelA - minLevelB;
+
+      return a.location.localeCompare(b.location);
+    });
   }, [guideByPokemonId, teamPokemon]);
 
   useEffect(() => {
@@ -302,31 +374,101 @@ const TeamCaptureGuide = ({
       >
         <div className="min-h-0">
           <div className="space-y-2.5">
-            {bestRoutePlan ? (
-              <article className="rounded-lg border p-2.5" style={{ borderColor: "rgba(59, 130, 246, 0.4)", background: "rgba(59, 130, 246, 0.1)" }}>
-                <p className="text-[0.74rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "#bfdbfe" }}>
-                  Best Route Plan
-                </p>
-                <p className="mt-1 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                  {bestRoutePlan.location}
-                </p>
-                <p className="mt-0.5 text-[0.74rem]" style={{ color: "var(--text-secondary)" }}>
-                  Covers {bestRoutePlan.members.length}/{teamPokemon.length} team members from one spot.
-                </p>
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {bestRoutePlan.members.map((member, index) => (
-                    <span
-                      key={`${member.pokemonName}-${index}`}
-                      className="rounded-full border px-2 py-0.5 text-[0.68rem] font-semibold"
-                      style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}
-                      title={`${member.method}${member.levelText ? ` · ${member.levelText}` : ""}`}
-                    >
-                      {member.pokemonName}
+            {routeChecklist.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
+                    Route Checklist
+                    <span className="ml-1.5 normal-case tracking-normal" style={{ color: "var(--text-muted)", opacity: 0.7 }}>
+                      · {routeChecklist.reduce((sum, stop) => sum + stop.members.filter((m) => checkedPokemonIds.has(m.pokemonId)).length, 0)}/{routeChecklist.reduce((sum, stop) => sum + stop.members.length, 0)} caught
                     </span>
-                  ))}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={toggleChecklist}
+                    className="rounded-full border px-2 py-0.5 text-[0.64rem] font-semibold uppercase tracking-[0.06em] transition-colors"
+                    style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}
+                    aria-label={isChecklistVisible ? "Hide route checklist" : "Show route checklist"}
+                  >
+                    {isChecklistVisible ? "Hide" : "Show"}
+                  </button>
                 </div>
-              </article>
-            ) : null}
+
+                {isChecklistVisible && (
+                  <ol className="space-y-1">
+                    {routeChecklist.map((stop, index) => {
+                      const allChecked = stop.members.every((m) => checkedPokemonIds.has(m.pokemonId));
+                      return (
+                        <li
+                          key={stop.location}
+                          className="flex items-start gap-2 rounded-md border px-2 py-1.5 transition-opacity duration-200"
+                          style={{
+                            borderColor: "var(--border)",
+                            background: "rgba(8, 15, 34, 0.42)",
+                            opacity: allChecked ? 0.5 : 1,
+                          }}
+                        >
+                          <span
+                            className="mt-0.5 flex h-[1.15rem] w-[1.15rem] shrink-0 items-center justify-center rounded-full text-[0.56rem] font-bold"
+                            style={{ background: "var(--accent-soft)", color: "var(--accent)", border: "1px solid rgba(218, 44, 67, 0.18)" }}
+                            aria-hidden="true"
+                          >
+                            {index + 1}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[0.76rem] font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
+                              {stop.location}
+                            </p>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {stop.members.map((member) => {
+                                const isChecked = checkedPokemonIds.has(member.pokemonId);
+                                return (
+                                  <button
+                                    key={member.pokemonId}
+                                    type="button"
+                                    onClick={() => togglePokemonChecked(member.pokemonId)}
+                                    className="inline-flex cursor-pointer items-baseline gap-1 rounded-full border px-1.5 py-0.5 text-[0.64rem] transition-all duration-200"
+                                    style={{
+                                      borderColor: isChecked ? "rgba(74, 222, 128, 0.3)" : "var(--border)",
+                                      background: isChecked ? "rgba(74, 222, 128, 0.1)" : "var(--surface-1)",
+                                      color: "var(--text-secondary)",
+                                      opacity: isChecked ? 0.65 : 1,
+                                      textDecoration: isChecked ? "line-through" : "none",
+                                    }}
+                                    aria-label={`Mark ${member.sourceName}${member.requiresEvolution ? ` for ${member.targetName}` : ""} as ${isChecked ? "not caught" : "caught"}`}
+                                  >
+                                    <span
+                                      className="inline-flex h-3 w-3 shrink-0 items-center justify-center rounded-sm text-[0.5rem]"
+                                      style={{
+                                        border: isChecked ? "1px solid rgba(74, 222, 128, 0.5)" : "1px solid var(--border)",
+                                        background: isChecked ? "rgba(74, 222, 128, 0.25)" : "transparent",
+                                        color: isChecked ? "#86efac" : "transparent",
+                                      }}
+                                      aria-hidden="true"
+                                    >
+                                      {isChecked ? "✓" : ""}
+                                    </span>
+                                    <span className="font-semibold">
+                                      {member.sourceName}
+                                      {member.requiresEvolution && (
+                                        <span style={{ color: "var(--text-muted)", textDecoration: "none" }}> → {member.targetName}</span>
+                                      )}
+                                    </span>
+                                    <span style={{ color: "var(--text-muted)" }}>
+                                      {member.method}{member.chance !== null ? ` · ${member.chance}%` : ""}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">
               {teamPokemon.map((pokemon, index) => {

@@ -263,7 +263,7 @@ const TeamToolsModal = ({
                 savedTeams={savedTeams}
                 activeTeamId={activeTeamId}
                 onSaveAs={onSaveAs}
-                onLoad={onLoadSavedTeam}
+                onLoad={(teamId) => { onLoadSavedTeam(teamId); onClose(); }}
                 onOverwrite={onOverwriteSavedTeam}
                 onDelete={onDeleteSavedTeam}
                 onRename={onRenameSavedTeam}

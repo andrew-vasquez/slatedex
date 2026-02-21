@@ -16,6 +16,8 @@
 - `AI_MAX_OUTPUT_TOKENS` (optional): Global fallback max completion tokens. Defaults to `700`.
 - `AI_MAX_OUTPUT_TOKENS_CHAT` (optional): Chat max completion tokens. Defaults to `420` (or `AI_MAX_OUTPUT_TOKENS` if set).
 - `AI_MAX_OUTPUT_TOKENS_ANALYZE` (optional): Analyze max completion tokens. Defaults to `560` (or `AI_MAX_OUTPUT_TOKENS` if set).
+- `POSTHOG_API_KEY` (optional): Project API key for backend analytics/AI observability.
+- `POSTHOG_HOST` (optional): PostHog ingest host. Defaults to `https://us.i.posthog.com` (use `https://eu.i.posthog.com` for EU projects).
 
 ### Runtime DB selection
 

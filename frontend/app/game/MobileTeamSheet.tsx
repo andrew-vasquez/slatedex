@@ -24,7 +24,6 @@ interface MobileTeamSheetProps {
   onOpenTeamTools?: () => void;
   selectedVersionId: string;
   selectedVersionLabel: string;
-  captureGuideCompact: boolean;
 }
 
 export default function MobileTeamSheet({
@@ -41,7 +40,6 @@ export default function MobileTeamSheet({
   onOpenTeamTools,
   selectedVersionId,
   selectedVersionLabel,
-  captureGuideCompact,
 }: MobileTeamSheetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -337,7 +335,6 @@ export default function MobileTeamSheet({
               team={team}
               selectedVersionId={selectedVersionId}
               selectedVersionLabel={selectedVersionLabel}
-              compactMode={captureGuideCompact}
             />
           </div>
         </div>

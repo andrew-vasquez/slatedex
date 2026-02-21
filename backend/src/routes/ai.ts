@@ -13,6 +13,7 @@ import { buildTeamContext } from "../lib/ai/context";
 import { getBossGuidanceForVersion } from "../lib/ai/bossData";
 import { buildAnalyzePrompt, buildChatPrompt } from "../lib/ai/prompts";
 import { AiRequestError, generateAiText } from "../lib/ai/openai";
+import { capturePostHogEventImmediate } from "../lib/posthog";
 import type {
   DexMode,
   PersistedAiMessage,
@@ -39,6 +40,7 @@ const MAX_ALLOWED_POKEMON_NAMES = 1_200;
 const MAX_TYPE_FILTER_VALUES = 6;
 const ALLOWED_EXCLUSIVE_STATUSES = new Set(["exclusive", "shared", "unknown"]);
 const ALLOWED_DEX_MODES = new Set<DexMode>(["regional", "national"]);
+const MAX_ANALYTICS_ERROR_MESSAGE_LENGTH = 500;
 
 const ai = new Hono<AuthEnv>();
 ai.use("*", authMiddleware);
@@ -80,6 +82,17 @@ function toAiHttpError(error: unknown): AiHttpError {
   }
 
   return { status: 502, message: "AI request failed." };
+}
+
+function toAnalyticsErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    const trimmed = error.message.trim();
+    if (trimmed.length > 0) {
+      return trimmed.slice(0, MAX_ANALYTICS_ERROR_MESSAGE_LENGTH);
+    }
+    return error.name;
+  }
+  return "unknown-error";
 }
 
 function parsePositiveInt(raw: unknown): number | null {
@@ -350,6 +363,137 @@ function enforceLegacyTypeLanguage(text: string, generation: number): string {
   }
 
   return next;
+}
+
+type AnalysisContextShape = {
+  teamSize: number;
+  summary: {
+    typeDistribution: Array<{ type: string; count: number }>;
+    shape: {
+      fastCount: number;
+      bulkyCount: number;
+      physicalCount: number;
+      specialCount: number;
+    };
+  };
+};
+
+function hasSection(text: string, header: string): boolean {
+  const escaped = header.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`^\\s{0,3}(?:#{1,6}\\s*)?${escaped}\\s*:`, "im").test(text);
+}
+
+function inferSpeedCurveLabel(shape: AnalysisContextShape["summary"]["shape"], teamSize: number): string {
+  const threshold = Math.max(2, Math.ceil(teamSize / 3));
+  if (shape.fastCount >= threshold) return "Aggressive";
+  if (shape.bulkyCount >= threshold) return "Bulky";
+  return "Balanced";
+}
+
+function inferTypeOverlapSummary(typeDistribution: Array<{ type: string; count: number }>): string {
+  const overlaps = typeDistribution.filter((entry) => entry.count > 1);
+  if (overlaps.length === 0) return "Low overlap";
+  if (overlaps.length === 1) return `Focused overlap on ${overlaps[0]?.type ?? "one type"}`;
+  return `Moderate overlap (${overlaps.slice(0, 2).map((entry) => entry.type).join(", ")})`;
+}
+
+function inferHazardPosture(typeDistribution: Array<{ type: string; count: number }>): string {
+  const types = new Set(typeDistribution.map((entry) => entry.type.toLowerCase()));
+  const hasSetterProfile = ["rock", "ground", "steel"].some((type) => types.has(type));
+  const hasControlProfile = ["flying", "poison", "fire", "steel", "ground"].some((type) =>
+    types.has(type)
+  );
+  if (hasSetterProfile && hasControlProfile) return "Set + pressure profile";
+  if (hasSetterProfile) return "Set pressure likely";
+  if (hasControlProfile) return "Removal pressure likely";
+  return "Needs explicit hazard plan";
+}
+
+function inferTeamGrade(context: AnalysisContextShape): { grade: string; confidence: string; rationale: string } {
+  const { teamSize, summary } = context;
+  const { shape, typeDistribution } = summary;
+
+  let score = 52 + Math.min(teamSize, 6) * 7;
+  const overlapPenalty = typeDistribution
+    .filter((entry) => entry.count > 1)
+    .reduce((sum, entry) => sum + (entry.count - 1) * 2.5, 0);
+  score -= overlapPenalty;
+  if (shape.fastCount === 0) score -= 5;
+  if (shape.bulkyCount === 0) score -= 3;
+  if (shape.physicalCount === 0 || shape.specialCount === 0) score -= 4;
+  if (teamSize < 4) score -= 6;
+
+  const bounded = Math.max(35, Math.min(97, score));
+  const grade =
+    bounded >= 92
+      ? "A"
+      : bounded >= 86
+        ? "A-"
+        : bounded >= 80
+          ? "B+"
+          : bounded >= 74
+            ? "B"
+            : bounded >= 68
+              ? "B-"
+              : bounded >= 62
+                ? "C+"
+                : bounded >= 56
+                  ? "C"
+                  : bounded >= 50
+                    ? "C-"
+                    : "D";
+
+  const confidence = teamSize >= 5 ? "High" : teamSize >= 3 ? "Medium" : "Low";
+  const rationale =
+    teamSize >= 6
+      ? "Full party gives stable matchup coverage."
+      : "Partial party means matchup coverage is still volatile.";
+
+  return { grade, confidence, rationale };
+}
+
+function ensureAnalysisScaffold(text: string, context: AnalysisContextShape): string {
+  const normalized = text.trim();
+  if (!normalized) return normalized;
+
+  const missingTeamGrade = !hasSection(normalized, "Team Grade");
+  const missingQuickRead = !hasSection(normalized, "Quick Read");
+  if (!missingTeamGrade && !missingQuickRead) return normalized;
+
+  const sections: string[] = [];
+  if (missingTeamGrade) {
+    const grade = inferTeamGrade(context);
+    sections.push(`Team Grade:\n- ${grade.grade} (Confidence: ${grade.confidence}) — ${grade.rationale}`);
+  }
+  if (missingQuickRead) {
+    const speedCurve = inferSpeedCurveLabel(context.summary.shape, context.teamSize);
+    const overlap = inferTypeOverlapSummary(context.summary.typeDistribution);
+    const hazardPosture = inferHazardPosture(context.summary.typeDistribution);
+    sections.push(
+      [
+        "Quick Read:",
+        `- Speed curve: ${speedCurve}`,
+        `- Type overlap: ${overlap}`,
+        `- Hazard posture: ${hazardPosture}`,
+      ].join("\n")
+    );
+  }
+
+  return `${sections.join("\n\n")}\n\n${normalized}`;
+}
+
+function shouldUseAnalysisScaffoldForChat(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  if (!normalized) return false;
+  return (
+    normalized.includes("analyze my team") ||
+    normalized.includes("analyse my team") ||
+    normalized.includes("full analysis") ||
+    normalized.includes("team grade") ||
+    normalized.includes("grade my team") ||
+    normalized.includes("rate my team") ||
+    normalized.includes("team report")
+  );
 }
 
 function toApiRole(role: PrismaAiMessageRoleType): PersistedAiMessage["role"] {
@@ -636,8 +780,11 @@ ai.post("/chat", async (c) => {
   const bossGuidance = getBossGuidanceForVersion(team.selectedVersionId);
   const context = buildTeamContext(contextPayload, bossGuidance);
 
+  let conversationId: string | null = null;
+
   try {
     const conversation = await getOrCreateConversation(user.id, team.id);
+    conversationId = conversation.id;
     const history = await getRecentHistory(conversation.id);
     const prompt = buildChatPrompt({
       context,
@@ -649,13 +796,17 @@ ai.post("/chat", async (c) => {
       model: config.ai.models.chat,
       maxOutputTokens: config.ai.maxOutputTokensByTask.chat,
       temperature: 0.45,
+      abortSignal: c.req.raw.signal,
       analytics: {
         distinctId: user.id,
         traceId: conversation.id,
         properties: { teamId: team.id, kind: "chat" },
       },
     });
-    const normalizedReply = enforceLegacyTypeLanguage(aiResult.text, team.generation);
+    const chatBaseText = shouldUseAnalysisScaffoldForChat(message)
+      ? ensureAnalysisScaffold(aiResult.text, context)
+      : aiResult.text;
+    const normalizedReply = enforceLegacyTypeLanguage(chatBaseText, team.generation);
 
     const userMessageRow = await saveMessage({
       conversationId: conversation.id,
@@ -677,6 +828,23 @@ ai.post("/chat", async (c) => {
 
     await trimConversationMessages(conversation.id);
 
+    await capturePostHogEventImmediate({
+      distinctId: user.id,
+      event: "ai_chat_completed",
+      properties: {
+        teamId: team.id,
+        conversationId: conversation.id,
+        generation: team.generation,
+        gameId: team.gameId,
+        selectedVersionId: team.selectedVersionId ?? null,
+        model: aiResult.model,
+        promptTokens: aiResult.usage?.promptTokens ?? null,
+        completionTokens: aiResult.usage?.completionTokens ?? null,
+        totalTokens: aiResult.usage?.totalTokens ?? null,
+        replyCharacters: normalizedReply.length,
+      },
+    });
+
     return c.json({
       teamId: team.id,
       reply: normalizedReply,
@@ -697,6 +865,19 @@ ai.post("/chat", async (c) => {
     });
   } catch (error) {
     const mapped = toAiHttpError(error);
+    await capturePostHogEventImmediate({
+      distinctId: user.id,
+      event: "ai_chat_failed",
+      properties: {
+        teamId: team.id,
+        conversationId,
+        generation: team.generation,
+        gameId: team.gameId,
+        selectedVersionId: team.selectedVersionId ?? null,
+        status: mapped.status,
+        errorMessage: toAnalyticsErrorMessage(error),
+      },
+    });
     if (!(error instanceof AiRequestError)) {
       console.error("[ai/chat] unexpected error", error);
     }
@@ -787,19 +968,24 @@ ai.post("/analyze", async (c) => {
   const context = buildTeamContext(contextPayload, bossGuidance);
   const prompt = buildAnalyzePrompt({ context });
 
+  let conversationId: string | null = null;
+
   try {
     const conversation = await getOrCreateConversation(user.id, team.id);
+    conversationId = conversation.id;
     const aiResult = await generateAiText(prompt, {
       model: config.ai.models.analyze,
       maxOutputTokens: config.ai.maxOutputTokensByTask.analyze,
       temperature: 0.4,
+      abortSignal: c.req.raw.signal,
       analytics: {
         distinctId: user.id,
         traceId: conversation.id,
         properties: { teamId: team.id, kind: "analysis" },
       },
     });
-    const normalizedAnalysis = enforceLegacyTypeLanguage(aiResult.text, team.generation);
+    const scaffoldedAnalysis = ensureAnalysisScaffold(aiResult.text, context);
+    const normalizedAnalysis = enforceLegacyTypeLanguage(scaffoldedAnalysis, team.generation);
     const userMessage = "Analyze my current team.";
 
     const userMessageRow = await saveMessage({
@@ -821,6 +1007,23 @@ ai.post("/analyze", async (c) => {
 
     await trimConversationMessages(conversation.id);
 
+    await capturePostHogEventImmediate({
+      distinctId: user.id,
+      event: "ai_analyze_completed",
+      properties: {
+        teamId: team.id,
+        conversationId: conversation.id,
+        generation: team.generation,
+        gameId: team.gameId,
+        selectedVersionId: team.selectedVersionId ?? null,
+        model: aiResult.model,
+        promptTokens: aiResult.usage?.promptTokens ?? null,
+        completionTokens: aiResult.usage?.completionTokens ?? null,
+        totalTokens: aiResult.usage?.totalTokens ?? null,
+        analysisCharacters: normalizedAnalysis.length,
+      },
+    });
+
     return c.json({
       teamId: team.id,
       analysisText: normalizedAnalysis,
@@ -841,6 +1044,19 @@ ai.post("/analyze", async (c) => {
     });
   } catch (error) {
     const mapped = toAiHttpError(error);
+    await capturePostHogEventImmediate({
+      distinctId: user.id,
+      event: "ai_analyze_failed",
+      properties: {
+        teamId: team.id,
+        conversationId,
+        generation: team.generation,
+        gameId: team.gameId,
+        selectedVersionId: team.selectedVersionId ?? null,
+        status: mapped.status,
+        errorMessage: toAnalyticsErrorMessage(error),
+      },
+    });
     if (!(error instanceof AiRequestError)) {
       console.error("[ai/analyze] unexpected error", error);
     }

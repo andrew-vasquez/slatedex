@@ -152,6 +152,11 @@ export default async function PublicProfilePage({
   const avatar = normalizeAvatarUrl(avatarInput);
   const avatarFrame = toAvatarFrame(profile.avatarFrame);
   const avatarFrameStyles = getAvatarFrameStyles(avatarFrame);
+  const profileHighlights = [
+    `${profile.teamStats.totalTeams} saved team${profile.teamStats.totalTeams === 1 ? "" : "s"}`,
+    `${profile.favoriteGameIds.length} favorite game${profile.favoriteGameIds.length === 1 ? "" : "s"}`,
+    `${profile.favoritePokemonNames.length} favorite Pokemon`,
+  ];
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-gradient)" }}>
@@ -249,6 +254,17 @@ export default async function PublicProfilePage({
 
         <div className="mt-4">
           <FavoritePokemonDisplay names={profile.favoritePokemonNames} />
+        </div>
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {profileHighlights.map((highlight) => (
+            <span
+              key={highlight}
+              className="rounded-full border px-2.5 py-1 text-[0.66rem] font-semibold"
+              style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-secondary)" }}
+            >
+              {highlight}
+            </span>
+          ))}
         </div>
       </section>
 

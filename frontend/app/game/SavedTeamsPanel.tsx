@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState, useCallback } from "react";
-import { FiSave, FiFolder, FiTrash2, FiEdit2, FiCheck, FiX, FiRefreshCw, FiDownload } from "react-icons/fi";
+import { FiSave, FiFolder, FiTrash2, FiEdit2, FiCheck, FiX, FiRefreshCw, FiDownload, FiPlay } from "react-icons/fi";
 import { getVersionLabel } from "@/lib/pokemon";
 import { pokemonSpriteSrc } from "@/lib/image";
 import type { SavedTeam } from "@/lib/api";
@@ -373,6 +373,17 @@ const SavedTeamsPanel = ({
                         <p className="text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
                           {filledCount(team)}/6 Pokémon · {getVersionLabel(team.gameId, team.selectedVersionId)}
                         </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onLoad(team.id)}
+                        disabled={isDeleting || isActive}
+                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded disabled:opacity-30"
+                        style={{ color: isActive ? "var(--text-muted)" : "var(--version-color, var(--accent))" }}
+                        aria-label={`Load ${team.name}`}
+                        title={isActive ? "Already loaded" : "Load team"}
+                      >
+                        <FiPlay size={11} />
                       </button>
                       <button
                         type="button"

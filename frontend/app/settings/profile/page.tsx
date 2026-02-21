@@ -181,6 +181,22 @@ export default function ProfileSettingsPage() {
     });
   }
 
+  function resetIdentitySection() {
+    setUsername(profile?.username ?? "");
+    setBio(profile?.bio ?? "");
+  }
+
+  function resetAvatarSection() {
+    setAvatarUrl(profile?.avatarUrl ?? "");
+    setAvatarFrame(toAvatarFrame(profile?.avatarFrame));
+  }
+
+  function resetFavoritesSection() {
+    setFavoriteTeamId(profile?.favoriteTeamId ?? null);
+    setFavoriteGameIds(profile?.favoriteGameIds ?? []);
+    setFavoritePokemonNames(profile?.favoritePokemonNames ?? []);
+  }
+
   async function copyPublicUrl() {
     try {
       await navigator.clipboard.writeText(publicUrl);
@@ -357,9 +373,19 @@ export default function ProfileSettingsPage() {
             <>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-[0.9fr_1.1fr]">
                 <div className="rounded-2xl border p-3" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
-                    Avatar Preview
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                      Avatar Preview
+                    </p>
+                    <button
+                      type="button"
+                      onClick={resetAvatarSection}
+                      className="text-[0.68rem] font-semibold uppercase tracking-[0.08em]"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      Reset
+                    </button>
+                  </div>
                   <div className="mt-3 flex items-center gap-3">
                     <div
                       className="flex h-16 w-16 items-center justify-center rounded-2xl border-2"
@@ -407,9 +433,19 @@ export default function ProfileSettingsPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
-                    Username
-                  </label>
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <label className="block text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                      Username
+                    </label>
+                    <button
+                      type="button"
+                      onClick={resetIdentitySection}
+                      className="text-[0.68rem] font-semibold uppercase tracking-[0.08em]"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      Reset
+                    </button>
+                  </div>
                   <input
                     value={username}
                     onChange={(event) => setUsername(event.target.value)}
@@ -457,6 +493,19 @@ export default function ProfileSettingsPage() {
               </div>
 
               <div>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                    Favorites
+                  </p>
+                  <button
+                    type="button"
+                    onClick={resetFavoritesSection}
+                    className="text-[0.68rem] font-semibold uppercase tracking-[0.08em]"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Reset
+                  </button>
+                </div>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
                   Favorite Games ({favoriteGameIds.length}/{MAX_FAVORITE_GAMES})
                 </p>
