@@ -1449,24 +1449,39 @@ export default function AiCoachPanel({
               </div>
 
               {isSlashMenuOpen && (
-                <div className="ai-slash-menu mb-2.5" role="listbox" aria-label="Available slash commands">
-                  {filteredSlashCommands.map((command, index) => {
-                    const isActive = index === activeSlashIndex;
-                    return (
-                      <button
-                        key={command.id}
-                        type="button"
-                        role="option"
-                        aria-selected={isActive}
-                        className={`ai-slash-item${isActive ? " is-active" : ""}`}
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => applySlashCommand(command.id)}
-                      >
-                        <span className="ai-slash-item-command">/{command.id}</span>
-                        <span className="ai-slash-item-description">{command.description}</span>
-                      </button>
-                    );
-                  })}
+                <div className="ai-slash-menu mb-2.5">
+                  <div className="ai-slash-menu-head">
+                    <p className="ai-slash-menu-title">Commands</p>
+                    <div className="ai-slash-menu-keys" aria-hidden="true">
+                      <kbd>↑</kbd>
+                      <kbd>↓</kbd>
+                      <kbd>Enter</kbd>
+                    </div>
+                  </div>
+                  <div className="ai-slash-menu-list" role="listbox" aria-label="Available slash commands">
+                    {filteredSlashCommands.map((command, index) => {
+                      const isActive = index === activeSlashIndex;
+                      return (
+                        <button
+                          key={command.id}
+                          type="button"
+                          role="option"
+                          aria-selected={isActive}
+                          className={`ai-slash-item${isActive ? " is-active" : ""}`}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => applySlashCommand(command.id)}
+                        >
+                          <span className="ai-slash-item-main">
+                            <span className="ai-slash-item-command">/{command.id}</span>
+                            <span className="ai-slash-item-description">{command.description}</span>
+                          </span>
+                          <span className="ai-slash-item-kind">
+                            {command.task.kind === "analyze" ? "Action" : "Prompt"}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 

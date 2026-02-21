@@ -216,7 +216,7 @@ function formatLevelText(minLevel: number | null, maxLevel: number | null): stri
 }
 
 function parseRouteNumber(location: string): number | null {
-  const match = location.match(/^Route\s+(\d+)/i);
+  const match = location.match(/Route\s+(\d+)/i);
   if (!match) return null;
   const value = Number(match[1]);
   return Number.isFinite(value) ? value : null;
@@ -547,18 +547,19 @@ async function resolveCaptureGuide(pokemonId: number, versionId: string): Promis
   let hadEncounterLookupError = false;
   const alternativeSources: CaptureGuideResponse["alternativeSources"] = [];
 
-  for (const speciesName of lineage) {
+  for (let i = lineage.length - 1; i >= 0; i--) {
+    const speciesName = lineage[i];
     try {
       const encounterResult = await fetchEncounterEntriesForPokemon(speciesName, versionId);
       if (encounterResult.encounters.length > 0) {
         if (encounters.length === 0) {
-          // Primary source (closest to target in the chain)
+          // Primary source (earliest catchable form in the chain)
           sourcePokemonName = encounterResult.pokemonName;
           sourceSpeciesName = speciesName;
           sourcePokemonId = encounterResult.pokemonId;
           encounters = encounterResult.encounters;
         } else {
-          // Additional catchable pre-evolution
+          // Additional catchable evolution
           alternativeSources.push({
             pokemonName: titleCase(encounterResult.pokemonName),
             pokemonId: encounterResult.pokemonId,

@@ -496,10 +496,10 @@ a:focus-visible {
   transition: color 0.24s ease, text-shadow 0.24s ease;
 }
 
-/* On state — accent red to match app's active/selected language */
+/* On state — green toggle */
 .smart-picks-toggle[data-state="on"] {
-  border-color: rgba(218, 44, 67, 0.28);
-  box-shadow: inset 0 1px 0 rgba(255, 150, 164, 0.06), 0 4px 16px rgba(218, 44, 67, 0.1);
+  border-color: rgba(19, 111, 58, 0.35);
+  box-shadow: inset 0 1px 0 rgba(134, 239, 172, 0.08), 0 4px 16px rgba(2, 6, 20, 0.24);
 }
 
 .smart-picks-toggle[data-state="on"] .smart-picks-toggle-label {
@@ -507,9 +507,9 @@ a:focus-visible {
 }
 
 .smart-picks-toggle[data-state="on"] .smart-picks-toggle-track {
-  border-color: rgba(218, 44, 67, 0.38);
-  background: linear-gradient(155deg, rgba(218, 44, 67, 0.3), rgba(175, 30, 50, 0.5));
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(218, 44, 67, 0.1);
+  border-color: rgba(74, 222, 128, 0.45);
+  background: linear-gradient(155deg, rgba(25, 95, 56, 0.56), rgba(16, 79, 43, 0.74));
+  box-shadow: inset 0 0 0 1px rgba(134, 239, 172, 0.14), 0 0 0 1px rgba(74, 222, 128, 0.16);
 }
 
 .smart-picks-toggle[data-state="on"] .smart-picks-toggle-track::after {
@@ -519,13 +519,13 @@ a:focus-visible {
 
 .smart-picks-toggle[data-state="on"] .smart-picks-toggle-thumb {
   transform: translateY(-50%) translateX(1.25rem);
-  background: linear-gradient(180deg, #ff96a4 0%, #da2c43 100%);
-  box-shadow: 0 2px 8px rgba(218, 44, 67, 0.4), inset 0 1px 0 rgba(255, 210, 218, 0.4);
+  background: linear-gradient(180deg, #8ff5bd 0%, #32b56d 100%);
+  box-shadow: 0 2px 9px rgba(6, 95, 70, 0.5), inset 0 1px 1px rgba(230, 255, 244, 0.52);
 }
 
 .smart-picks-toggle[data-state="on"] .smart-picks-toggle-state {
-  color: #ff96a4;
-  text-shadow: 0 0 10px rgba(218, 44, 67, 0.18);
+  color: #86efac;
+  text-shadow: 0 0 14px rgba(74, 222, 128, 0.28);
 }
 
 /* Light mode overrides */
@@ -541,22 +541,22 @@ html[data-theme="light"] .smart-picks-toggle-thumb {
 }
 
 html[data-theme="light"] .smart-picks-toggle[data-state="on"] {
-  border-color: rgba(218, 44, 67, 0.22);
-  box-shadow: inset 0 1px 0 rgba(218, 44, 67, 0.04), 0 4px 14px rgba(218, 44, 67, 0.08);
+  border-color: rgba(22, 163, 74, 0.22);
+  box-shadow: inset 0 1px 0 rgba(22, 163, 74, 0.04), 0 4px 14px rgba(22, 163, 74, 0.08);
 }
 
 html[data-theme="light"] .smart-picks-toggle[data-state="on"] .smart-picks-toggle-track {
-  border-color: rgba(218, 44, 67, 0.3);
-  background: linear-gradient(155deg, rgba(218, 44, 67, 0.18), rgba(175, 30, 50, 0.3));
+  border-color: rgba(22, 163, 74, 0.3);
+  background: linear-gradient(155deg, rgba(22, 163, 74, 0.18), rgba(16, 120, 50, 0.3));
 }
 
 html[data-theme="light"] .smart-picks-toggle[data-state="on"] .smart-picks-toggle-thumb {
-  background: linear-gradient(180deg, #f0606f 0%, #c9253a 100%);
-  box-shadow: 0 2px 6px rgba(218, 44, 67, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%);
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 html[data-theme="light"] .smart-picks-toggle[data-state="on"] .smart-picks-toggle-state {
-  color: #b02030;
+  color: #15803d;
   text-shadow: none;
 }
 
@@ -2599,49 +2599,128 @@ html[data-motion="reduced"] *::after {
 .ai-slash-menu {
   display: flex;
   flex-direction: column;
-  gap: 0.26rem;
+  gap: 0.42rem;
   border: 1px solid var(--border);
-  border-radius: 0.8rem;
-  background: color-mix(in srgb, var(--surface-1) 90%, var(--surface-2));
-  padding: 0.32rem;
+  border-radius: 0.9rem;
+  background:
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--version-color-soft, rgba(218, 44, 67, 0.18)) 28%, var(--surface-1)) 0%,
+      color-mix(in srgb, var(--surface-1) 92%, var(--surface-2)) 58%
+    );
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--version-color-border, rgba(218, 44, 67, 0.26)) 35%, transparent);
+  padding: 0.44rem;
+}
+
+.ai-slash-menu-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  padding: 0 0.16rem;
+}
+
+.ai-slash-menu-title {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.ai-slash-menu-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+}
+
+.ai-slash-menu-keys kbd {
+  border: 1px solid var(--border);
+  border-radius: 0.34rem;
+  background: color-mix(in srgb, var(--surface-2) 82%, var(--surface-1));
+  color: var(--text-muted);
+  font-size: 0.58rem;
+  font-weight: 650;
+  line-height: 1;
+  padding: 0.18rem 0.28rem;
+  font-family: var(--font-body), sans-serif;
+}
+
+.ai-slash-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
 }
 
 .ai-slash-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 0.7rem;
+  gap: 0.9rem;
   width: 100%;
-  border: 1px solid transparent;
-  border-radius: 0.58rem;
-  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
+  border-radius: 0.68rem;
+  background: color-mix(in srgb, var(--surface-1) 88%, var(--surface-2));
   text-align: left;
-  padding: 0.38rem 0.5rem;
-  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+  padding: 0.45rem 0.54rem;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease, transform 0.16s ease, box-shadow 0.2s ease;
+}
+
+.ai-slash-item-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.14rem;
 }
 
 .ai-slash-item-command {
   color: var(--text-primary);
-  font-size: 0.7rem;
+  font-size: 0.69rem;
   font-weight: 650;
   letter-spacing: 0.02em;
 }
 
 .ai-slash-item-description {
   color: var(--text-muted);
-  font-size: 0.68rem;
-  line-height: 1.3;
+  font-size: 0.65rem;
+  line-height: 1.34;
+  text-wrap: pretty;
+}
+
+.ai-slash-item-kind {
+  flex-shrink: 0;
+  margin-top: 0.02rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--version-color-border, rgba(218, 44, 67, 0.32)) 78%, var(--border));
+  background: color-mix(in srgb, var(--version-color-soft, rgba(218, 44, 67, 0.2)) 78%, transparent);
+  color: var(--text-secondary);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.17rem 0.39rem;
 }
 
 .ai-slash-item:hover,
 .ai-slash-item.is-active {
-  border-color: var(--version-color-border, rgba(218, 44, 67, 0.34));
-  background: color-mix(in srgb, var(--surface-2) 70%, var(--version-color-soft, rgba(218, 44, 67, 0.2)));
+  border-color: var(--version-color-border, rgba(218, 44, 67, 0.42));
+  background: color-mix(in srgb, var(--surface-2) 65%, var(--version-color-soft, rgba(218, 44, 67, 0.24)));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--version-color-border, rgba(218, 44, 67, 0.36)) 28%, transparent);
+}
+
+.ai-slash-item:hover {
+  transform: translateY(-1px);
 }
 
 .ai-slash-item:hover .ai-slash-item-description,
 .ai-slash-item.is-active .ai-slash-item-description {
   color: var(--text-secondary);
+}
+
+.ai-slash-item.is-active .ai-slash-item-kind {
+  border-color: var(--version-color-border, rgba(218, 44, 67, 0.48));
+  color: var(--text-primary);
 }
 
 .ai-coach-stop-btn {
@@ -2741,8 +2820,8 @@ html[data-motion="reduced"] *::after {
   }
 
   .ai-slash-item {
-    padding: 0.36rem 0.44rem;
-    gap: 0.56rem;
+    padding: 0.38rem 0.44rem;
+    gap: 0.64rem;
   }
 
   .ai-slash-item-command {
@@ -2751,6 +2830,16 @@ html[data-motion="reduced"] *::after {
 
   .ai-slash-item-description {
     font-size: 0.63rem;
+  }
+
+  .ai-slash-item-kind {
+    font-size: 0.54rem;
+    padding: 0.14rem 0.34rem;
+  }
+
+  .ai-slash-menu-keys kbd {
+    font-size: 0.56rem;
+    padding: 0.17rem 0.24rem;
   }
 }
 

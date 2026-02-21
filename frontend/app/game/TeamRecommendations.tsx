@@ -145,7 +145,7 @@ const TeamRecommendations = ({
               Smart Picks excludes <span className="font-semibold">legendaries/mythicals, starter lines, and postgame picks</span> by default.
             </p>
             <label
-              className="inline-flex w-full items-center justify-between gap-3 rounded-lg border px-2.5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
+              className="inline-flex w-full items-center justify-between gap-3 rounded-lg border px-2.5 py-2 md:hover:cursor-pointer text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
               style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}
             >
               Include Legendaries & Mythicals
@@ -158,7 +158,7 @@ const TeamRecommendations = ({
               />
             </label>
             <label
-              className="inline-flex w-full items-center justify-between gap-3 rounded-lg border px-2.5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
+              className="inline-flex w-full items-center justify-between gap-3 rounded-lg border px-2.5 py-2 md:hover:cursor-pointer text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
               style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}
             >
               Include Starter Lines
@@ -171,7 +171,7 @@ const TeamRecommendations = ({
               />
             </label>
             <label
-              className="inline-flex w-full items-center justify-between gap-3 rounded-lg border px-2.5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
+              className="inline-flex w-full items-center justify-between gap-3 rounded-lg border px-2.5 py-2 md:hover:cursor-pointer text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
               style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}
             >
               Include Postgame Pokemon
