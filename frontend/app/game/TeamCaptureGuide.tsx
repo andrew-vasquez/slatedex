@@ -48,7 +48,7 @@ interface GuideState {
   data: CaptureGuideData | null;
 }
 
-const CAPTURE_GUIDE_CACHE_VERSION = "6";
+const CAPTURE_GUIDE_CACHE_VERSION = "7";
 
 function normalizeCaptureGuideData(raw: unknown, fallback: { id: number; name: string }): CaptureGuideData {
   const data = raw && typeof raw === "object" ? (raw as Partial<CaptureGuideData>) : {};

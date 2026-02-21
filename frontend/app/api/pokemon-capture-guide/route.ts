@@ -641,7 +641,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "versionId is required." }, { status: 400 });
   }
 
-  const cacheKey = `${pokemonId}:${versionId}`;
+  const cv = searchParams.get("cv") ?? "";
+  const cacheKey = `${pokemonId}:${versionId}:${cv}`;
   const inFlight = requestCache.get(cacheKey);
 
   const requestPromise = inFlight ?? resolveCaptureGuide(pokemonId, versionId);
