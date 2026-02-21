@@ -27,11 +27,16 @@ interface TeamRecommendationsProps {
   onAllowLegendaryMythicalRecommendationsChange: Dispatch<SetStateAction<boolean>>;
   allowStarterRecommendations: boolean;
   onAllowStarterRecommendationsChange: Dispatch<SetStateAction<boolean>>;
+  allowPostgameRecommendations: boolean;
+  onAllowPostgameRecommendationsChange: Dispatch<SetStateAction<boolean>>;
   onAddPokemon: (pokemon: Pokemon) => void;
   role: RecommendationRole;
   onRoleChange: (role: RecommendationRole) => void;
   onReplaceWeakest: (pokemon: Pokemon) => void;
   canReplaceWeakest: boolean;
+  onReplaceTargeted?: (pokemon: Pokemon) => void;
+  canReplaceTargeted?: boolean;
+  replaceTargetLabel?: string | null;
 }
 
 const TeamRecommendations = ({
@@ -44,11 +49,16 @@ const TeamRecommendations = ({
   onAllowLegendaryMythicalRecommendationsChange,
   allowStarterRecommendations,
   onAllowStarterRecommendationsChange,
+  allowPostgameRecommendations,
+  onAllowPostgameRecommendationsChange,
   onAddPokemon,
   role,
   onRoleChange,
   onReplaceWeakest,
   canReplaceWeakest,
+  onReplaceTargeted,
+  canReplaceTargeted = false,
+  replaceTargetLabel = null,
 }: TeamRecommendationsProps) => {
   const isSmartPicksOn = recommendationsEnabled;
   const [isRecommendationSettingsOpen, setIsRecommendationSettingsOpen] = useState(false);
@@ -93,56 +103,14 @@ const TeamRecommendations = ({
           aria-label="Toggle smart picks"
           onClick={handleToggleClick}
           onKeyDown={handleToggleKeyDown}
-          className="inline-flex w-full items-center justify-between gap-2 rounded-full border px-3 py-1.5 text-left transition-all duration-300 sm:w-auto"
-          style={{
-            borderColor: isSmartPicksOn ? "rgba(74, 222, 128, 0.42)" : "var(--border)",
-            background: isSmartPicksOn
-              ? "linear-gradient(145deg, rgba(15, 58, 39, 0.9), rgba(13, 30, 27, 0.95))"
-              : "linear-gradient(145deg, rgba(20, 30, 52, 0.86), rgba(12, 18, 34, 0.94))",
-            boxShadow: isSmartPicksOn
-              ? "inset 0 1px 0 rgba(134, 239, 172, 0.16), 0 8px 18px rgba(2, 6, 20, 0.32)"
-              : "inset 0 1px 0 rgba(148, 163, 184, 0.1), 0 6px 16px rgba(2, 6, 20, 0.26)",
-          }}
+          className="smart-picks-toggle w-full sm:w-auto"
+          data-state={isSmartPicksOn ? "on" : "off"}
         >
-          <span
-            className="text-[0.75rem] font-semibold tracking-[0.02em]"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Smart picks
+          <span className="smart-picks-toggle-label">Smart picks</span>
+          <span className="smart-picks-toggle-track" aria-hidden="true">
+            <span className="smart-picks-toggle-thumb" />
           </span>
-          <span
-            className="relative inline-flex h-6 w-12 shrink-0 items-center overflow-hidden rounded-full border transition-all duration-300"
-            style={{
-              borderColor: isSmartPicksOn ? "rgba(74, 222, 128, 0.45)" : "rgba(148, 163, 184, 0.34)",
-              background: isSmartPicksOn
-                ? "linear-gradient(155deg, rgba(25, 95, 56, 0.56), rgba(16, 79, 43, 0.74))"
-                : "linear-gradient(160deg, rgba(65, 76, 102, 0.32), rgba(42, 50, 72, 0.64))",
-              boxShadow: isSmartPicksOn
-                ? "inset 0 0 0 1px rgba(134, 239, 172, 0.14), 0 0 0 1px rgba(74, 222, 128, 0.16)"
-                : "inset 0 0 0 1px rgba(148, 163, 184, 0.08)",
-            }}
-            aria-hidden="true"
-          >
-            <span
-              className="absolute left-0.5 top-0.5 h-[1.1rem] w-[1.1rem] rounded-full transition-all duration-300"
-              style={{
-                transform: isSmartPicksOn ? "translateX(1.35rem)" : "translateX(0)",
-                background: isSmartPicksOn
-                  ? "linear-gradient(180deg, #8ff5bd 0%, #32b56d 100%)"
-                  : "linear-gradient(180deg, #b8c3dd 0%, #8492b6 100%)",
-                boxShadow: isSmartPicksOn
-                  ? "0 2px 9px rgba(6, 95, 70, 0.5), inset 0 1px 1px rgba(230, 255, 244, 0.52)"
-                  : "0 2px 8px rgba(2, 6, 20, 0.42), inset 0 1px 1px rgba(255, 255, 255, 0.4)",
-              }}
-            />
-          </span>
-          <span
-            className="w-8 text-right text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
-            style={{
-              color: isSmartPicksOn ? "#86efac" : "var(--text-muted)",
-              textShadow: isSmartPicksOn ? "0 0 14px rgba(74, 222, 128, 0.28)" : "none",
-            }}
-          >
+          <span className="smart-picks-toggle-state">
             {recommendationsEnabled ? "On" : "Off"}
           </span>
         </button>
@@ -174,7 +142,7 @@ const TeamRecommendations = ({
         >
           <div className="space-y-2 rounded-xl border p-2.5" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
             <p className="rounded-lg border px-2.5 py-2 text-xs leading-relaxed" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>
-              Smart Picks excludes <span className="font-semibold">legendaries/mythicals and starter lines</span> by default.
+              Smart Picks excludes <span className="font-semibold">legendaries/mythicals, starter lines, and postgame picks</span> by default.
             </p>
             <label
               className="inline-flex w-full items-center justify-between gap-3 rounded-lg border px-2.5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
@@ -200,6 +168,19 @@ const TeamRecommendations = ({
                 onChange={(event) => onAllowStarterRecommendationsChange(event.target.checked)}
                 className="h-3.5 w-3.5 accent-[var(--accent)]"
                 aria-label="Include starter evolution lines in smart picks"
+              />
+            </label>
+            <label
+              className="inline-flex w-full items-center justify-between gap-3 rounded-lg border px-2.5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
+              style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}
+            >
+              Include Postgame Pokemon
+              <input
+                type="checkbox"
+                checked={allowPostgameRecommendations}
+                onChange={(event) => onAllowPostgameRecommendationsChange(event.target.checked)}
+                className="h-3.5 w-3.5 accent-[var(--accent)]"
+                aria-label="Include postgame Pokemon in smart picks"
               />
             </label>
           </div>
@@ -359,6 +340,16 @@ const TeamRecommendations = ({
                 >
                   Replace weakest fit
                 </button>
+                {onReplaceTargeted && (
+                  <button
+                    type="button"
+                    onClick={() => onReplaceTargeted(pokemon)}
+                    disabled={!canReplaceTargeted}
+                    className="btn-secondary mt-2 w-full !border-[rgba(59,130,246,0.34)] !bg-[rgba(59,130,246,0.22)] !text-[#dbeafe] disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    {replaceTargetLabel ? `Replace ${replaceTargetLabel}` : "Replace targeted slot"}
+                  </button>
+                )}
               </div>
             </article>
           ))}

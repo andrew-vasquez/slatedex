@@ -2,12 +2,16 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { GENERATION_META } from "@/lib/pokemon";
 import { getCuratedExclusiveCount } from "@/lib/versionExclusives";
-import { LAST_VISITED_GENERATION_KEY } from "@/lib/storageKeys";
+import {
+  LAST_VISITED_GENERATION_KEY,
+  getSelectedGameStorageKey,
+} from "@/lib/storageKeys";
 import { FALLBACK_POKEMON_SPRITE } from "@/lib/image";
-import type { GenerationMeta, Game } from "@/lib/types";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { fetchTeams } from "@/lib/api";
 import UserMenu from "@/components/auth/UserMenu";
 
 const SPRITE_IDS: Record<string, number> = {
@@ -23,6 +27,8 @@ const SPRITE_IDS: Record<string, number> = {
   treecko: 252,
   torchic: 255,
   mudkip: 258,
+  groudon: 383,
+  kyogre: 382,
   rayquaza: 384,
   turtwig: 387,
   chimchar: 390,
@@ -42,6 +48,7 @@ const SPRITE_IDS: Record<string, number> = {
   popplio: 728,
   solgaleo: 791,
   lunala: 792,
+  necrozma: 800,
   grookey: 810,
   scorbunny: 813,
   sobble: 816,
@@ -54,8 +61,6 @@ const SPRITE_IDS: Record<string, number> = {
   miraidon: 1008,
 };
 
-const POPULAR_GENERATIONS = [9, 3, 1];
-
 const getSpriteUrl = (name: string): string => {
   const id = SPRITE_IDS[name];
   return id
@@ -64,142 +69,182 @@ const getSpriteUrl = (name: string): string => {
 };
 
 const REGION_COLORS: Record<string, { accent: string; soft: string; edge: string }> = {
-  Kanto: { accent: "#e53935", soft: "rgba(229, 57, 53, 0.12)", edge: "rgba(229, 57, 53, 0.28)" },
-  Johto: { accent: "#fb8c00", soft: "rgba(251, 140, 0, 0.12)", edge: "rgba(251, 140, 0, 0.28)" },
-  Hoenn: { accent: "#00897b", soft: "rgba(0, 137, 123, 0.12)", edge: "rgba(0, 137, 123, 0.28)" },
-  Sinnoh: { accent: "#1e88e5", soft: "rgba(30, 136, 229, 0.12)", edge: "rgba(30, 136, 229, 0.28)" },
-  Unova: { accent: "#6d4c41", soft: "rgba(109, 76, 65, 0.12)", edge: "rgba(109, 76, 65, 0.28)" },
-  Kalos: { accent: "#5e35b1", soft: "rgba(94, 53, 177, 0.12)", edge: "rgba(94, 53, 177, 0.28)" },
-  Alola: { accent: "#f4511e", soft: "rgba(244, 81, 30, 0.12)", edge: "rgba(244, 81, 30, 0.28)" },
-  Galar: { accent: "#546e7a", soft: "rgba(84, 110, 122, 0.12)", edge: "rgba(84, 110, 122, 0.28)" },
-  Paldea: { accent: "#c62828", soft: "rgba(198, 40, 40, 0.12)", edge: "rgba(198, 40, 40, 0.28)" },
+  Kanto:  { accent: "#e53935", soft: "rgba(229,57,53,0.10)",   edge: "rgba(229,57,53,0.22)"  },
+  Johto:  { accent: "#fb8c00", soft: "rgba(251,140,0,0.10)",   edge: "rgba(251,140,0,0.22)"  },
+  Hoenn:  { accent: "#00897b", soft: "rgba(0,137,123,0.10)",   edge: "rgba(0,137,123,0.22)"  },
+  Sinnoh: { accent: "#1e88e5", soft: "rgba(30,136,229,0.10)",  edge: "rgba(30,136,229,0.22)" },
+  Unova:  { accent: "#795548", soft: "rgba(121,85,72,0.10)",   edge: "rgba(121,85,72,0.22)"  },
+  Kalos:  { accent: "#7e57c2", soft: "rgba(126,87,194,0.10)",  edge: "rgba(126,87,194,0.22)" },
+  Alola:  { accent: "#ef6c00", soft: "rgba(239,108,0,0.10)",   edge: "rgba(239,108,0,0.22)"  },
+  Galar:  { accent: "#546e7a", soft: "rgba(84,110,122,0.10)",  edge: "rgba(84,110,122,0.22)" },
+  Paldea: { accent: "#c62828", soft: "rgba(198,40,40,0.10)",   edge: "rgba(198,40,40,0.22)"  },
 };
 
-const STEPS = [
-  "Pick your game generation",
-  "Add up to six Pokemon",
-  "Use type coverage to patch weaknesses",
-];
-
+const GEN_ROMAN: Record<number, string> = {
+  1: "I", 2: "II", 3: "III", 4: "IV", 5: "V",
+  6: "VI", 7: "VII", 8: "VIII", 9: "IX",
+};
 
 const GameSelector = () => {
+  const { isAuthenticated } = useAuth();
   const [lastVisitedGen, setLastVisitedGen] = useState<number | null>(null);
+  const [lastVisitedGameId, setLastVisitedGameId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  // Map of gameId → saved team count (only populated when authenticated)
+  const [teamCountByGame, setTeamCountByGame] = useState<Record<number, number>>({});
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LAST_VISITED_GENERATION_KEY);
       if (raw) {
         const gen = Number(raw);
-        if (Number.isFinite(gen)) setLastVisitedGen(gen);
+        if (Number.isFinite(gen)) {
+          setLastVisitedGen(gen);
+          const gameRaw = localStorage.getItem(getSelectedGameStorageKey(gen));
+          if (gameRaw) {
+            const gameId = Number(gameRaw);
+            if (Number.isFinite(gameId)) setLastVisitedGameId(gameId);
+          }
+        }
       }
     } catch {}
   }, []);
 
-  const generationMetaSummary = useMemo(() => {
-    return Object.fromEntries(
-      GENERATION_META.map((meta) => {
-        const versionCount = meta.games.reduce((sum, game) => sum + game.versions.length, 0);
-        const hasRegionalDex = meta.games.some((game) => game.regionalDexCandidates.length > 0);
-        const exclusivesCount = meta.games.reduce((sum, game) => sum + getCuratedExclusiveCount(game.id), 0);
+  // Fetch saved team counts per game for authenticated users
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fetchTeams().then((teams) => {
+      const counts: Record<number, number> = {};
+      for (const team of teams) {
+        counts[team.gameId] = (counts[team.gameId] ?? 0) + 1;
+      }
+      setTeamCountByGame(counts);
+    }).catch(() => {});
+  }, [isAuthenticated]);
 
-        return [
-          meta.generation,
-          {
-            versionCount,
-            hasRegionalDex,
-            exclusivesCount,
-          },
-        ];
-      })
-    ) as Record<number, { versionCount: number; hasRegionalDex: boolean; exclusivesCount: number }>;
+  const exclusivesCountByGame = useMemo(() => {
+    return Object.fromEntries(
+      GENERATION_META.flatMap((meta) =>
+        meta.games.map((game) => [game.id, getCuratedExclusiveCount(game.id)])
+      )
+    );
   }, []);
 
+  const gensWithDelay = useMemo(() => {
+    let idx = 0;
+    return GENERATION_META.map((gen) => ({
+      ...gen,
+      games: gen.games.map((game) => ({ ...game, animDelay: (idx++) * 50 })),
+    }));
+  }, []);
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filteredGenerations = useMemo(() => {
+    if (!normalizedSearchQuery) return gensWithDelay;
+    return gensWithDelay
+      .map((gen) => ({
+        ...gen,
+        games: gen.games.filter((game) =>
+          `${gen.generation} ${game.name} ${game.region}`.toLowerCase().includes(normalizedSearchQuery)
+        ),
+      }))
+      .filter((gen) => gen.games.length > 0);
+  }, [gensWithDelay, normalizedSearchQuery]);
+  const currentRunContext = useMemo(() => {
+    if (lastVisitedGen === null) return null;
+    const meta = GENERATION_META.find((entry) => entry.generation === lastVisitedGen);
+    const currentGame = meta?.games.find((entry) => entry.id === lastVisitedGameId) ?? meta?.games[0];
+    if (!currentGame) return null;
+    return {
+      generation: lastVisitedGen,
+      gameName: currentGame.name,
+      region: currentGame.region,
+    };
+  }, [lastVisitedGameId, lastVisitedGen]);
+
+  useEffect(() => {
+    const onSlashFocus = (event: KeyboardEvent) => {
+      if (event.key !== "/") return;
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      if (tagName === "input" || tagName === "textarea" || target?.isContentEditable) return;
+      event.preventDefault();
+      searchInputRef.current?.focus();
+    };
+
+    window.addEventListener("keydown", onSlashFocus);
+    return () => window.removeEventListener("keydown", onSlashFocus);
+  }, []);
+
+  const handleGameClick = (generation: number, gameId: number) => {
+    try {
+      localStorage.setItem(getSelectedGameStorageKey(generation), String(gameId));
+      localStorage.setItem(LAST_VISITED_GENERATION_KEY, String(generation));
+    } catch {}
+  };
+
   return (
-    <div className="min-h-screen pb-14 sm:pb-20">
-      <header className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+    <div className="min-h-screen pb-16 sm:pb-24">
+
+      {/* ── Header ──────────────────────────────────────────── */}
+      <header className="relative overflow-hidden border-b" style={{ borderColor: "var(--border)" }}>
+        {/* Background atmosphere */}
+        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
           <div
-            className="absolute -top-20 -left-20 h-64 w-64 rounded-full opacity-60"
-            style={{ background: "radial-gradient(circle, rgba(218,44,67,0.14) 0%, transparent 70%)" }}
+            className="absolute -top-32 -left-20 h-80 w-80 rounded-full opacity-50"
+            style={{ background: "radial-gradient(circle, rgba(218,44,67,0.15) 0%, transparent 70%)" }}
           />
           <div
-            className="absolute -top-10 right-10 h-80 w-80 rounded-full opacity-40"
-            style={{ background: "radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%)" }}
-          />
-          <div
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 h-px w-3/4 opacity-30"
-            style={{ background: "linear-gradient(90deg, transparent, rgba(218,44,67,0.4), transparent)" }}
+            className="absolute -top-20 right-0 h-96 w-96 rounded-full opacity-30"
+            style={{ background: "radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 65%)" }}
           />
         </div>
 
-        <div className="relative mx-auto max-w-screen-xl px-4 pt-8 sm:px-6 sm:pt-10">
-          <div className="panel overflow-hidden p-6 sm:p-9">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
-                  style={{ background: "var(--accent-soft)", border: "1px solid rgba(218,44,67,0.28)" }}
-                  aria-hidden="true"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: "var(--accent)" }}>
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8" />
-                    <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="1.8" />
-                    <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="1.8" />
-                  </svg>
-                </div>
-                <p className="font-display text-[0.72rem] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
-                  Tactical Team Builder
-                </p>
+        <div className="relative mx-auto max-w-screen-xl px-4 py-5 sm:px-6 sm:py-7">
+          {/* Top bar: logo + auth */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+                style={{ background: "var(--accent-soft)", border: "1px solid rgba(218,44,67,0.30)" }}
+                aria-hidden="true"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ color: "var(--accent)" }}>
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8" />
+                  <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="1.8" />
+                  <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="1.8" />
+                </svg>
               </div>
-              <UserMenu />
+              <h1 className="font-display text-3xl leading-none sm:text-4xl" style={{ letterSpacing: "-0.025em" }}>
+                <span style={{ color: "var(--text-primary)" }}>Slate</span>
+                <span style={{ color: "var(--accent)" }}>dex</span>
+              </h1>
             </div>
+            <UserMenu />
+          </div>
 
-            <h1 className="font-display mt-5 text-5xl leading-none sm:text-7xl" style={{ letterSpacing: "-0.025em" }}>
-              <span style={{ color: "var(--text-primary)" }}>Slate</span>
-              <span style={{ color: "var(--accent)" }}>dex</span>
-            </h1>
-
-            <p className="font-display mt-0.5 text-sm font-medium uppercase tracking-[0.18em] sm:text-base" style={{ color: "var(--text-muted)" }}>
-              Build your ideal team. Outsmart every matchup.
+          {/* Tagline + stat chips */}
+          <div className="mt-4">
+            <p className="text-sm leading-relaxed sm:text-base" style={{ color: "var(--text-secondary)" }}>
+              Pick your game — build your six — analyze coverage.
             </p>
-
-            <p className="mt-3.5 max-w-xl text-sm leading-relaxed sm:text-base" style={{ color: "var(--text-secondary)" }}>
-              Pick a generation, draft your six, and instantly see where your team holds strong or breaks. Type coverage, defensive analysis, and smart picks — all at a glance.
-            </p>
-
-            <div className="mt-6 grid grid-cols-3 gap-2">
-              {STEPS.map((step, i) => (
-                <div
-                  key={step}
-                  className="rounded-xl px-2.5 py-2.5 sm:px-3.5 sm:py-3"
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {["9 generations", "14 game titles", "18-type coverage", "AI team coach"].map((chip) => (
+                <span
+                  key={chip}
+                  className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[0.7rem] font-medium"
                   style={{
+                    borderColor: "var(--border)",
                     background: "var(--surface-2)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text-secondary)",
+                    color: "var(--text-muted)",
                   }}
                 >
-                  <span className="mb-1.5 flex h-5 w-5 items-center justify-center rounded-full text-[0.72rem] font-bold" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
-                    {i + 1}
-                  </span>
-                  <p className="text-[0.75rem] font-medium leading-snug sm:text-sm">{step}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-5 flex flex-wrap items-center gap-1.5 sm:gap-2">
-              {[
-                "9 generations",
-                "Up to 1025 Pokémon",
-                "Live type coverage",
-                "Smart picks",
-              ].map((label) => (
-                <span
-                  key={label}
-                  className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.72rem] font-semibold sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[0.76rem]"
-                  style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-secondary)" }}
-                >
-                  <span style={{ color: "var(--accent)", fontSize: "0.45rem" }}>◈</span>
-                  {label}
+                  <span
+                    className="inline-block h-1 w-1 rounded-full"
+                    style={{ background: "var(--accent)" }}
+                    aria-hidden="true"
+                  />
+                  {chip}
                 </span>
               ))}
             </div>
@@ -207,183 +252,456 @@ const GameSelector = () => {
         </div>
       </header>
 
-      <main id="main-content" className="mx-auto mt-6 max-w-screen-xl px-4 sm:mt-8 sm:px-6" role="main">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h2 className="font-display text-xl sm:text-2xl" style={{ color: "var(--text-primary)" }}>
-            Select a Generation
-          </h2>
-          <span
-            className="rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold uppercase tracking-[0.08em]"
-            style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}
+      {/* ── Game selection ───────────────────────────────────── */}
+      <main
+        id="main-content"
+        className="mx-auto mt-7 max-w-screen-xl px-4 sm:mt-9 sm:px-6"
+        role="main"
+      >
+        <div className="sticky top-2 z-10 mb-4 rounded-2xl border p-3 backdrop-blur-md" style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface-1) 88%, transparent)" }}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[0.64rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+              Current Run Context
+            </p>
+            {currentRunContext ? (
+              <p className="text-[0.72rem] font-semibold" style={{ color: "var(--text-secondary)" }}>
+                Gen {currentRunContext.generation} · {currentRunContext.gameName} · {currentRunContext.region}
+              </p>
+            ) : (
+              <p className="text-[0.7rem]" style={{ color: "var(--text-muted)" }}>
+                No recent run selected yet
+              </p>
+            )}
+          </div>
+          <div className="mt-2 flex items-center gap-2 rounded-xl border px-2.5 py-1.5" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+            <span className="text-[0.68rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
+              /
+            </span>
+            <input
+              ref={searchInputRef}
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search generation, game, or region"
+              className="w-full bg-transparent text-xs outline-none sm:text-sm"
+              style={{ color: "var(--text-primary)" }}
+              aria-label="Search games"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="rounded-md px-2 py-0.5 text-[0.66rem] font-semibold"
+                style={{ color: "var(--text-muted)" }}
+                aria-label="Clear search"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 mb-5">
+          <h2
+            className="font-display text-lg font-semibold uppercase tracking-[0.08em]"
+            style={{ color: "var(--text-muted)", letterSpacing: "0.1em" }}
           >
-            Gen I – IX
-          </span>
-        </div>
-        <p className="mt-1 text-[0.72rem] sm:text-sm" style={{ color: "var(--text-muted)" }}>
-          Each generation loads all Pokémon from that era and earlier.
-        </p>
-
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
-            Popular:
-          </span>
-          {POPULAR_GENERATIONS.map((gen) => (
-            <Link
-              key={`popular-${gen}`}
-              href={`/game/${gen}`}
-              className="rounded-full border px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
-              style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-secondary)" }}
-            >
-              Gen {gen}
-            </Link>
-          ))}
-
+            Select a Game
+          </h2>
+          <div
+            className="h-px flex-1"
+            style={{ background: "var(--border)" }}
+            aria-hidden="true"
+          />
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:mt-5 sm:grid-cols-2">
-          {GENERATION_META.map((gen: GenerationMeta, i: number) => {
-            const colors = REGION_COLORS[gen.region] || REGION_COLORS.Kanto;
-            const meta = generationMetaSummary[gen.generation];
-            const isPopular = POPULAR_GENERATIONS.includes(gen.generation);
-            const isRecent = gen.generation === lastVisitedGen;
+        <div className="space-y-6">
+          {filteredGenerations.map((gen) => {
+            const primaryRegionColors =
+              REGION_COLORS[gen.region] ?? REGION_COLORS.Kanto;
+            const isMultiGame = gen.games.length > 1;
+            const uniqueRegions = [...new Set(gen.games.map((g) => g.region))];
 
             return (
-              <Link
-                key={gen.generation}
-                href={`/game/${gen.generation}`}
-                className="group animate-fade-in-up relative block h-full overflow-hidden rounded-2xl"
-                style={{ animationDelay: `${i * 80}ms` }}
-                aria-label={`Generation ${gen.generation}, ${gen.region} region`}
-              >
-                <article
-                  className="h-full p-4 sm:p-5"
-                  style={{
-                    border: `1px solid ${colors.edge}`,
-                    background: `linear-gradient(135deg, ${colors.soft} 0%, var(--surface-1) 65%)`,
-                    boxShadow: "var(--shadow-soft)",
-                    transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                  }}
-                >
-                  <div className="absolute right-2 top-2 h-20 w-20 rounded-full border" style={{ borderColor: colors.edge }} aria-hidden="true" />
+              <section key={gen.generation} aria-labelledby={`gen-${gen.generation}-heading`}>
 
-                  <div className="relative flex items-start justify-between gap-3">
-                    <div>
-                      <div className="mb-1 flex flex-wrap items-center gap-1.5">
-                        {isPopular && (
-                          <span className="rounded-full border px-2 py-0.5 text-[0.64rem] font-semibold uppercase tracking-[0.08em]" style={{ borderColor: "rgba(234, 179, 8, 0.38)", background: "rgba(234, 179, 8, 0.16)", color: "#fef08a" }}>
-                            Popular
-                          </span>
-                        )}
-                        {isRecent && (
-                          <span className="rounded-full border px-2 py-0.5 text-[0.64rem] font-semibold uppercase tracking-[0.08em]" style={{ borderColor: "rgba(59, 130, 246, 0.38)", background: "rgba(59, 130, 246, 0.16)", color: "#93c5fd" }}>
-                            Recent
-                          </span>
-                        )}
-                      </div>
-
-                      <p
-                        className="font-display text-[0.72rem] uppercase tracking-[0.12em]"
-                        style={{ color: "var(--text-muted)" }}
-                      >
-                        Generation {gen.generation}
-                      </p>
-                      <h3 className="font-display mt-1 text-2xl sm:text-[1.85rem]" style={{ color: "var(--text-primary)" }}>
-                        {gen.primaryName}
-                      </h3>
-                      <p className="text-[0.78rem] font-semibold uppercase tracking-[0.12em]" style={{ color: colors.accent }}>
-                        {gen.region}
-                      </p>
-
-                      <div className="mt-2.5 flex flex-wrap gap-1.5">
-                        <span
-                          className="rounded-lg px-2 py-0.5 text-[0.66rem] font-semibold uppercase tracking-[0.06em]"
-                          style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-                        >
-                          {meta.versionCount} versions
-                        </span>
-                        <span
-                          className="rounded-lg px-2 py-0.5 text-[0.66rem] font-semibold uppercase tracking-[0.06em]"
-                          style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: meta.hasRegionalDex ? "#86efac" : "var(--text-muted)" }}
-                        >
-                          {meta.hasRegionalDex ? "regional dex" : "no regional dex"}
-                        </span>
-                        {meta.exclusivesCount > 0 && (
-                          <span
-                            className="rounded-lg px-2 py-0.5 text-[0.66rem] font-semibold uppercase tracking-[0.06em]"
-                            style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "#fef08a" }}
-                          >
-                            {meta.exclusivesCount} exclusives
-                          </span>
-                        )}
-                      </div>
-
-                      {gen.games.length > 1 && (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {gen.games.map((g: Game) => (
-                            <span
-                              key={g.id}
-                              className="rounded-lg px-2.5 py-1 text-[0.76rem] font-semibold"
-                              style={{
-                                background: colors.soft,
-                                border: `1px solid ${colors.edge}`,
-                                color: colors.accent,
-                              }}
-                            >
-                              {g.name}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold"
-                      style={{ background: colors.soft, color: colors.accent, border: `1px solid ${colors.edge}` }}
+                {/* Generation row label */}
+                <div className="mb-2.5 flex items-center gap-2">
+                  <span
+                    className="font-display text-[0.64rem] font-bold uppercase tracking-[0.16em]"
+                    style={{ color: primaryRegionColors.accent }}
+                    id={`gen-${gen.generation}-heading`}
+                  >
+                    Gen {GEN_ROMAN[gen.generation]}
+                  </span>
+                  <span
+                    className="text-[0.64rem] font-medium uppercase tracking-[0.1em]"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    · {uniqueRegions.join(" & ")}
+                  </span>
+                  {isMultiGame && (
+                    <span
+                      className="rounded-full px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em]"
+                      style={{
+                        background: primaryRegionColors.soft,
+                        color: primaryRegionColors.accent,
+                        border: `1px solid ${primaryRegionColors.edge}`,
+                      }}
                     >
-                      G{gen.generation}
-                    </div>
-                  </div>
+                      {gen.games.length} titles
+                    </span>
+                  )}
+                </div>
 
-                  <div className="relative mt-4 flex items-center gap-2.5">
-                    {gen.starters.map((starter: string) => (
-                      <div
-                        key={starter}
-                        className="relative flex h-12 w-12 items-center justify-center rounded-xl"
-                        style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}
-                      >
-                        <Image
-                          src={getSpriteUrl(starter)}
-                          alt={starter}
-                          width={40}
-                          height={40}
-                          className="h-9 w-9 object-contain transition-transform duration-300 group-hover:scale-110"
-                        />
-                      </div>
-                    ))}
+                {/* Cards — landscape for single game, grid for multiple */}
+                {isMultiGame ? (
+                  <div
+                    className={`grid gap-3 ${
+                      gen.games.length === 2
+                        ? "grid-cols-1 sm:grid-cols-2"
+                        : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                    }`}
+                  >
+                    {gen.games.map((game) => {
+                      const colors = REGION_COLORS[game.region] ?? REGION_COLORS.Kanto;
+                      const exclusivesCount = exclusivesCountByGame[game.id] ?? 0;
+                      const teamCount = teamCountByGame[game.id] ?? 0;
+                      const isRecent =
+                        lastVisitedGen === gen.generation &&
+                        (lastVisitedGameId === game.id ||
+                          (lastVisitedGameId === null && gen.games[0]?.id === game.id));
 
-                    <div className="ml-auto flex items-center gap-1.5" aria-hidden="true">
-                      {gen.legendaries.slice(0, 1).map((legendary) => (
-                        <Image
-                          key={legendary}
-                          src={getSpriteUrl(legendary)}
-                          alt=""
-                          width={52}
-                          height={52}
-                          className="h-12 w-12 object-contain opacity-50 transition-all duration-300 group-hover:opacity-80 group-hover:scale-105"
-                        />
-                      ))}
-                      <span
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm transition-transform group-hover:translate-x-0.5"
-                        style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
-                      >
-                        ›
-                      </span>
-                    </div>
+                      return (
+                        <Link
+                          key={game.id}
+                          href={`/game/${gen.generation}`}
+                          onClick={() => handleGameClick(gen.generation, game.id)}
+                          className="group animate-fade-in-up relative block h-full overflow-hidden rounded-2xl cursor-pointer"
+                          style={{ animationDelay: `${game.animDelay}ms` }}
+                          aria-label={`${game.name}, ${game.region}`}
+                        >
+                          <article
+                            className="relative h-full overflow-hidden p-4 sm:p-5"
+                            style={{
+                              border: `1px solid ${colors.edge}`,
+                              background: `linear-gradient(140deg, ${colors.soft} 0%, var(--surface-1) 60%)`,
+                              transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+                            }}
+                          >
+                            {/* Decorative ring */}
+                            <div
+                              className="pointer-events-none absolute -right-4 -top-4 h-28 w-28 rounded-full border opacity-40"
+                              style={{ borderColor: colors.edge }}
+                              aria-hidden="true"
+                            />
+
+                            {/* Region label + badges */}
+                            <div className="relative flex items-start justify-between gap-2 mb-2">
+                              <span
+                                className="text-[0.62rem] font-bold uppercase tracking-[0.14em]"
+                                style={{ color: colors.accent }}
+                              >
+                                {game.region}
+                              </span>
+                              <div className="flex gap-1">
+                                {isRecent && (
+                                  <span
+                                    className="rounded-full border px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em]"
+                                    style={{
+                                      borderColor: "rgba(59,130,246,0.35)",
+                                      background: "rgba(59,130,246,0.14)",
+                                      color: "#93c5fd",
+                                    }}
+                                  >
+                                    Recent
+                                  </span>
+                                )}
+                                {exclusivesCount > 0 && (
+                                  <span
+                                    className="rounded-full border px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em]"
+                                    style={{
+                                      borderColor: "rgba(234,179,8,0.28)",
+                                      background: "rgba(234,179,8,0.10)",
+                                      color: "#fde68a",
+                                    }}
+                                  >
+                                    {exclusivesCount} excl.
+                                  </span>
+                                )}
+                                {teamCount > 0 && (
+                                  <span
+                                    className="rounded-full border px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em]"
+                                    style={{
+                                      borderColor: "rgba(134,239,172,0.3)",
+                                      background: "rgba(134,239,172,0.10)",
+                                      color: "#86efac",
+                                    }}
+                                  >
+                                    {teamCount} {teamCount === 1 ? "team" : "teams"}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Game name */}
+                            <h3
+                              className="relative font-display text-xl leading-tight sm:text-2xl"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {game.name}
+                            </h3>
+
+                            {/* Version pills */}
+                            <div className="relative mt-2 flex flex-wrap gap-1">
+                              {game.versions.map((v) => (
+                                <span
+                                  key={v.id}
+                                  className="rounded-md px-2 py-0.5 text-[0.66rem] font-semibold"
+                                  style={{
+                                    background: colors.soft,
+                                    border: `1px solid ${colors.edge}`,
+                                    color: colors.accent,
+                                  }}
+                                >
+                                  {v.label}
+                                </span>
+                              ))}
+                            </div>
+
+                            {/* Sprites row */}
+                            <div className="relative mt-4 flex items-center gap-2">
+                              {game.starters.map((starter) => (
+                                <div
+                                  key={starter}
+                                  className="flex h-10 w-10 items-center justify-center rounded-xl"
+                                  style={{
+                                    background: "var(--surface-2)",
+                                    border: "1px solid var(--border)",
+                                  }}
+                                >
+                                  <Image
+                                    src={getSpriteUrl(starter)}
+                                    alt={starter}
+                                    width={32}
+                                    height={32}
+                                    className="h-7 w-7 object-contain transition-transform duration-300 group-hover:scale-110"
+                                  />
+                                </div>
+                              ))}
+                              <div className="ml-auto flex items-center gap-1.5">
+                                {game.legendaries.slice(0, 1).map((leg) => (
+                                  <Image
+                                    key={leg}
+                                    src={getSpriteUrl(leg)}
+                                    alt=""
+                                    width={44}
+                                    height={44}
+                                    className="h-10 w-10 object-contain opacity-35 transition-all duration-300 group-hover:opacity-65 group-hover:scale-105"
+                                    aria-hidden="true"
+                                  />
+                                ))}
+                                <span
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full transition-transform duration-200 group-hover:translate-x-0.5"
+                                  style={{
+                                    background: "var(--surface-2)",
+                                    border: "1px solid var(--border)",
+                                    color: "var(--text-muted)",
+                                    fontSize: "1rem",
+                                  }}
+                                  aria-hidden="true"
+                                >
+                                  ›
+                                </span>
+                              </div>
+                            </div>
+                          </article>
+                        </Link>
+                      );
+                    })}
                   </div>
-                </article>
-              </Link>
+                ) : (
+                  /* ── Landscape card for single-game generations ── */
+                  (() => {
+                    const game = gen.games[0];
+                    if (!game) return null;
+                    const colors = REGION_COLORS[game.region] ?? REGION_COLORS.Kanto;
+                    const exclusivesCount = exclusivesCountByGame[game.id] ?? 0;
+                    const teamCount = teamCountByGame[game.id] ?? 0;
+                    const isRecent = lastVisitedGen === gen.generation;
+
+                    return (
+                      <Link
+                        href={`/game/${gen.generation}`}
+                        onClick={() => handleGameClick(gen.generation, game.id)}
+                        className="group animate-fade-in-up relative block overflow-hidden rounded-2xl cursor-pointer"
+                        style={{ animationDelay: `${game.animDelay}ms` }}
+                        aria-label={`${game.name}, ${game.region}`}
+                      >
+                        <article
+                          className="relative overflow-hidden"
+                          style={{
+                            border: `1px solid ${colors.edge}`,
+                            background: `linear-gradient(135deg, ${colors.soft} 0%, var(--surface-1) 55%)`,
+                            transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+                          }}
+                        >
+                          {/* Decorative large ring */}
+                          <div
+                            className="pointer-events-none absolute -right-12 -top-12 h-52 w-52 rounded-full border opacity-20"
+                            style={{ borderColor: colors.accent }}
+                            aria-hidden="true"
+                          />
+                          <div
+                            className="pointer-events-none absolute -right-6 -top-6 h-36 w-36 rounded-full border opacity-15"
+                            style={{ borderColor: colors.accent }}
+                            aria-hidden="true"
+                          />
+
+                          {/* Left accent stripe */}
+                          <div
+                            className="absolute left-0 top-0 h-full w-0.5 rounded-l-2xl"
+                            style={{ background: colors.accent }}
+                            aria-hidden="true"
+                          />
+
+                          {/* Content: flex row */}
+                          <div className="flex items-center gap-4 px-5 py-4 sm:gap-6 sm:px-6 sm:py-5">
+                            {/* Info block */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <span
+                                  className="text-[0.64rem] font-bold uppercase tracking-[0.16em]"
+                                  style={{ color: colors.accent }}
+                                >
+                                  {game.region}
+                                </span>
+                                {isRecent && (
+                                  <span
+                                    className="rounded-full border px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em]"
+                                    style={{
+                                      borderColor: "rgba(59,130,246,0.35)",
+                                      background: "rgba(59,130,246,0.14)",
+                                      color: "#93c5fd",
+                                    }}
+                                  >
+                                    Recent
+                                  </span>
+                                )}
+                                {exclusivesCount > 0 && (
+                                  <span
+                                    className="rounded-full border px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em]"
+                                    style={{
+                                      borderColor: "rgba(234,179,8,0.28)",
+                                      background: "rgba(234,179,8,0.10)",
+                                      color: "#fde68a",
+                                    }}
+                                  >
+                                    {exclusivesCount} excl.
+                                  </span>
+                                )}
+                                {teamCount > 0 && (
+                                  <span
+                                    className="rounded-full border px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em]"
+                                    style={{
+                                      borderColor: "rgba(134,239,172,0.3)",
+                                      background: "rgba(134,239,172,0.10)",
+                                      color: "#86efac",
+                                    }}
+                                  >
+                                    {teamCount} {teamCount === 1 ? "team" : "teams"}
+                                  </span>
+                                )}
+                              </div>
+                              <h3
+                                className="font-display text-2xl leading-tight sm:text-3xl"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {game.name}
+                              </h3>
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                {game.versions.map((v) => (
+                                  <span
+                                    key={v.id}
+                                    className="rounded-md px-2 py-0.5 text-[0.66rem] font-semibold"
+                                    style={{
+                                      background: colors.soft,
+                                      border: `1px solid ${colors.edge}`,
+                                      color: colors.accent,
+                                    }}
+                                  >
+                                    {v.label}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Starters — hidden on xs, show on sm+ */}
+                            <div className="hidden sm:flex items-center gap-2">
+                              {game.starters.map((starter) => (
+                                <div
+                                  key={starter}
+                                  className="flex h-12 w-12 items-center justify-center rounded-xl"
+                                  style={{
+                                    background: "var(--surface-2)",
+                                    border: "1px solid var(--border)",
+                                  }}
+                                >
+                                  <Image
+                                    src={getSpriteUrl(starter)}
+                                    alt={starter}
+                                    width={40}
+                                    height={40}
+                                    className="h-9 w-9 object-contain transition-transform duration-300 group-hover:scale-110"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Legendary + arrow */}
+                            <div className="flex items-center gap-2">
+                              {game.legendaries.slice(0, 1).map((leg) => (
+                                <Image
+                                  key={leg}
+                                  src={getSpriteUrl(leg)}
+                                  alt=""
+                                  width={56}
+                                  height={56}
+                                  className="h-12 w-12 object-contain opacity-40 transition-all duration-300 group-hover:opacity-70 group-hover:scale-105 sm:h-14 sm:w-14"
+                                  aria-hidden="true"
+                                />
+                              ))}
+                              <span
+                                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-transform duration-200 group-hover:translate-x-0.5"
+                                style={{
+                                  background: "var(--surface-2)",
+                                  border: "1px solid var(--border)",
+                                  color: "var(--text-muted)",
+                                  fontSize: "1rem",
+                                }}
+                                aria-hidden="true"
+                              >
+                                ›
+                              </span>
+                            </div>
+                          </div>
+                        </article>
+                      </Link>
+                    );
+                  })()
+                )}
+              </section>
             );
           })}
+          {filteredGenerations.length === 0 && (
+            <section className="rounded-2xl border p-6 text-center" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                No game found for “{searchQuery.trim()}”
+              </p>
+              <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+                Try searching by game title, region, or generation number.
+              </p>
+            </section>
+          )}
         </div>
       </main>
     </div>

@@ -244,10 +244,68 @@ function normalizeVersionId(value: string | null | undefined): string {
   return value.trim().toLowerCase().replace(/[_\s]+/g, "-");
 }
 
+const EARLY_GYM_EVOLUTION_BAND =
+  "Early gym pacing: mostly base or first-evolution Pokemon; starter is usually first evolution around Lv16. Avoid assuming final evolutions.";
+const MID_GYM_EVOLUTION_BAND =
+  "Mid gym pacing: mostly first/second evolutions, with occasional final evolutions from fast-level lines.";
+const LATE_GYM_EVOLUTION_BAND =
+  "Late gym pacing: final evolutions become common and should be treated as realistic.";
+const ELITE_FOUR_EVOLUTION_BAND =
+  "Elite Four pacing: expect mostly final evolutions and optimized movesets.";
+const CHAMPION_EVOLUTION_BAND =
+  "Champion pacing: expect full final-evolution rosters and broad coverage.";
+
+function enrichBossGuidance(entries: BossGuideEntry[]): BossGuideEntry[] {
+  let gymOrder = 0;
+
+  return entries.map((entry) => {
+    if (entry.stage === "gym") {
+      gymOrder += 1;
+      if (gymOrder <= 2) {
+        return {
+          ...entry,
+          gymOrder,
+          recommendedPlayerLevelRange: "Lv 10-22",
+          expectedEvolutionBand: EARLY_GYM_EVOLUTION_BAND,
+        };
+      }
+      if (gymOrder <= 5) {
+        return {
+          ...entry,
+          gymOrder,
+          recommendedPlayerLevelRange: "Lv 23-38",
+          expectedEvolutionBand: MID_GYM_EVOLUTION_BAND,
+        };
+      }
+
+      return {
+        ...entry,
+        gymOrder,
+        recommendedPlayerLevelRange: "Lv 39-55",
+        expectedEvolutionBand: LATE_GYM_EVOLUTION_BAND,
+      };
+    }
+
+    if (entry.stage === "elite4") {
+      return {
+        ...entry,
+        recommendedPlayerLevelRange: "Lv 50-65",
+        expectedEvolutionBand: ELITE_FOUR_EVOLUTION_BAND,
+      };
+    }
+
+    return {
+      ...entry,
+      recommendedPlayerLevelRange: "Lv 58-70",
+      expectedEvolutionBand: CHAMPION_EVOLUTION_BAND,
+    };
+  });
+}
+
 export function getBossGuidanceForVersion(versionId: string | null | undefined): BossGuideEntry[] {
   const normalized = normalizeVersionId(versionId);
   if (!normalized) return [];
   const key = VERSION_TO_GROUP[normalized];
   if (!key) return [];
-  return GROUP_BOSSES[key];
+  return enrichBossGuidance(GROUP_BOSSES[key]);
 }

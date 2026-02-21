@@ -20,6 +20,7 @@ interface TeamSlotProps {
   onSelectForReplace?: (() => void) | null;
   index?: number;
   droppableDisabled?: boolean;
+  emptyHint?: string;
 }
 
 const TeamSlot = ({
@@ -36,6 +37,7 @@ const TeamSlot = ({
   onSelectForReplace = null,
   index = 0,
   droppableDisabled = false,
+  emptyHint,
 }: TeamSlotProps) => {
   const { setNodeRef } = useDroppable({ id, disabled: droppableDisabled });
 
@@ -91,6 +93,7 @@ const TeamSlot = ({
   }, [isReplaceTarget]);
 
   let border = "2px solid var(--border)";
+  const resolvedEmptyHint = emptyHint ?? (isLocked ? "Unlock to use this slot" : "Tap a Pokemon to add");
 
   if (isOver) {
     border = "2px solid var(--version-color-border, rgba(218, 44, 67, 0.4))";
@@ -130,6 +133,17 @@ const TeamSlot = ({
 
       {(!hasPokemon || shouldRenderEmpty) && !children && (
         <div className={`flex flex-col items-center gap-2 ${isEmptyExiting ? "animate-scale-out" : "animate-fade-in-up"}`}>
+          <span
+            className="rounded-full px-2 py-0.5 text-[0.54rem] font-semibold uppercase tracking-[0.08em]"
+            style={{
+              background: "rgba(148,163,184,0.08)",
+              border: "1px solid rgba(148,163,184,0.24)",
+              color: "var(--text-muted)",
+              opacity: 0.8,
+            }}
+          >
+            Slot {index + 1}
+          </span>
           <svg
             width="30"
             height="30"
@@ -145,17 +159,9 @@ const TeamSlot = ({
           <span className="text-[0.6rem] font-medium" style={{ color: "var(--text-muted)", opacity: 0.7 }}>
             Empty
           </span>
-          <span
-            className="rounded-full px-2 py-0.5 text-[0.52rem] font-semibold uppercase tracking-[0.08em] sm:hidden"
-            style={{
-              background: "rgba(148,163,184,0.08)",
-              border: "1px dashed rgba(148,163,184,0.22)",
-              color: "var(--text-muted)",
-              opacity: 0.75,
-            }}
-          >
-            Tap to add
-          </span>
+          <p className="max-w-[7.5rem] text-center text-[0.55rem] leading-snug" style={{ color: "var(--text-muted)", opacity: 0.82 }}>
+            {resolvedEmptyHint}
+          </p>
         </div>
       )}
 

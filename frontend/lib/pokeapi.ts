@@ -325,11 +325,29 @@ async function resolveRegionalDexForGame(game: Game): Promise<ResolvedRegionalDe
   return fromSpecies ?? fromVersionGroups ?? fromVersionGroupRegions ?? fromRegions ?? null;
 }
 
+async function resolvePreMainStoryDexForGame(game: Game): Promise<ResolvedRegionalDex | null> {
+  const curatedCandidates =
+    game.preMainStoryDexCandidates?.filter((candidate) => candidate.trim().length > 0) ?? [];
+  if (curatedCandidates.length === 0) return null;
+  return resolveRegionalDexSpeciesUnion(curatedCandidates);
+}
+
+async function resolvePostgameDexForGame(game: Game): Promise<ResolvedRegionalDex | null> {
+  const candidates = game.postgameDexCandidates?.filter((candidate) => candidate.trim().length > 0) ?? [];
+  if (candidates.length === 0) return null;
+  return resolveRegionalDexSpeciesUnion(candidates);
+}
+
 async function fetchPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
-  const [baseNational, regionalDex] = await Promise.all([
+  const [baseNational, regionalDex, preMainStoryDex, postgameDex] = await Promise.all([
     getPokemonByGeneration(game.generation),
     resolveRegionalDexForGame(game),
+    resolvePreMainStoryDexForGame(game),
+    resolvePostgameDexForGame(game),
   ]);
+
+  const preMainStorySpecies = preMainStoryDex?.speciesNames ?? null;
+  const explicitPostgameSpecies = postgameDex?.speciesNames ?? null;
   const gameVersionIds = game.versions.map((version) => version.id.toLowerCase());
   const national = baseNational.map((pokemon) => {
     const { gameIndexVersionIds, ...pokemonWithoutGameIndexVersionIds } = pokemon;
@@ -339,11 +357,15 @@ async function fetchPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
       gameVersionIds,
       gameIndexVersionIds,
     });
+    const speciesName = pokemon.name.toLowerCase();
+    const isOutsidePreMainStoryDex = preMainStorySpecies ? !preMainStorySpecies.has(speciesName) : false;
+    const isExplicitPostgameDex = explicitPostgameSpecies?.has(speciesName) ?? false;
 
     return {
       ...pokemonWithoutGameIndexVersionIds,
       // gameIndexVersionIds is used only for server-side exclusivity inference and is omitted from the client payload.
       ...exclusivity,
+      isPostgame: isOutsidePreMainStoryDex || isExplicitPostgameDex,
     };
   });
 

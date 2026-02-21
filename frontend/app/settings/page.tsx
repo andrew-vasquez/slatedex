@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FiArrowLeft, FiUser, FiShield, FiFileText, FiChevronRight } from "react-icons/fi";
 import { useAuth } from "@/components/providers/AuthProvider";
 import UserMenu from "@/components/auth/UserMenu";
 import Breadcrumb from "@/components/ui/Breadcrumb";
+import {
+  COOKIE_CONSENT_UPDATED_EVENT,
+  createConsent,
+  openCookiePreferences,
+  readCookieConsent,
+  writeCookieConsent,
+  type CookieConsent,
+} from "@/lib/privacy";
 
 interface SettingsItem {
   href: string;
@@ -48,12 +56,33 @@ const SETTINGS_SECTIONS: { title: string; items: SettingsItem[] }[] = [
 
 export default function SettingsPage() {
   const { isAuthenticated, isLoading, user, openAuthDialog } = useAuth();
+  const [cookieConsent, setCookieConsent] = useState<CookieConsent | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       openAuthDialog();
     }
   }, [isAuthenticated, isLoading, openAuthDialog]);
+
+  useEffect(() => {
+    setCookieConsent(readCookieConsent());
+
+    const onConsentUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent<CookieConsent>;
+      setCookieConsent(customEvent.detail ?? readCookieConsent());
+    };
+
+    window.addEventListener(COOKIE_CONSENT_UPDATED_EVENT, onConsentUpdate as EventListener);
+    return () => {
+      window.removeEventListener(COOKIE_CONSENT_UPDATED_EVENT, onConsentUpdate as EventListener);
+    };
+  }, []);
+
+  const updateConsent = (next: { analytics: boolean; marketing: boolean }) => {
+    const consent = createConsent(next);
+    writeCookieConsent(consent);
+    setCookieConsent(consent);
+  };
 
   if (isLoading || !isAuthenticated) return null;
 
@@ -141,6 +170,91 @@ export default function SettingsPage() {
               </div>
             </section>
           ))}
+
+          <section>
+            <h2
+              className="mb-2 text-[0.72rem] font-semibold uppercase tracking-[0.12em]"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Privacy Controls
+            </h2>
+            <div className="panel p-4 sm:p-5">
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                Decide what optional tracking is allowed. Required storage for sign-in and team saves always stays on.
+              </p>
+
+              <div className="mt-3 space-y-2">
+                <label
+                  className="flex items-start justify-between gap-3 rounded-xl border px-3 py-2.5"
+                  style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
+                >
+                  <span>
+                    <span className="block text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                      Product analytics
+                    </span>
+                    <span className="block text-xs leading-snug" style={{ color: "var(--text-muted)" }}>
+                      Helps us understand performance and feature quality.
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={cookieConsent?.analytics ?? false}
+                    onChange={(event) =>
+                      updateConsent({
+                        analytics: event.target.checked,
+                        marketing: cookieConsent?.marketing ?? false,
+                      })
+                    }
+                    className="mt-0.5 h-4 w-4 accent-[var(--accent)]"
+                    aria-label="Enable product analytics"
+                  />
+                </label>
+
+                <label
+                  className="flex items-start justify-between gap-3 rounded-xl border px-3 py-2.5"
+                  style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
+                >
+                  <span>
+                    <span className="block text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                      Marketing measurement
+                    </span>
+                    <span className="block text-xs leading-snug" style={{ color: "var(--text-muted)" }}>
+                      Tracks referral and campaign performance. No ad personalization.
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={cookieConsent?.marketing ?? false}
+                    onChange={(event) =>
+                      updateConsent({
+                        analytics: cookieConsent?.analytics ?? false,
+                        marketing: event.target.checked,
+                      })
+                    }
+                    className="mt-0.5 h-4 w-4 accent-[var(--accent)]"
+                    aria-label="Enable marketing measurement"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => updateConsent({ analytics: false, marketing: false })}
+                  className="btn-secondary text-xs"
+                >
+                  Reset Privacy Defaults
+                </button>
+                <button
+                  type="button"
+                  onClick={openCookiePreferences}
+                  className="btn-secondary text-xs"
+                >
+                  Open Full Cookie Preferences
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
 
         <div className="mt-8 flex flex-wrap gap-3">

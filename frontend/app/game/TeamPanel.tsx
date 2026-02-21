@@ -36,6 +36,8 @@ const TeamPanel = ({
   droppableDisabled = false,
   slotIdPrefix = "team-slot",
 }: TeamPanelProps) => {
+  const nextUnlockedEmptySlotIndex = team.findIndex((slot, index) => slot === null && !lockedSlots[index]);
+
   return (
     <section className="panel p-3.5 sm:p-5" aria-labelledby="team-heading">
       <div className="mb-2.5 flex items-start justify-between gap-3 sm:mb-5 sm:items-center">
@@ -95,6 +97,13 @@ const TeamPanel = ({
                 : null
             }
             droppableDisabled={droppableDisabled}
+            emptyHint={
+              lockedSlots[index]
+                ? "Unlock to place a Pokemon here"
+                : index === nextUnlockedEmptySlotIndex
+                  ? "Next slot to fill. Tap a Pokemon card below."
+                  : "Tap a Pokemon card below to fill this slot."
+            }
           >
             {pokemon ? (
               <div className="h-full w-full p-1 sm:p-0.5">

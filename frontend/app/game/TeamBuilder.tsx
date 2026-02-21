@@ -56,6 +56,7 @@ const TeamRecommendations = dynamic(() => import("./TeamRecommendations"), { loa
 const HISTORY_LIMIT = 40;
 const SMART_PICKS_INCLUDE_LEGENDARIES_KEY = "smart_picks_include_legendaries_v1";
 const SMART_PICKS_INCLUDE_STARTERS_KEY = "smart_picks_include_starters_v1";
+const SMART_PICKS_INCLUDE_POSTGAME_KEY = "smart_picks_include_postgame_v1";
 const PLAY_BUILDER_PREFERENCES_KEY = getPlayBuilderPreferencesStorageKey();
 const VERSION_THEME_FALLBACK = {
   color: "#da2c43",
@@ -208,6 +209,10 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const router = useRouter();
   const pathname = usePathname();
   const importedTokenRef = useRef<string | null>(null);
+  // Guards the localStorage write effect from overwriting the pre-selected game on first mount.
+  // Without this, the write effect fires with the initial default game ID before the read effect's
+  // state update is applied, causing the pre-selection from GameSelector to be clobbered.
+  const isFirstGameWriteRef = useRef(true);
 
   const [selectedGameId, setSelectedGameId] = useState<number>(games[0].id);
 
@@ -221,6 +226,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const [recommendationsEnabled, setRecommendationsEnabled] = useState(true);
   const [allowLegendaryMythicalRecommendations, setAllowLegendaryMythicalRecommendations] = useState(false);
   const [allowStarterRecommendations, setAllowStarterRecommendations] = useState(false);
+  const [allowPostgameRecommendations, setAllowPostgameRecommendations] = useState(false);
   const [recommendationRole, setRecommendationRole] = useState<RecommendationRole>("all");
   const [dexMode, setDexMode] = useState<DexMode>("national");
   const [preferredDexMode, setPreferredDexMode] = useState<DexMode | null>(null);
@@ -412,9 +418,16 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       // ignore
     }
     setSelectedGameId(games[0].id);
-  }, [generation, games]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount — generation and games never change during TeamBuilder's lifetime
 
   useEffect(() => {
+    // Skip the first invocation — the reading effect above sets the correct initial game from
+    // localStorage. Writing here on the first run (with the default game ID) would overwrite it.
+    if (isFirstGameWriteRef.current) {
+      isFirstGameWriteRef.current = false;
+      return;
+    }
     try {
       localStorage.setItem(getSelectedGameStorageKey(generation), String(selectedGameId));
     } catch {
@@ -552,9 +565,11 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     try {
       setAllowLegendaryMythicalRecommendations(localStorage.getItem(SMART_PICKS_INCLUDE_LEGENDARIES_KEY) === "true");
       setAllowStarterRecommendations(localStorage.getItem(SMART_PICKS_INCLUDE_STARTERS_KEY) === "true");
+      setAllowPostgameRecommendations(localStorage.getItem(SMART_PICKS_INCLUDE_POSTGAME_KEY) === "true");
     } catch {
       setAllowLegendaryMythicalRecommendations(false);
       setAllowStarterRecommendations(false);
+      setAllowPostgameRecommendations(false);
     }
   }, []);
 
@@ -579,6 +594,17 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       // ignore storage errors
     }
   }, [allowStarterRecommendations]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        SMART_PICKS_INCLUDE_POSTGAME_KEY,
+        allowPostgameRecommendations ? "true" : "false"
+      );
+    } catch {
+      // ignore storage errors
+    }
+  }, [allowPostgameRecommendations]);
 
   useEffect(() => {
     if (!isSelectedGamePoolReady) return;
@@ -1136,6 +1162,52 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const stableTypes = Object.values(defensiveCoverage).filter(
     (entry) => !entry.locked && entry.resistPokemon.length >= entry.weakPokemon.length
   ).length;
+  const teamHealth = useMemo(() => {
+    const typeCounts = new Map<string, number>();
+    currentTeam.forEach((pokemon) => {
+      pokemon.types.forEach((type) => {
+        typeCounts.set(type, (typeCounts.get(type) ?? 0) + 1);
+      });
+    });
+
+    const overlappingTypes = Array.from(typeCounts.entries()).filter(([, count]) => count > 1).length;
+    const fastCount = currentTeam.filter((pokemon) => pokemon.speed >= 100).length;
+    const slowCount = currentTeam.filter((pokemon) => pokemon.speed < 70).length;
+    const averageSpeed =
+      currentTeam.length > 0
+        ? Math.round(currentTeam.reduce((sum, pokemon) => sum + pokemon.speed, 0) / currentTeam.length)
+        : 0;
+    const speedCurveLabel =
+      fastCount >= Math.max(2, Math.ceil(currentTeam.length / 3))
+        ? "Aggressive"
+        : slowCount >= Math.max(2, Math.ceil(currentTeam.length / 3))
+          ? "Bulky"
+          : "Balanced";
+
+    const hazardSetterTypes = new Set(["rock", "ground", "steel"]);
+    const hazardControlTypes = new Set(["flying", "poison", "ghost", "steel", "ground", "fire"]);
+    const hasSetterProfile = currentTeam.some((pokemon) =>
+      pokemon.types.some((type) => hazardSetterTypes.has(type))
+    );
+    const hasControlProfile = currentTeam.some((pokemon) =>
+      pokemon.types.some((type) => hazardControlTypes.has(type))
+    );
+    const hazardPlanLabel = hasSetterProfile
+      ? hasControlProfile
+        ? "Set + pressure profile"
+        : "Set pressure likely"
+      : hasControlProfile
+        ? "Removal pressure likely"
+        : "Plan hazards manually";
+
+    return {
+      overlappingTypes,
+      fastCount,
+      averageSpeed,
+      speedCurveLabel,
+      hazardPlanLabel,
+    };
+  }, [currentTeam]);
 
   const recommendations = useMemo<Recommendation[]>(() => {
     if (!recommendationsEnabled || currentTeam.length === 0 || availablePokemon.length === 0) return [];
@@ -1144,6 +1216,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       if (!pokemon.isFinalEvolution) return false;
       if (!allowLegendaryMythicalRecommendations && (pokemon.isLegendary || pokemon.isMythical)) return false;
       if (!allowStarterRecommendations && pokemon.isStarterLine) return false;
+      if (!allowPostgameRecommendations && pokemon.isPostgame) return false;
       return true;
     });
     if (candidatePool.length === 0) return [];
@@ -1255,6 +1328,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     return ranked.sort((a, b) => b.score - a.score).slice(0, 3);
   }, [
     allowLegendaryMythicalRecommendations,
+    allowPostgameRecommendations,
     allowStarterRecommendations,
     availablePokemon,
     currentTeam,
@@ -1269,6 +1343,10 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     () => team.some((slot, index) => slot !== null && !lockedSlots[index]),
     [lockedSlots, team]
   );
+  const canReplaceTargeted = useMemo(() => {
+    if (!replaceMode || replaceTargetSlot === null) return false;
+    return !lockedSlots[replaceTargetSlot] && team[replaceTargetSlot] !== null;
+  }, [lockedSlots, replaceMode, replaceTargetSlot, team]);
 
   const handleReplaceWeakest = useCallback(
     (pokemon: Pokemon) => {
@@ -1302,6 +1380,19 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       }
     },
     [commitTeam, deficitByType, lockedSlots, team]
+  );
+  const handleReplaceTargeted = useCallback(
+    (pokemon: Pokemon) => {
+      if (!canReplaceTargeted || replaceTargetSlot === null) return;
+      const existing = team[replaceTargetSlot];
+      if (!existing) return;
+      const newTeam = [...team];
+      newTeam[replaceTargetSlot] = pokemon;
+      if (commitTeam(newTeam, { message: `Replaced ${existing.name} with ${pokemon.name}` })) {
+        setReplaceTargetSlot(null);
+      }
+    },
+    [canReplaceTargeted, commitTeam, replaceTargetSlot, team]
   );
 
   const toggleLockSlot = useCallback((index: number) => {
@@ -1452,6 +1543,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           game={selectedGame}
           generation={generation}
           onBackToGameSelect={handleBackToGameSelect}
+          onGameChange={handleGameChange}
           onShuffle={shuffleTeam}
           onClear={openClearDialog}
           teamLength={currentTeam.length}
@@ -1466,6 +1558,38 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
         />
 
         <main id="main-content" className="mx-auto max-w-screen-xl px-4 pb-24 pt-4 sm:px-6 lg:pb-8 lg:pt-28" role="main">
+          <section className="panel-soft mb-4 border px-3.5 py-3 sm:px-4 sm:py-3.5" style={{ borderColor: "var(--border)" }} aria-label="Team health summary">
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              <div>
+                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                  Team Health
+                </p>
+                <p className="text-[0.76rem]" style={{ color: "var(--text-secondary)" }}>
+                  Quick read on overlap, speed curve, and hazard posture.
+                </p>
+              </div>
+              {hasTeam ? (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="rounded-full border px-2 py-1 text-[0.64rem] font-semibold" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>
+                    Type overlap: {teamHealth.overlappingTypes}
+                  </span>
+                  <span className="rounded-full border px-2 py-1 text-[0.64rem] font-semibold" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>
+                    Speed: {teamHealth.speedCurveLabel} ({teamHealth.averageSpeed} avg)
+                  </span>
+                  <span className="rounded-full border px-2 py-1 text-[0.64rem] font-semibold" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>
+                    Fast mons: {teamHealth.fastCount}
+                  </span>
+                  <span className="rounded-full border px-2 py-1 text-[0.64rem] font-semibold" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>
+                    Hazards: {teamHealth.hazardPlanLabel}
+                  </span>
+                </div>
+              ) : (
+                <span className="rounded-full border px-2 py-1 text-[0.64rem] font-semibold" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-muted)" }}>
+                  Add at least one Pokemon to compute health
+                </span>
+              )}
+            </div>
+          </section>
 
           {/* ── Main layout: list LEFT + sticky team RIGHT ── */}
           <div className="lg:grid lg:grid-cols-[1fr_440px] lg:items-start lg:gap-6">
@@ -1709,7 +1833,6 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                 team={team}
                 selectedVersionId={selectedVersionId}
                 selectedVersionLabel={selectedVersionLabel}
-                compactMode={settings.cardDensity === "compact"}
               />
             </section>
           )}
@@ -1742,11 +1865,18 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                   onAllowLegendaryMythicalRecommendationsChange={setAllowLegendaryMythicalRecommendations}
                   allowStarterRecommendations={allowStarterRecommendations}
                   onAllowStarterRecommendationsChange={setAllowStarterRecommendations}
+                  allowPostgameRecommendations={allowPostgameRecommendations}
+                  onAllowPostgameRecommendationsChange={setAllowPostgameRecommendations}
                   onAddPokemon={addPokemonToTeam}
                   role={recommendationRole}
                   onRoleChange={setRecommendationRole}
                   onReplaceWeakest={handleReplaceWeakest}
                   canReplaceWeakest={canReplaceWeakest}
+                  onReplaceTargeted={handleReplaceTargeted}
+                  canReplaceTargeted={canReplaceTargeted}
+                  replaceTargetLabel={
+                    canReplaceTargeted && replaceTargetSlot !== null ? `slot ${replaceTargetSlot + 1}` : null
+                  }
                 />
               </section>
 
@@ -1875,7 +2005,6 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           onOpenTeamTools={() => openTeamTools("saved")}
           selectedVersionId={selectedVersionId}
           selectedVersionLabel={selectedVersionLabel}
-          captureGuideCompact={settings.cardDensity === "compact"}
         />
       )}
     </DndContext>

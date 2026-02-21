@@ -34,6 +34,9 @@ export interface BossGuideEntry {
   stage: BossStage;
   primaryTypes: string[];
   notes?: string;
+  gymOrder?: number;
+  recommendedPlayerLevelRange?: string;
+  expectedEvolutionBand?: string;
 }
 
 export type AiMessageRole = "user" | "assistant" | "system_event";

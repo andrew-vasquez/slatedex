@@ -145,6 +145,7 @@ export async function generateAiText(
     maxOutputTokens?: number;
     temperature?: number;
     analytics?: AiAnalyticsContext;
+    abortSignal?: AbortSignal;
   }
 ): Promise<{
   text: string;
@@ -153,7 +154,21 @@ export async function generateAiText(
 }> {
   const client = getClient();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), config.ai.requestTimeoutMs);
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, config.ai.requestTimeoutMs);
+  const externalAbortSignal = options?.abortSignal;
+  const handleExternalAbort = () => controller.abort();
+
+  if (externalAbortSignal) {
+    if (externalAbortSignal.aborted) {
+      handleExternalAbort();
+    } else {
+      externalAbortSignal.addEventListener("abort", handleExternalAbort, { once: true });
+    }
+  }
 
   const analytics = options?.analytics;
   const model = options?.model?.trim() || config.ai.model;
@@ -169,6 +184,7 @@ export async function generateAiText(
           posthogDistinctId: analytics.distinctId,
           posthogTraceId: analytics.traceId,
           posthogProperties: analytics.properties,
+          posthogCaptureImmediate: true,
         }
       : {};
 
@@ -204,10 +220,8 @@ export async function generateAiText(
             },
             requestOptions
           );
-          openAiClient = fallbackClient;
-          openAiClientHasPostHog = false;
           console.warn(
-            "[ai] PostHog OpenAI wrapper request failed; fell back to plain OpenAI client."
+            "[ai] PostHog OpenAI wrapper request failed; used plain OpenAI client for this request. Will retry PostHog wrapper next request."
           );
           response = fallbackResponse;
         } catch (retryError: unknown) {
@@ -227,6 +241,10 @@ export async function generateAiText(
         }
 
         if (error instanceof APIUserAbortError) {
+          if (externalAbortSignal?.aborted && !timedOut) {
+            throw new AiRequestError("AI request was canceled.");
+          }
+
           if (controller.signal.aborted) {
             const timeoutSeconds = Math.ceil(config.ai.requestTimeoutMs / 1000);
             throw new AiRequestError(`AI request timed out after ${timeoutSeconds}s. Please try again.`);
@@ -274,6 +292,9 @@ export async function generateAiText(
         }
 
         if (error instanceof Error && error.name === "AbortError") {
+          if (externalAbortSignal?.aborted && !timedOut) {
+            throw new AiRequestError("AI request was canceled.");
+          }
           throw new AiRequestError("AI request timed out.");
         }
 
@@ -306,10 +327,8 @@ export async function generateAiText(
           response = retryResponse;
           text = retryText;
           if (openAiClientHasPostHog) {
-            openAiClient = fallbackClient;
-            openAiClientHasPostHog = false;
             console.warn(
-              "[ai] Empty response from primary client; fell back to plain OpenAI client."
+              "[ai] Empty response from PostHog-wrapped client; used plain OpenAI client for this request. Will retry PostHog wrapper next request."
             );
           }
         }
@@ -346,5 +365,8 @@ export async function generateAiText(
     };
   } finally {
     clearTimeout(timeout);
+    if (externalAbortSignal) {
+      externalAbortSignal.removeEventListener("abort", handleExternalAbort);
+    }
   }
 }

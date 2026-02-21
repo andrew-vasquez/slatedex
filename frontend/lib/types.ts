@@ -19,6 +19,7 @@ export interface Pokemon {
   isLegendary?: boolean;
   isMythical?: boolean;
   isStarterLine?: boolean;
+  isPostgame?: boolean;
 }
 
 export type DexMode = "regional" | "national";
@@ -53,6 +54,8 @@ export interface Game {
   versions: { id: string; label: string }[];
   versionGroupCandidates: string[];
   regionalDexCandidates: string[];
+  preMainStoryDexCandidates?: string[];
+  postgameDexCandidates?: string[];
   starters: string[];
   legendaries: string[];
 }

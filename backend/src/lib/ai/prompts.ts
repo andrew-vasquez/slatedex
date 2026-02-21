@@ -58,6 +58,9 @@ interface PromptContext {
     stage: "gym" | "elite4" | "champion";
     primaryTypes: string[];
     notes?: string;
+    gymOrder?: number;
+    recommendedPlayerLevelRange?: string;
+    expectedEvolutionBand?: string;
   }>;
 }
 
@@ -132,7 +135,27 @@ export function buildChatPrompt(params: {
     {
       role: "system",
       content:
-        "Be concise and actionable. Prefer bullet-like short paragraphs. Recommend concrete next steps, matchup plans, and role suggestions. Respect generation constraints in the provided context.",
+        "Be concise and actionable. Prefer short sections and bullet points when useful. Recommend concrete next steps, matchup plans, and role suggestions. Respect generation constraints in the provided context.",
+    },
+    {
+      role: "system",
+      content:
+        "Output style rules: use plain text section headers with trailing colons (example: Team Grade:). Avoid markdown syntax like ###, **, *, or code fences. Keep line length compact for mobile readability.",
+    },
+    {
+      role: "system",
+      content:
+        "When the user asks for team-wide evaluation, analysis, threats, swaps, or overall strategy, include this structure in order: Team Grade, Quick Read, Main Threats, Tactical Fixes, Next Actions. Team Grade must include letter grade (A+..D) and confidence (High/Medium/Low). Quick Read should cover speed curve, type overlap, and hazard posture.",
+    },
+    {
+      role: "system",
+      content:
+        "For narrow questions (single matchup, one swap, one role), keep answer brief and skip full report sections unless user explicitly asks for full analysis.",
+    },
+    {
+      role: "system",
+      content:
+        "When discussing bosses/gyms, follow progression realism from context.bossGuidance: respect recommendedPlayerLevelRange and expectedEvolutionBand. For early gyms (especially gym 1-2, e.g. Brock), avoid assuming final evolutions like Dragonite/Charizard/Pidgeot unless explicitly marked as an exception in notes.",
     },
     {
       role: "system",
@@ -168,7 +191,27 @@ export function buildAnalyzePrompt(params: {
     {
       role: "system",
       content:
-        "Output sections in this order: Team Identity, Main Threats, Tactical Fixes, Suggested Swaps (up to 3), Boss Matchup Outlook (Gyms, Elite Four, Champion).",
+        "Output sections in this exact order with plain text headers ending in colons: Team Grade, Quick Read, Team Identity, Main Threats, Tactical Fixes, Suggested Swaps (up to 3), Boss Matchup Outlook, Next Actions.",
+    },
+    {
+      role: "system",
+      content:
+        "Team Grade must include: letter grade (A+..D), confidence (High/Medium/Low), and a 1-sentence rationale. Quick Read must include: speed curve (Aggressive/Balanced/Bulky), type overlap summary, and hazard posture summary.",
+    },
+    {
+      role: "system",
+      content:
+        "Formatting rules: avoid markdown syntax (no ###, **, *, code blocks). Use short bullets under each section and keep text compact and scannable.",
+    },
+    {
+      role: "system",
+      content:
+        "Suggested Swaps must remain legal under provided constraints. If no legal improvement exists, explicitly say so and provide non-swap tactical adjustments.",
+    },
+    {
+      role: "system",
+      content:
+        "Boss Matchup Outlook must be progression-aware. For each gym, use its recommendedPlayerLevelRange and expectedEvolutionBand. For early gyms, discuss realistic pre-evo/mid-evo states (starter often first evolution around Lv16) and avoid late-game final-evolution assumptions.",
     },
     {
       role: "system",
@@ -185,7 +228,7 @@ export function buildAnalyzePrompt(params: {
     {
       role: "user",
       content:
-        "Analyze my current team for this version. Include what it handles well, where it is likely to struggle, and concrete adjustment advice.",
+        "Analyze my current team for this version. Give me a Team Grade and Quick Read first, then explain what it handles well, where it is likely to struggle, and concrete legal adjustment advice.",
     },
   ];
 }

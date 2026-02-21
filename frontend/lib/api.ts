@@ -293,7 +293,8 @@ export function fetchAiMessages(teamId: string): Promise<{ teamId: string; messa
 }
 
 export function sendAiChat(
-  payload: AiTeamContextPayload & { message: string }
+  payload: AiTeamContextPayload & { message: string },
+  options?: { signal?: AbortSignal }
 ): Promise<{
   teamId: string;
   reply: string;
@@ -303,11 +304,13 @@ export function sendAiChat(
   return apiFetch("/api/ai/chat", {
     method: "POST",
     body: JSON.stringify(payload),
+    signal: options?.signal,
   });
 }
 
 export function analyzeAiTeam(
-  payload: AiTeamContextPayload
+  payload: AiTeamContextPayload,
+  options?: { signal?: AbortSignal }
 ): Promise<{
   teamId: string;
   analysisText: string;
@@ -317,5 +320,6 @@ export function analyzeAiTeam(
   return apiFetch("/api/ai/analyze", {
     method: "POST",
     body: JSON.stringify(payload),
+    signal: options?.signal,
   });
 }

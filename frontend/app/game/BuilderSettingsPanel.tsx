@@ -159,7 +159,7 @@ const BuilderSettingsPanel = ({
         </div>
 
         <label
-          className="inline-flex items-center justify-between gap-3 rounded-xl border px-3 py-2"
+          className="inline-flex items-center justify-between gap-3 rounded-xl border px-3 py-2 md:hover:cursor-pointer"
           style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
         >
           <span>
@@ -180,7 +180,7 @@ const BuilderSettingsPanel = ({
         </label>
 
         <label
-          className="inline-flex items-center justify-between gap-3 rounded-xl border px-3 py-2"
+          className="inline-flex items-center justify-between gap-3 rounded-xl border px-3 py-2 md:hover:cursor-pointer"
           style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
         >
           <span>

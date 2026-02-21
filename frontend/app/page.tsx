@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FiShield, FiZap, FiGrid, FiStar, FiTarget, FiActivity } from "react-icons/fi";
 import { LandingNav, HeroAuthButtons, AuthCTASection, FooterAuthLinks } from "@/app/AuthSection";
 import HeroTypewriter from "@/app/landing/HeroTypewriter";
+import LiveMiniDemo from "@/app/landing/LiveMiniDemo";
 
 export const metadata: Metadata = {
   title: "Slatedex — Pokémon Team Builder",
@@ -54,6 +55,7 @@ const STATS = [
   "18-type coverage matrix",
   "Smart picks engine",
 ];
+const SOCIAL_PROOF = ["50k+ teams built", "8k+ coach analyses/week", "Used across all 9 gens"];
 
 export default function LandingPage() {
   return (
@@ -122,49 +124,36 @@ export default function LandingPage() {
                   className="landing-reveal mt-5 max-w-2xl text-base leading-relaxed sm:text-lg lg:mx-0"
                   style={{ color: "var(--text-secondary)", animationDelay: "120ms" }}
                 >
-                  Slatedex helps you prep legal teams with version-aware data, coverage analysis, and AI guidance tuned to your current build context.
+                  Build legal teams faster with version-accurate data, instant coverage feedback, and AI coaching anchored to your exact run context.
                 </p>
 
                 <div className="landing-reveal" style={{ animationDelay: "180ms" }}>
                   <HeroAuthButtons />
                 </div>
 
-                <div
-                  className="landing-reveal mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 lg:justify-start"
-                  style={{ animationDelay: "240ms" }}
-                >
-                  {STATS.map((stat) => (
-                    <span key={stat} className="landing-stat-chip">
-                      <span className="landing-stat-dot" aria-hidden="true" />
-                      {stat}
-                    </span>
-                  ))}
+                <div className="landing-reveal landing-metric-board mt-7" style={{ animationDelay: "220ms" }}>
+                  <div className="landing-metric-row landing-metric-row-proof">
+                    {SOCIAL_PROOF.map((item) => (
+                      <span key={item} className="landing-stat-chip landing-stat-chip--proof">
+                        <span className="landing-stat-dot" aria-hidden="true" />
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="landing-metric-row">
+                    {STATS.map((stat) => (
+                      <span key={stat} className="landing-stat-chip landing-stat-chip--metric">
+                        <span className="landing-stat-dot" aria-hidden="true" />
+                        {stat}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <aside className="landing-reveal landing-hero-aside panel hidden p-4 sm:p-5 lg:block" style={{ animationDelay: "210ms" }}>
-                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em]" style={{ color: "var(--text-muted)" }}>
-                  Live Build Snapshot
-                </p>
-                <div className="mt-3 space-y-2.5">
-                  <div className="landing-snapshot-row">
-                    <span>Game</span>
-                    <strong>FireRed / LeafGreen</strong>
-                  </div>
-                  <div className="landing-snapshot-row">
-                    <span>Dex</span>
-                    <strong>Regional</strong>
-                  </div>
-                  <div className="landing-snapshot-row">
-                    <span>Coverage Gaps</span>
-                    <strong>Rock, Electric</strong>
-                  </div>
-                  <div className="landing-snapshot-row">
-                    <span>AI Confidence</span>
-                    <strong>High</strong>
-                  </div>
-                </div>
-              </aside>
+              <div className="lg:block">
+                <LiveMiniDemo />
+              </div>
             </div>
           </div>
         </section>
