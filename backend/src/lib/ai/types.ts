@@ -9,9 +9,12 @@ export interface TeamPokemonContext {
   specialAttack: number;
   specialDefense: number;
   speed: number;
+  evolutionStage?: number;
+  evolutionLine?: string[];
 }
 
 export type DexMode = "regional" | "national";
+export type BossStage = "gym" | "elite4" | "champion";
 
 export interface TeamContextPayload {
   generation: number;
@@ -25,9 +28,16 @@ export interface TeamContextPayload {
     regionalDexName?: string | null;
   };
   allowedPokemonNames?: string[];
+  progression?: {
+    checkpointBossName?: string | null;
+    checkpointStage?: BossStage | null;
+    checkpointGymOrder?: number | null;
+    checkpointCatchableNames?: string[];
+    checkpointCatchablePoolSize?: number | null;
+    checkpointBlockedFinalNames?: string[];
+    checkpointEvolutionFallbacks?: Array<{ fromName: string; toName: string }>;
+  };
 }
-
-export type BossStage = "gym" | "elite4" | "champion";
 
 export interface BossGuideEntry {
   name: string;

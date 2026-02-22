@@ -54,6 +54,7 @@ const TeamPanel = ({
           {onOpenTeamTools ? (
             <button
               type="button"
+              data-tour="team-tools"
               onClick={onOpenTeamTools}
               className="btn-secondary !px-2.5 !py-1.5 !text-[0.75rem]"
               aria-label="Open team tools"

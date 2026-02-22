@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createConsent,
   OPEN_COOKIE_PREFERENCES_EVENT,
@@ -27,6 +27,7 @@ export default function CookieConsentManager() {
   const [savedConsent, setSavedConsent] = useState<CookieConsent | null>(null);
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
   const [draft, setDraft] = useState<DraftPreferences>({ analytics: false, marketing: false });
+  const cookieModalRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const consent = readCookieConsent();
@@ -58,6 +59,38 @@ export default function CookieConsentManager() {
     return () => {
       document.removeEventListener("keydown", onEscape);
     };
+  }, [isPreferencesOpen]);
+
+  // Focus trap for the cookie preferences modal
+  useEffect(() => {
+    if (!isPreferencesOpen) return;
+    const modal = cookieModalRef.current;
+    if (!modal) return;
+
+    const focusable = modal.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length > 0) focusable[0].focus();
+
+    const onTab = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const els = modal.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (els.length === 0) return;
+      const first = els[0];
+      const last = els[els.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onTab);
+    return () => document.removeEventListener("keydown", onTab);
   }, [isPreferencesOpen]);
 
   const persistConsent = useCallback((next: CookieConsent) => {
@@ -115,6 +148,7 @@ export default function CookieConsentManager() {
       {isPreferencesOpen && (
         <div className="cookie-modal-backdrop" role="presentation" onClick={() => setIsPreferencesOpen(false)}>
           <section
+            ref={cookieModalRef}
             className="cookie-modal panel"
             role="dialog"
             aria-modal="true"

@@ -29,6 +29,7 @@ type PublicProfilePayload = {
   username: string;
   name: string;
   image: string | null;
+  badge?: "Owner" | "Admin" | "Pro" | null;
   memberSince: string;
   bio: string;
   avatarUrl: string | null;
@@ -157,6 +158,14 @@ export default async function PublicProfilePage({
     `${profile.favoriteGameIds.length} favorite game${profile.favoriteGameIds.length === 1 ? "" : "s"}`,
     `${profile.favoritePokemonNames.length} favorite Pokemon`,
   ];
+  const badgeStyles =
+    profile.badge === "Owner"
+      ? { borderColor: "rgba(218,44,67,0.5)", background: "rgba(218,44,67,0.18)", color: "#fda4af" }
+      : profile.badge === "Admin"
+        ? { borderColor: "rgba(59,130,246,0.5)", background: "rgba(59,130,246,0.18)", color: "#93c5fd" }
+        : profile.badge === "Pro"
+          ? { borderColor: "rgba(16,185,129,0.5)", background: "rgba(16,185,129,0.18)", color: "#6ee7b7" }
+          : null;
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-gradient)" }}>
@@ -189,7 +198,7 @@ export default async function PublicProfilePage({
           </div>
           <Link
             href="/play"
-            className="hidden rounded-xl border px-3.5 py-2 text-[0.82rem] font-semibold sm:inline-flex items-center gap-1.5"
+            className="hidden rounded-xl border px-3.5 py-2 text-[0.82rem] font-semibold transition-colors hover:border-[var(--border-hover)] sm:inline-flex items-center gap-1.5"
             style={{ borderColor: "var(--border)", color: "var(--text-secondary)", background: "var(--surface-2)" }}
           >
             Open Builder
@@ -234,6 +243,14 @@ export default async function PublicProfilePage({
               <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
                 @{profile.username} • Joined {joinedDate}
               </p>
+              {profile.badge && badgeStyles && (
+                <span
+                  className="mt-1 inline-flex rounded-full border px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.08em]"
+                  style={badgeStyles}
+                >
+                  {profile.badge}
+                </span>
+              )}
               <p className="text-[0.72rem] uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
                 {avatarFrame} frame
               </p>
@@ -241,7 +258,7 @@ export default async function PublicProfilePage({
           </div>
           <Link
             href="/play"
-            className="hidden rounded-xl border px-3.5 py-2 text-sm font-semibold sm:inline-flex"
+            className="hidden rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors hover:border-[var(--border-hover)] sm:inline-flex"
             style={{ borderColor: "var(--border)", color: "var(--text-primary)", background: "var(--surface-2)" }}
           >
             Open Builder
@@ -374,7 +391,7 @@ export default async function PublicProfilePage({
                 {profile.savedTeams.map((team) => (
                   <div
                     key={team.id}
-                    className="rounded-xl border px-3 py-2"
+                    className="team-card-hover rounded-xl border px-3 py-2"
                     style={{
                       borderColor:
                         profile.favoriteTeamId === team.id

@@ -115,6 +115,7 @@ async function fetchPokemonByGeneration(maxGeneration: number): Promise<Pokemon[
     pokemonWithSpeciesData.map((entry) => [entry.speciesName.toLowerCase(), entry.evolvesFrom?.toLowerCase() ?? null])
   );
   const rootSpeciesCache = new Map<string, string>();
+  const evolutionLineCache = new Map<string, string[]>();
   const starterRoots = new Set(
     GENERATION_META
       .filter((meta) => meta.generation <= maxGeneration)
@@ -141,19 +142,46 @@ async function fetchPokemonByGeneration(maxGeneration: number): Promise<Pokemon[
     return current;
   };
 
+  const getEvolutionLine = (speciesName: string): string[] => {
+    const normalized = speciesName.toLowerCase();
+    const cached = evolutionLineCache.get(normalized);
+    if (cached) return cached;
+
+    const lineage: string[] = [];
+    let current: string | null = normalized;
+    const seen = new Set<string>();
+
+    while (current && !seen.has(current)) {
+      seen.add(current);
+      lineage.push(current);
+      current = evolvesFromBySpecies.get(current) ?? null;
+    }
+
+    const ordered = lineage.reverse();
+    evolutionLineCache.set(normalized, ordered);
+    return ordered;
+  };
+
   const speciesWithEvolutions = new Set(
     pokemonWithSpeciesData
       .map((entry) => entry.evolvesFrom)
       .filter((value): value is string => value !== null)
   );
 
-  const allPokemon: Pokemon[] = pokemonWithSpeciesData.map((entry) => ({
-    ...entry.pokemon,
-    isFinalEvolution: !speciesWithEvolutions.has(entry.speciesName),
-    isLegendary: entry.isLegendary,
-    isMythical: entry.isMythical,
-    isStarterLine: starterRoots.has(getRootSpecies(entry.speciesName)),
-  }));
+  const allPokemon: Pokemon[] = pokemonWithSpeciesData.map((entry) => {
+    const evolutionLine = getEvolutionLine(entry.speciesName);
+    return {
+      ...entry.pokemon,
+      isFinalEvolution: !speciesWithEvolutions.has(entry.speciesName),
+      isLegendary: entry.isLegendary,
+      isMythical: entry.isMythical,
+      isStarterLine: starterRoots.has(getRootSpecies(entry.speciesName)),
+      evolutionLine: evolutionLine.map(
+        (speciesName) => speciesName.charAt(0).toUpperCase() + speciesName.slice(1)
+      ),
+      evolutionStage: evolutionLine.length,
+    };
+  });
 
   return allPokemon.sort((a, b) => a.id - b.id);
 }

@@ -7,6 +7,7 @@ import { shutdownPostHog } from "./lib/posthog";
 import teams from "./routes/teams";
 import profiles from "./routes/profiles";
 import ai from "./routes/ai";
+import admin from "./routes/admin";
 
 const app = new Hono();
 const API_CSP = "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'";
@@ -127,11 +128,23 @@ app.use(
   })
 );
 
+// Admin API: restricted route, low-volume but sensitive.
+app.use(
+  "/api/admin/*",
+  rateLimiter({
+    windowMs: 60 * 1000,
+    limit: 60,
+    keyGenerator: getClientKey,
+    skip: shouldSkipRateLimit,
+  })
+);
+
 app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 app.route("/api/teams", teams);
 app.route("/api/profiles", profiles);
 app.route("/api/ai", ai);
+app.route("/api/admin", admin);
 
 app.onError((error, c) => {
   const url = new URL(c.req.url);

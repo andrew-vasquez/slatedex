@@ -31,7 +31,8 @@ const GROUP_BOSSES: Record<string, BossGuideEntry[]> = {
     { name: "Karen", stage: "elite4", primaryTypes: ["dark", "poison"] },
     { name: "Champion Lance", stage: "champion", primaryTypes: ["dragon", "flying"] },
   ],
-  hoenn_classic: [
+  // Ruby / Sapphire — Wallace is Gym 8; Steven is Champion
+  hoenn_rs: [
     { name: "Roxanne", stage: "gym", primaryTypes: ["rock"] },
     { name: "Brawly", stage: "gym", primaryTypes: ["fighting"] },
     { name: "Wattson", stage: "gym", primaryTypes: ["electric"] },
@@ -39,7 +40,23 @@ const GROUP_BOSSES: Record<string, BossGuideEntry[]> = {
     { name: "Norman", stage: "gym", primaryTypes: ["normal"] },
     { name: "Winona", stage: "gym", primaryTypes: ["flying"] },
     { name: "Tate & Liza", stage: "gym", primaryTypes: ["psychic"] },
-    { name: "Juan/Wallace", stage: "gym", primaryTypes: ["water"] },
+    { name: "Wallace", stage: "gym", primaryTypes: ["water"] },
+    { name: "Sidney", stage: "elite4", primaryTypes: ["dark"] },
+    { name: "Phoebe", stage: "elite4", primaryTypes: ["ghost"] },
+    { name: "Glacia", stage: "elite4", primaryTypes: ["ice"] },
+    { name: "Drake", stage: "elite4", primaryTypes: ["dragon"] },
+    { name: "Champion Steven", stage: "champion", primaryTypes: ["steel", "rock"] },
+  ],
+  // Emerald — Juan is Gym 8; Wallace is Champion
+  hoenn_emerald: [
+    { name: "Roxanne", stage: "gym", primaryTypes: ["rock"] },
+    { name: "Brawly", stage: "gym", primaryTypes: ["fighting"] },
+    { name: "Wattson", stage: "gym", primaryTypes: ["electric"] },
+    { name: "Flannery", stage: "gym", primaryTypes: ["fire"] },
+    { name: "Norman", stage: "gym", primaryTypes: ["normal"] },
+    { name: "Winona", stage: "gym", primaryTypes: ["flying"] },
+    { name: "Tate & Liza", stage: "gym", primaryTypes: ["psychic"] },
+    { name: "Juan", stage: "gym", primaryTypes: ["water"] },
     { name: "Sidney", stage: "elite4", primaryTypes: ["dark"] },
     { name: "Phoebe", stage: "elite4", primaryTypes: ["ghost"] },
     { name: "Glacia", stage: "elite4", primaryTypes: ["ice"] },
@@ -76,7 +93,24 @@ const GROUP_BOSSES: Record<string, BossGuideEntry[]> = {
     { name: "Lance", stage: "elite4", primaryTypes: ["dragon", "flying"] },
     { name: "Champion Blue", stage: "champion", primaryTypes: ["mixed"] },
   ],
-  sinnoh_classic: [
+  // Diamond / Pearl — Fantina is Gym 3
+  sinnoh_dp: [
+    { name: "Roark", stage: "gym", primaryTypes: ["rock"] },
+    { name: "Gardenia", stage: "gym", primaryTypes: ["grass"] },
+    { name: "Fantina", stage: "gym", primaryTypes: ["ghost"] },
+    { name: "Maylene", stage: "gym", primaryTypes: ["fighting"] },
+    { name: "Crasher Wake", stage: "gym", primaryTypes: ["water"] },
+    { name: "Byron", stage: "gym", primaryTypes: ["steel"] },
+    { name: "Candice", stage: "gym", primaryTypes: ["ice"] },
+    { name: "Volkner", stage: "gym", primaryTypes: ["electric"] },
+    { name: "Aaron", stage: "elite4", primaryTypes: ["bug"] },
+    { name: "Bertha", stage: "elite4", primaryTypes: ["ground"] },
+    { name: "Flint", stage: "elite4", primaryTypes: ["fire"] },
+    { name: "Lucian", stage: "elite4", primaryTypes: ["psychic"] },
+    { name: "Champion Cynthia", stage: "champion", primaryTypes: ["mixed"], notes: "High coverage and strong ace threats." },
+  ],
+  // Platinum — Fantina is Gym 5
+  sinnoh_platinum: [
     { name: "Roark", stage: "gym", primaryTypes: ["rock"] },
     { name: "Gardenia", stage: "gym", primaryTypes: ["grass"] },
     { name: "Maylene", stage: "gym", primaryTypes: ["fighting"] },
@@ -211,14 +245,14 @@ const VERSION_TO_GROUP: Record<string, keyof typeof GROUP_BOSSES> = {
   gold: "johto_classic",
   silver: "johto_classic",
   crystal: "johto_classic",
-  ruby: "hoenn_classic",
-  sapphire: "hoenn_classic",
-  emerald: "hoenn_classic",
+  ruby: "hoenn_rs",
+  sapphire: "hoenn_rs",
+  emerald: "hoenn_emerald",
   firered: "kanto_frlg",
   leafgreen: "kanto_frlg",
-  diamond: "sinnoh_classic",
-  pearl: "sinnoh_classic",
-  platinum: "sinnoh_classic",
+  diamond: "sinnoh_dp",
+  pearl: "sinnoh_dp",
+  platinum: "sinnoh_platinum",
   heartgold: "johto_hgss",
   soulsilver: "johto_hgss",
   black: "unova_bw",
@@ -244,16 +278,29 @@ function normalizeVersionId(value: string | null | undefined): string {
   return value.trim().toLowerCase().replace(/[_\s]+/g, "-");
 }
 
-const EARLY_GYM_EVOLUTION_BAND =
-  "Early gym pacing: mostly base or first-evolution Pokemon; starter is usually first evolution around Lv16. Avoid assuming final evolutions.";
+const GYM_1_EVOLUTION_BAND =
+  "Gym 1 pacing: use base forms and a few first evolutions only. Treat final evolutions as unrealistic at this checkpoint.";
+const GYM_2_EVOLUTION_BAND =
+  "Gym 2 pacing: mostly base or first-evolution Pokemon; starter is usually first evolution around Lv16. Avoid final evolutions.";
 const MID_GYM_EVOLUTION_BAND =
-  "Mid gym pacing: mostly first/second evolutions, with occasional final evolutions from fast-level lines.";
+  "Mid gym pacing (Gyms 3-5): mostly first/second evolutions, with occasional final evolutions from fast-level lines.";
 const LATE_GYM_EVOLUTION_BAND =
-  "Late gym pacing: final evolutions become common and should be treated as realistic.";
+  "Late gym pacing (Gyms 6-8): final evolutions become common and should be treated as realistic.";
 const ELITE_FOUR_EVOLUTION_BAND =
   "Elite Four pacing: expect mostly final evolutions and optimized movesets.";
 const CHAMPION_EVOLUTION_BAND =
   "Champion pacing: expect full final-evolution rosters and broad coverage.";
+
+function getGymCheckpointLevelRange(gymOrder: number): string {
+  if (gymOrder <= 1) return "Lv 8-16";
+  if (gymOrder === 2) return "Lv 16-24";
+  if (gymOrder === 3) return "Lv 24-30";
+  if (gymOrder === 4) return "Lv 30-36";
+  if (gymOrder === 5) return "Lv 36-42";
+  if (gymOrder === 6) return "Lv 42-48";
+  if (gymOrder === 7) return "Lv 48-54";
+  return "Lv 52-58";
+}
 
 function enrichBossGuidance(entries: BossGuideEntry[]): BossGuideEntry[] {
   let gymOrder = 0;
@@ -261,19 +308,34 @@ function enrichBossGuidance(entries: BossGuideEntry[]): BossGuideEntry[] {
   return entries.map((entry) => {
     if (entry.stage === "gym") {
       gymOrder += 1;
+      if (gymOrder <= 1) {
+        return {
+          ...entry,
+          gymOrder,
+          recommendedPlayerLevelRange: getGymCheckpointLevelRange(gymOrder),
+          expectedEvolutionBand: GYM_1_EVOLUTION_BAND,
+          notes:
+            entry.notes ??
+            "Use early-route catches and starter base/first-stage forms. Do not assume final-stage evolution availability.",
+        };
+      }
       if (gymOrder <= 2) {
         return {
           ...entry,
           gymOrder,
-          recommendedPlayerLevelRange: "Lv 10-22",
-          expectedEvolutionBand: EARLY_GYM_EVOLUTION_BAND,
+          recommendedPlayerLevelRange: getGymCheckpointLevelRange(gymOrder),
+          expectedEvolutionBand: GYM_2_EVOLUTION_BAND,
+          notes:
+            entry.notes ??
+            "Keep capture suggestions in early-game encounter windows and avoid late-game evolution assumptions.",
         };
       }
+
       if (gymOrder <= 5) {
         return {
           ...entry,
           gymOrder,
-          recommendedPlayerLevelRange: "Lv 23-38",
+          recommendedPlayerLevelRange: getGymCheckpointLevelRange(gymOrder),
           expectedEvolutionBand: MID_GYM_EVOLUTION_BAND,
         };
       }
@@ -281,7 +343,7 @@ function enrichBossGuidance(entries: BossGuideEntry[]): BossGuideEntry[] {
       return {
         ...entry,
         gymOrder,
-        recommendedPlayerLevelRange: "Lv 39-55",
+        recommendedPlayerLevelRange: getGymCheckpointLevelRange(gymOrder),
         expectedEvolutionBand: LATE_GYM_EVOLUTION_BAND,
       };
     }

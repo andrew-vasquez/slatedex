@@ -3,9 +3,9 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { FiLogIn, FiLogOut, FiMoon, FiSettings, FiSun, FiUser, FiGrid } from "react-icons/fi";
+import { FiGrid, FiLogIn, FiLogOut, FiMoon, FiSettings, FiShield, FiSun, FiUser } from "react-icons/fi";
 import { signOut } from "@/lib/auth-client";
-import { fetchMyProfile } from "@/lib/api";
+import { fetchMyProfile, type MyProfile, type UserRoleValue } from "@/lib/api";
 import { normalizeAvatarUrl } from "@/lib/avatar";
 import { safeImageSrc } from "@/lib/image";
 import {
@@ -19,6 +19,10 @@ type Theme = "dark" | "light";
 
 const DARK_THEME_COLOR = "#060914";
 const LIGHT_THEME_COLOR = "#f3ecde";
+const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000;
+
+let cachedProfile: { profile: MyProfile; fetchedAt: number } | null = null;
+let inFlightProfileRequest: Promise<MyProfile> | null = null;
 
 function applyTheme(theme: Theme): void {
   const root = document.documentElement;
@@ -46,12 +50,44 @@ function toAvatarFrame(value: string | null | undefined): AvatarFrameKey {
   return match?.key ?? "classic";
 }
 
+function readCachedProfile(): MyProfile | null {
+  if (!cachedProfile) return null;
+  if (Date.now() - cachedProfile.fetchedAt > PROFILE_CACHE_TTL_MS) {
+    cachedProfile = null;
+    return null;
+  }
+  return cachedProfile.profile;
+}
+
+function clearProfileCache(): void {
+  cachedProfile = null;
+  inFlightProfileRequest = null;
+}
+
+function fetchMyProfileCached(): Promise<MyProfile> {
+  const cached = readCachedProfile();
+  if (cached) return Promise.resolve(cached);
+  if (inFlightProfileRequest) return inFlightProfileRequest;
+
+  inFlightProfileRequest = fetchMyProfile()
+    .then((profile) => {
+      cachedProfile = { profile, fetchedAt: Date.now() };
+      return profile;
+    })
+    .finally(() => {
+      inFlightProfileRequest = null;
+    });
+
+  return inFlightProfileRequest;
+}
+
 const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) => {
   const { user, isAuthenticated, isLoading, openAuthDialog } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>("dark");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarFrame, setAvatarFrame] = useState<AvatarFrameKey>("classic");
+  const [viewerRole, setViewerRole] = useState<UserRoleValue | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
 
@@ -84,30 +120,52 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
     if (!isAuthenticated) {
       setAvatarUrl(null);
       setAvatarFrame("classic");
+      setViewerRole(null);
+      clearProfileCache();
       return;
     }
 
     let cancelled = false;
+    const cached = readCachedProfile();
+    if (cached) {
+      setAvatarUrl(cached.avatarUrl ?? cached.image ?? null);
+      setAvatarFrame(toAvatarFrame(cached.avatarFrame));
+      setViewerRole(cached.role);
+    }
 
-    fetchMyProfile()
+    fetchMyProfileCached()
       .then((profile) => {
         if (cancelled) return;
         setAvatarUrl(profile.avatarUrl ?? profile.image ?? null);
         setAvatarFrame(toAvatarFrame(profile.avatarFrame));
+        setViewerRole(profile.role);
       })
       .catch(() => {
         if (cancelled) return;
         setAvatarUrl(user?.image ?? null);
         setAvatarFrame("classic");
+        setViewerRole(null);
       });
 
     const onAppearanceUpdated = (event: Event) => {
       const customEvent = event as CustomEvent<{ avatarUrl?: string | null; avatarFrame?: string }>;
       if (customEvent.detail?.avatarUrl !== undefined) {
         setAvatarUrl(customEvent.detail.avatarUrl ?? null);
+        if (cachedProfile) {
+          cachedProfile = {
+            ...cachedProfile,
+            profile: { ...cachedProfile.profile, avatarUrl: customEvent.detail.avatarUrl ?? null },
+          };
+        }
       }
       if (customEvent.detail?.avatarFrame !== undefined) {
         setAvatarFrame(toAvatarFrame(customEvent.detail.avatarFrame));
+        if (cachedProfile) {
+          cachedProfile = {
+            ...cachedProfile,
+            profile: { ...cachedProfile.profile, avatarFrame: customEvent.detail.avatarFrame },
+          };
+        }
       }
     };
 
@@ -126,12 +184,14 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
 
   const handleSignOut = async () => {
     await signOut();
+    clearProfileCache();
     setAvatarUrl(null);
     setAvatarFrame("classic");
     setIsOpen(false);
   };
 
   const frameStyles = getAvatarFrameStyles(avatarFrame);
+  const canAccessAdmin = viewerRole === "ADMIN" || viewerRole === "OWNER";
   const normalizedAvatarInput = safeImageSrc(avatarUrl) ?? safeImageSrc(user?.image) ?? "";
   const effectiveAvatarUrl = normalizeAvatarUrl(normalizedAvatarInput);
 
@@ -236,6 +296,18 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
                   <FiSettings size={14} aria-hidden="true" />
                   Settings
                 </Link>
+
+                {canAccessAdmin && (
+                  <Link
+                    href="/settings/admin"
+                    className="user-menu-item"
+                    role="menuitem"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <FiShield size={14} aria-hidden="true" />
+                    Admin Dashboard
+                  </Link>
+                )}
 
                 <button
                   type="button"

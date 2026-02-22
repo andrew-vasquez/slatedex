@@ -5,6 +5,7 @@ import { FiChevronUp } from "react-icons/fi";
 import Image from "next/image";
 import TeamPanel from "./TeamPanel";
 import TeamCaptureGuide from "./TeamCaptureGuide";
+import { triggerHaptic } from "@/lib/haptics";
 import { pokemonSpriteSrc } from "@/lib/image";
 import type { Pokemon } from "@/lib/types";
 
@@ -24,6 +25,7 @@ interface MobileTeamSheetProps {
   onOpenTeamTools?: () => void;
   selectedVersionId: string;
   selectedVersionLabel: string;
+  hapticsEnabled?: boolean;
 }
 
 export default function MobileTeamSheet({
@@ -40,6 +42,7 @@ export default function MobileTeamSheet({
   onOpenTeamTools,
   selectedVersionId,
   selectedVersionLabel,
+  hapticsEnabled = true,
 }: MobileTeamSheetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -52,9 +55,20 @@ export default function MobileTeamSheet({
   const suppressClickRef = useRef(false);
   const suppressClickTimerRef = useRef<number | null>(null);
 
+  const emitHaptic = useCallback(
+    (tone: Parameters<typeof triggerHaptic>[0] = "light") => {
+      triggerHaptic(tone, { enabled: hapticsEnabled, mobileOnly: true });
+    },
+    [hapticsEnabled]
+  );
+
   const toggleSheet = useCallback(() => {
-    setIsOpen((prev) => !prev);
-  }, []);
+    setIsOpen((prev) => {
+      const next = !prev;
+      emitHaptic(next ? "medium" : "light");
+      return next;
+    });
+  }, [emitHaptic]);
 
   // iOS-compatible scroll lock: position-fixed trick preserves scroll position
   useEffect(() => {
@@ -136,10 +150,12 @@ export default function MobileTeamSheet({
         // Dismiss if dragged far enough OR swiped down fast
         const shouldClose = dragOffset > 80 || velocity > 0.45;
         setIsOpen(!shouldClose);
+        if (shouldClose) emitHaptic("light");
       } else {
         // Open if dragged far enough OR swiped up fast
         const shouldOpen = dragOffset < -80 || velocity < -0.45;
         setIsOpen(shouldOpen);
+        if (shouldOpen) emitHaptic("medium");
       }
     }
     touchStartY.current = null;
@@ -158,9 +174,14 @@ export default function MobileTeamSheet({
       suppressClickRef.current = false;
       suppressClickTimerRef.current = null;
     }, 320);
-  }, [isOpen, dragOffset, toggleSheet]);
+  }, [dragOffset, emitHaptic, isOpen, toggleSheet]);
 
-  const close = useCallback(() => setIsOpen(false), []);
+  const close = useCallback(() => {
+    setIsOpen((prev) => {
+      if (prev) emitHaptic("light");
+      return false;
+    });
+  }, [emitHaptic]);
   const useTransition = !isDragging.current;
 
   // Use env(safe-area-inset-bottom) inline — supported in all modern browsers
@@ -256,6 +277,7 @@ export default function MobileTeamSheet({
                       alt={pokemon.name}
                       width={28}
                       height={28}
+                      sizes="28px"
                       className="object-contain"
                       style={{ imageRendering: "pixelated" }}
                       unoptimized

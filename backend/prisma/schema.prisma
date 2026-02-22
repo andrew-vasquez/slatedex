@@ -20,6 +20,12 @@ model User {
   email         String
   emailVerified Boolean   @default(false)
   image         String?
+  role          UserRole  @default(USER)
+  plan          UserPlan  @default(FREE)
+  monthlyChatLimit Int    @default(50)
+  monthlyAnalyzeLimit Int @default(50)
+  unlimitedAiChat Boolean @default(false)
+  unlimitedAiAnalyze Boolean @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
@@ -28,6 +34,7 @@ model User {
   profile       Profile?
   usernameLogs  ProfileUsernameChange[]
   aiConversations AiConversation[]
+  aiMonthlyUsages AiMonthlyUsage[]
 
   @@unique([email])
   @@map("user")
@@ -103,6 +110,9 @@ model Team {
   generation        Int
   gameId            Int
   selectedVersionId String?
+  checkpointBossName String?
+  checkpointStage    String?
+  checkpointGymOrder Int?
   pokemon           Json
   userId            String
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -138,6 +148,17 @@ enum AiMessageKind {
   ANALYSIS
 }
 
+enum UserRole {
+  USER
+  ADMIN
+  OWNER
+}
+
+enum UserPlan {
+  FREE
+  PRO
+}
+
 model AiConversation {
   id        String      @id @default(cuid())
   userId    String
@@ -165,4 +186,20 @@ model AiMessage {
 
   @@index([conversationId, createdAt])
   @@map("ai_message")
+}
+
+model AiMonthlyUsage {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodStart DateTime
+  chatCount   Int      @default(0)
+  analyzeCount Int     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, periodStart])
+  @@index([periodStart])
+  @@index([userId, updatedAt])
+  @@map("ai_monthly_usage")
 }

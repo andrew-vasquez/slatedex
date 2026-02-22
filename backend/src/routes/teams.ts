@@ -13,8 +13,11 @@ const MAX_TEAM_NAME_LENGTH = 80;
 const MAX_POKEMON_NAME_LENGTH = 48;
 const MAX_SPRITE_LENGTH = 500;
 const MAX_VERSION_ID_LENGTH = 64;
+const MAX_CHECKPOINT_BOSS_NAME_LENGTH = 80;
+const MAX_EVOLUTION_LINE_LENGTH = 5;
 const MAX_TEAM_PAYLOAD_BYTES = 64_000;
 const ALLOWED_EXCLUSIVE_STATUSES = new Set(["exclusive", "shared", "unknown"]);
+const ALLOWED_CHECKPOINT_STAGES = new Set(["gym", "elite4", "champion"]);
 
 type TeamPokemonSlot = Record<string, unknown> | null;
 type TeamCreateData = Parameters<typeof prisma.team.create>[0]["data"];
@@ -118,6 +121,30 @@ function parsePokemonSlot(raw: unknown): TeamPokemonSlot | "invalid" {
     slot.isStarterLine = candidate.isStarterLine;
   }
 
+  if (candidate.evolutionStage !== undefined) {
+    if (
+      typeof candidate.evolutionStage !== "number" ||
+      !Number.isInteger(candidate.evolutionStage) ||
+      candidate.evolutionStage < 1 ||
+      candidate.evolutionStage > MAX_EVOLUTION_LINE_LENGTH
+    ) {
+      return "invalid";
+    }
+    slot.evolutionStage = candidate.evolutionStage;
+  }
+
+  if (candidate.evolutionLine !== undefined) {
+    if (!Array.isArray(candidate.evolutionLine)) return "invalid";
+    if (candidate.evolutionLine.length === 0 || candidate.evolutionLine.length > MAX_EVOLUTION_LINE_LENGTH) {
+      return "invalid";
+    }
+    const evolutionLine = candidate.evolutionLine
+      .map((value) => (typeof value === "string" ? value.trim() : ""))
+      .filter(Boolean);
+    if (evolutionLine.length !== candidate.evolutionLine.length) return "invalid";
+    slot.evolutionLine = evolutionLine;
+  }
+
   if (candidate.gameIndexVersionIds !== undefined) {
     const versionIds = parseVersionIds(candidate.gameIndexVersionIds);
     if (!versionIds) return "invalid";
@@ -191,11 +218,37 @@ function parseSelectedVersionId(raw: unknown): string | null | "invalid" {
   return trimmed;
 }
 
+function parseCheckpointBossName(raw: unknown): string | null | "invalid" {
+  if (raw === undefined || raw === null || raw === "") return null;
+  if (typeof raw !== "string") return "invalid";
+
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.length > MAX_CHECKPOINT_BOSS_NAME_LENGTH) return "invalid";
+  return trimmed;
+}
+
+function parseCheckpointStage(raw: unknown): string | null | "invalid" {
+  if (raw === undefined || raw === null || raw === "") return null;
+  if (typeof raw !== "string") return "invalid";
+
+  const trimmed = raw.trim().toLowerCase();
+  if (!trimmed || !ALLOWED_CHECKPOINT_STAGES.has(trimmed)) return "invalid";
+  return trimmed;
+}
+
+function parseCheckpointGymOrder(raw: unknown): number | null | "invalid" {
+  if (raw === undefined || raw === null || raw === "") return null;
+  if (typeof raw !== "number" || !Number.isInteger(raw)) return "invalid";
+  if (raw < 1 || raw > 12) return "invalid";
+  return raw;
+}
+
 // GET /api/teams?generation=&gameId=
 teams.get("/", async (c) => {
   const user = c.get("user");
   const generationRaw = c.req.query("generation");
   const gameIdRaw = c.req.query("gameId");
+  const summaryRaw = c.req.query("summary");
 
   const where: Record<string, unknown> = { userId: user.id };
   if (generationRaw !== undefined) {
@@ -212,6 +265,22 @@ teams.get("/", async (c) => {
       return c.json({ error: "gameId must be a positive integer." }, 400);
     }
     where.gameId = gameId;
+  }
+
+  if (summaryRaw === "countsByGame") {
+    const counts = await prisma.team.groupBy({
+      by: ["gameId"],
+      where,
+      _count: { _all: true },
+      orderBy: { gameId: "asc" },
+    });
+
+    return c.json({
+      counts: counts.map((entry) => ({
+        gameId: entry.gameId,
+        count: entry._count._all,
+      })),
+    });
   }
 
   const userTeams = await prisma.team.findMany({
@@ -252,6 +321,9 @@ teams.post("/", async (c) => {
   const gameId = parsePositiveInt(payload.gameId);
   const parsedTeam = parsePokemonTeam(payload.pokemon);
   const selectedVersionId = parseSelectedVersionId(payload.selectedVersionId);
+  const checkpointBossName = parseCheckpointBossName(payload.checkpointBossName);
+  const checkpointStage = parseCheckpointStage(payload.checkpointStage);
+  const checkpointGymOrder = parseCheckpointGymOrder(payload.checkpointGymOrder);
 
   if (!name || !generation || !gameId) {
     return c.json({ error: "name, generation, and gameId are required." }, 400);
@@ -264,12 +336,24 @@ teams.post("/", async (c) => {
   if (selectedVersionId === "invalid") {
     return c.json({ error: "selectedVersionId is invalid" }, 400);
   }
+  if (checkpointBossName === "invalid") {
+    return c.json({ error: "checkpointBossName is invalid" }, 400);
+  }
+  if (checkpointStage === "invalid") {
+    return c.json({ error: "checkpointStage is invalid" }, 400);
+  }
+  if (checkpointGymOrder === "invalid") {
+    return c.json({ error: "checkpointGymOrder is invalid" }, 400);
+  }
 
   const team = await prisma.team.create({
     data: {
       name,
       generation,
       gameId,
+      checkpointBossName,
+      checkpointStage,
+      checkpointGymOrder,
       pokemon: parsedTeam.value as unknown as TeamCreateData["pokemon"],
       selectedVersionId,
       userId: user.id,
@@ -319,6 +403,30 @@ teams.put("/:id", async (c) => {
       return c.json({ error: "selectedVersionId is invalid" }, 400);
     }
     data.selectedVersionId = selectedVersionId;
+  }
+
+  if (payload.checkpointBossName !== undefined) {
+    const checkpointBossName = parseCheckpointBossName(payload.checkpointBossName);
+    if (checkpointBossName === "invalid") {
+      return c.json({ error: "checkpointBossName is invalid" }, 400);
+    }
+    data.checkpointBossName = checkpointBossName;
+  }
+
+  if (payload.checkpointStage !== undefined) {
+    const checkpointStage = parseCheckpointStage(payload.checkpointStage);
+    if (checkpointStage === "invalid") {
+      return c.json({ error: "checkpointStage is invalid" }, 400);
+    }
+    data.checkpointStage = checkpointStage;
+  }
+
+  if (payload.checkpointGymOrder !== undefined) {
+    const checkpointGymOrder = parseCheckpointGymOrder(payload.checkpointGymOrder);
+    if (checkpointGymOrder === "invalid") {
+      return c.json({ error: "checkpointGymOrder is invalid" }, 400);
+    }
+    data.checkpointGymOrder = checkpointGymOrder;
   }
 
   if (Object.keys(data).length === 0) {

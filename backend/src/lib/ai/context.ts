@@ -1,4 +1,4 @@
-import type { BossGuideEntry, TeamContextPayload, TeamPokemonContext } from "./types";
+import type { BossGuideEntry, BossStage, TeamContextPayload, TeamPokemonContext } from "./types";
 
 const TYPE_INTRO_GENERATION: Record<string, number> = {
   normal: 1,
@@ -23,6 +23,112 @@ const TYPE_INTRO_GENERATION: Record<string, number> = {
 
 const ALL_TYPES = Object.keys(TYPE_INTRO_GENERATION);
 const MAX_ALLOWED_POKEMON_CONTEXT = 500;
+const MAX_CHECKPOINT_CATCHABLE_CONTEXT = 80;
+const MAX_CHECKPOINT_BLOCKED_FINALS_CONTEXT = 200;
+const MAX_CHECKPOINT_EVOLUTION_FALLBACKS_CONTEXT = 240;
+
+function normalizeBossToken(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function normalizeSpeciesName(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function getCheckpointEvolutionStageCap(checkpoint: BossGuideEntry | null): number {
+  if (!checkpoint) return 3;
+  if (checkpoint.stage !== "gym") return 3;
+
+  const gymOrder = checkpoint.gymOrder ?? 8;
+  if (gymOrder <= 1) return 1;
+  if (gymOrder <= 5) return 2;
+  return 3;
+}
+
+function resolveCheckpoint(params: {
+  progression: TeamContextPayload["progression"] | undefined;
+  bossGuidance: BossGuideEntry[];
+}): BossGuideEntry | null {
+  const { progression, bossGuidance } = params;
+  if (!progression || bossGuidance.length === 0) return null;
+
+  const normalizedBossName =
+    typeof progression.checkpointBossName === "string" && progression.checkpointBossName.trim().length > 0
+      ? normalizeBossToken(progression.checkpointBossName)
+      : null;
+  const stage: BossStage | null =
+    progression.checkpointStage === "gym" ||
+    progression.checkpointStage === "elite4" ||
+    progression.checkpointStage === "champion"
+      ? progression.checkpointStage
+      : null;
+  const gymOrder =
+    typeof progression.checkpointGymOrder === "number" &&
+    Number.isInteger(progression.checkpointGymOrder) &&
+    progression.checkpointGymOrder > 0
+      ? progression.checkpointGymOrder
+      : null;
+
+  if (stage && gymOrder && stage === "gym") {
+    const byOrder = bossGuidance.find((entry) => entry.stage === "gym" && entry.gymOrder === gymOrder);
+    if (byOrder) return byOrder;
+  }
+
+  if (normalizedBossName) {
+    const byName = bossGuidance.find((entry) => normalizeBossToken(entry.name) === normalizedBossName);
+    if (byName) return byName;
+  }
+
+  if (stage) {
+    const byStage = bossGuidance.find((entry) => entry.stage === stage);
+    if (byStage) return byStage;
+  }
+
+  if (gymOrder) {
+    const byGymOrder = bossGuidance.find((entry) => entry.stage === "gym" && entry.gymOrder === gymOrder);
+    if (byGymOrder) return byGymOrder;
+  }
+
+  return null;
+}
+
+function inferStoryPhase(checkpoint: BossGuideEntry | null): "early" | "mid" | "late" | "elite4" | "champion" | null {
+  if (!checkpoint) return null;
+  if (checkpoint.stage === "elite4") return "elite4";
+  if (checkpoint.stage === "champion") return "champion";
+
+  const gymOrder = checkpoint.gymOrder ?? 0;
+  if (gymOrder <= 2) return "early";
+  if (gymOrder <= 5) return "mid";
+  return "late";
+}
+
+function inferAssumedTeamForm(
+  pokemon: TeamPokemonContext,
+  evolutionStageCap: number
+): { sourceSpeciesName: string; assumedSpeciesName: string; reason: string } | null {
+  const source = normalizeSpeciesName(pokemon.name);
+  const line = Array.isArray(pokemon.evolutionLine)
+    ? pokemon.evolutionLine.map((name) => normalizeSpeciesName(name)).filter(Boolean)
+    : [];
+
+  if (line.length === 0) return null;
+  const sourceStage =
+    typeof pokemon.evolutionStage === "number" && Number.isInteger(pokemon.evolutionStage) && pokemon.evolutionStage > 0
+      ? pokemon.evolutionStage
+      : line.length;
+  if (sourceStage <= evolutionStageCap) return null;
+
+  const index = Math.max(0, Math.min(evolutionStageCap, line.length) - 1);
+  const assumed = line[index] ?? source;
+  if (!assumed || assumed === source) return null;
+
+  return {
+    sourceSpeciesName: source,
+    assumedSpeciesName: assumed,
+    reason: `Checkpoint cap allows evolution stage ${evolutionStageCap} at this point.`,
+  };
+}
 
 function average(values: number[]): number {
   if (values.length === 0) return 0;
@@ -93,6 +199,56 @@ export function buildTeamContext(payload: TeamContextPayload, bossGuidance: Boss
   const versionFilterEnabled = Boolean(payload.filters?.versionFilterEnabled);
   const typeFilter = payload.filters?.typeFilter ?? [];
   const enforcePool = dexMode === "regional" || versionFilterEnabled;
+  const checkpoint = resolveCheckpoint({
+    progression: payload.progression,
+    bossGuidance,
+  });
+  const storyPhase = inferStoryPhase(checkpoint);
+  const checkpointCatchablePokemonNames = Array.from(
+    new Set(
+      (payload.progression?.checkpointCatchableNames ?? [])
+        .map((name) => normalizeSpeciesName(name))
+        .filter(Boolean)
+    )
+  )
+    .sort((a, b) => a.localeCompare(b))
+    .slice(0, MAX_CHECKPOINT_CATCHABLE_CONTEXT);
+  const checkpointCatchablePoolSize =
+    typeof payload.progression?.checkpointCatchablePoolSize === "number" &&
+    Number.isInteger(payload.progression.checkpointCatchablePoolSize) &&
+    payload.progression.checkpointCatchablePoolSize > 0
+      ? payload.progression.checkpointCatchablePoolSize
+      : checkpointCatchablePokemonNames.length;
+  const checkpointBlockedFinalNames = Array.from(
+    new Set(
+      (payload.progression?.checkpointBlockedFinalNames ?? [])
+        .map((name) => normalizeSpeciesName(name))
+        .filter(Boolean)
+    )
+  )
+    .sort((a, b) => a.localeCompare(b))
+    .slice(0, MAX_CHECKPOINT_BLOCKED_FINALS_CONTEXT);
+  const checkpointEvolutionFallbacks = Array.from(
+    new Map(
+      (payload.progression?.checkpointEvolutionFallbacks ?? [])
+        .map((entry) => {
+          const fromName = normalizeSpeciesName(entry.fromName);
+          const toName = normalizeSpeciesName(entry.toName);
+          if (!fromName || !toName || fromName === toName) return null;
+          return [fromName, { fromName, toName }] as const;
+        })
+        .filter((entry): entry is readonly [string, { fromName: string; toName: string }] => entry !== null)
+    ).values()
+  ).slice(0, MAX_CHECKPOINT_EVOLUTION_FALLBACKS_CONTEXT);
+  const checkpointEvolutionStageCap = getCheckpointEvolutionStageCap(checkpoint);
+  const assumedTeamForms = team
+    .map((pokemon) => inferAssumedTeamForm(pokemon, checkpointEvolutionStageCap))
+    .filter(
+      (
+        entry
+      ): entry is { sourceSpeciesName: string; assumedSpeciesName: string; reason: string } =>
+        entry !== null
+    );
 
   return {
     generation: payload.generation,
@@ -120,6 +276,11 @@ export function buildTeamContext(payload: TeamContextPayload, bossGuidance: Boss
       id: pokemon.id,
       name: pokemon.name,
       types: pokemon.types,
+      evolutionStage:
+        typeof pokemon.evolutionStage === "number" && Number.isInteger(pokemon.evolutionStage)
+          ? pokemon.evolutionStage
+          : null,
+      evolutionLine: Array.isArray(pokemon.evolutionLine) ? pokemon.evolutionLine : [],
       stats: {
         hp: pokemon.hp,
         attack: pokemon.attack,
@@ -133,6 +294,27 @@ export function buildTeamContext(payload: TeamContextPayload, bossGuidance: Boss
       typeDistribution,
       averageStats: stats.averageStats,
       shape: stats.shape,
+    },
+    progression: {
+      checkpoint:
+        checkpoint === null
+          ? null
+          : {
+              name: checkpoint.name,
+              stage: checkpoint.stage,
+              gymOrder: checkpoint.gymOrder ?? null,
+              primaryTypes: checkpoint.primaryTypes,
+              notes: checkpoint.notes ?? null,
+              recommendedPlayerLevelRange: checkpoint.recommendedPlayerLevelRange ?? null,
+              expectedEvolutionBand: checkpoint.expectedEvolutionBand ?? null,
+            },
+      storyPhase,
+      checkpointEvolutionStageCap,
+      checkpointCatchablePokemonNames,
+      checkpointCatchablePoolSize,
+      checkpointBlockedFinalNames,
+      checkpointEvolutionFallbacks,
+      assumedTeamForms,
     },
     bossGuidance,
   };

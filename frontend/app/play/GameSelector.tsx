@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GENERATION_META } from "@/lib/pokemon";
 import { getCuratedExclusiveCount } from "@/lib/versionExclusives";
 import {
@@ -11,7 +11,7 @@ import {
 } from "@/lib/storageKeys";
 import { FALLBACK_POKEMON_SPRITE } from "@/lib/image";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { fetchTeams } from "@/lib/api";
+import { fetchTeamCountsByGame } from "@/lib/api";
 import UserMenu from "@/components/auth/UserMenu";
 
 const SPRITE_IDS: Record<string, number> = {
@@ -92,7 +92,6 @@ const GameSelector = () => {
   const [searchQuery, setSearchQuery] = useState("");
   // Map of gameId → saved team count (only populated when authenticated)
   const [teamCountByGame, setTeamCountByGame] = useState<Record<number, number>>({});
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     try {
@@ -114,10 +113,10 @@ const GameSelector = () => {
   // Fetch saved team counts per game for authenticated users
   useEffect(() => {
     if (!isAuthenticated) return;
-    fetchTeams().then((teams) => {
+    fetchTeamCountsByGame().then((countsByGame) => {
       const counts: Record<number, number> = {};
-      for (const team of teams) {
-        counts[team.gameId] = (counts[team.gameId] ?? 0) + 1;
+      for (const entry of countsByGame) {
+        counts[entry.gameId] = entry.count;
       }
       setTeamCountByGame(counts);
     }).catch(() => {});
@@ -150,31 +149,6 @@ const GameSelector = () => {
       }))
       .filter((gen) => gen.games.length > 0);
   }, [gensWithDelay, normalizedSearchQuery]);
-  const currentRunContext = useMemo(() => {
-    if (lastVisitedGen === null) return null;
-    const meta = GENERATION_META.find((entry) => entry.generation === lastVisitedGen);
-    const currentGame = meta?.games.find((entry) => entry.id === lastVisitedGameId) ?? meta?.games[0];
-    if (!currentGame) return null;
-    return {
-      generation: lastVisitedGen,
-      gameName: currentGame.name,
-      region: currentGame.region,
-    };
-  }, [lastVisitedGameId, lastVisitedGen]);
-
-  useEffect(() => {
-    const onSlashFocus = (event: KeyboardEvent) => {
-      if (event.key !== "/") return;
-      const target = event.target as HTMLElement | null;
-      const tagName = target?.tagName?.toLowerCase();
-      if (tagName === "input" || tagName === "textarea" || target?.isContentEditable) return;
-      event.preventDefault();
-      searchInputRef.current?.focus();
-    };
-
-    window.addEventListener("keydown", onSlashFocus);
-    return () => window.removeEventListener("keydown", onSlashFocus);
-  }, []);
 
   const handleGameClick = (generation: number, gameId: number) => {
     try {
@@ -187,9 +161,9 @@ const GameSelector = () => {
     <div className="min-h-screen pb-16 sm:pb-24">
 
       {/* ── Header ──────────────────────────────────────────── */}
-      <header className="relative overflow-hidden border-b" style={{ borderColor: "var(--border)" }}>
+      <header className="relative z-30 overflow-visible border-b" style={{ borderColor: "var(--border)" }}>
         {/* Background atmosphere */}
-        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
           <div
             className="absolute -top-32 -left-20 h-80 w-80 rounded-full opacity-50"
             style={{ background: "radial-gradient(circle, rgba(218,44,67,0.15) 0%, transparent 70%)" }}
@@ -258,27 +232,20 @@ const GameSelector = () => {
         className="mx-auto mt-7 max-w-screen-xl px-4 sm:mt-9 sm:px-6"
         role="main"
       >
-        <div className="sticky top-2 z-10 mb-4 rounded-2xl border p-3 backdrop-blur-md" style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface-1) 88%, transparent)" }}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="mb-4 rounded-2xl border p-3" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <p className="text-[0.64rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
-              Current Run Context
+              Search Games
             </p>
-            {currentRunContext ? (
-              <p className="text-[0.72rem] font-semibold" style={{ color: "var(--text-secondary)" }}>
-                Gen {currentRunContext.generation} · {currentRunContext.gameName} · {currentRunContext.region}
-              </p>
-            ) : (
-              <p className="text-[0.7rem]" style={{ color: "var(--text-muted)" }}>
-                No recent run selected yet
-              </p>
-            )}
+            <p className="text-[0.7rem]" style={{ color: "var(--text-muted)" }}>
+              Filter by generation, game title, or region
+            </p>
           </div>
-          <div className="mt-2 flex items-center gap-2 rounded-xl border px-2.5 py-1.5" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+          <div className="flex items-center gap-2 rounded-xl border px-2.5 py-1.5" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
             <span className="text-[0.68rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
               /
             </span>
             <input
-              ref={searchInputRef}
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search generation, game, or region"
@@ -290,7 +257,7 @@ const GameSelector = () => {
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="rounded-md px-2 py-0.5 text-[0.66rem] font-semibold"
+                className="rounded-md px-2 py-0.5 text-[0.66rem] font-semibold transition-colors hover:opacity-70"
                 style={{ color: "var(--text-muted)" }}
                 aria-label="Clear search"
               >
@@ -381,7 +348,7 @@ const GameSelector = () => {
                           aria-label={`${game.name}, ${game.region}`}
                         >
                           <article
-                            className="relative h-full overflow-hidden p-4 sm:p-5"
+                            className="game-card-hover relative h-full overflow-hidden rounded-2xl p-4 sm:p-5"
                             style={{
                               border: `1px solid ${colors.edge}`,
                               background: `linear-gradient(140deg, ${colors.soft} 0%, var(--surface-1) 60%)`,
@@ -484,6 +451,8 @@ const GameSelector = () => {
                                     alt={starter}
                                     width={32}
                                     height={32}
+                                    sizes="28px"
+                                    unoptimized
                                     className="h-7 w-7 object-contain transition-transform duration-300 group-hover:scale-110"
                                   />
                                 </div>
@@ -496,6 +465,8 @@ const GameSelector = () => {
                                     alt=""
                                     width={44}
                                     height={44}
+                                    sizes="40px"
+                                    unoptimized
                                     className="h-10 w-10 object-contain opacity-35 transition-all duration-300 group-hover:opacity-65 group-hover:scale-105"
                                     aria-hidden="true"
                                   />
@@ -538,7 +509,7 @@ const GameSelector = () => {
                         aria-label={`${game.name}, ${game.region}`}
                       >
                         <article
-                          className="relative overflow-hidden"
+                          className="game-card-hover relative overflow-hidden rounded-2xl"
                           style={{
                             border: `1px solid ${colors.edge}`,
                             background: `linear-gradient(135deg, ${colors.soft} 0%, var(--surface-1) 55%)`,
@@ -651,6 +622,8 @@ const GameSelector = () => {
                                     alt={starter}
                                     width={40}
                                     height={40}
+                                    sizes="36px"
+                                    unoptimized
                                     className="h-9 w-9 object-contain transition-transform duration-300 group-hover:scale-110"
                                   />
                                 </div>
@@ -666,6 +639,8 @@ const GameSelector = () => {
                                   alt=""
                                   width={56}
                                   height={56}
+                                  sizes="(min-width: 640px) 56px, 48px"
+                                  unoptimized
                                   className="h-12 w-12 object-contain opacity-40 transition-all duration-300 group-hover:opacity-70 group-hover:scale-105 sm:h-14 sm:w-14"
                                   aria-hidden="true"
                                 />
@@ -695,7 +670,7 @@ const GameSelector = () => {
           {filteredGenerations.length === 0 && (
             <section className="rounded-2xl border p-6 text-center" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
               <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                No game found for “{searchQuery.trim()}”
+                No game found for "{searchQuery.trim()}"
               </p>
               <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
                 Try searching by game title, region, or generation number.

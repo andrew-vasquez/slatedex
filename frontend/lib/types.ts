@@ -20,6 +20,8 @@ export interface Pokemon {
   isMythical?: boolean;
   isStarterLine?: boolean;
   isPostgame?: boolean;
+  evolutionStage?: number;
+  evolutionLine?: string[];
 }
 
 export type DexMode = "regional" | "national";
@@ -33,6 +35,7 @@ export interface BuilderSettings {
   reduceMotion: boolean;
   dragBehavior: DragBehavior;
   versionTheming: boolean;
+  mobileHaptics: boolean;
 }
 
 export interface PokemonPools {

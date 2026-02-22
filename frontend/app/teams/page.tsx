@@ -120,7 +120,7 @@ function TeamCard({
 
   return (
     <article
-      className="animate-fade-in-up relative overflow-hidden rounded-2xl"
+      className="team-card-hover animate-fade-in-up relative overflow-hidden rounded-2xl"
       style={{
         border: `1px solid ${colors.edge}`,
         background: `linear-gradient(140deg, ${colors.soft} 0%, var(--surface-1) 60%)`,
@@ -303,7 +303,32 @@ export default function TeamsPage() {
     setTeams((prev) => prev.filter((t) => t.id !== id));
   };
 
-  if (isLoading || !isAuthenticated) return null;
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen" style={{ background: "var(--bg-gradient)" }}>
+        <header className="glass sticky top-0 z-40 border-b" style={{ borderColor: "var(--border)" }}>
+          <div className="mx-auto flex max-w-screen-lg items-center justify-between px-4 py-3 sm:px-6">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 animate-pulse rounded-xl" style={{ background: "var(--skeleton-b)" }} />
+              <div className="h-4 w-16 animate-pulse rounded" style={{ background: "var(--skeleton-b)" }} />
+            </div>
+            <div className="h-8 w-8 animate-pulse rounded-full" style={{ background: "var(--skeleton-b)" }} />
+          </div>
+        </header>
+        <main className="mx-auto max-w-screen-lg px-4 pt-6 sm:px-6 sm:pt-8">
+          <div className="mb-6">
+            <div className="h-8 w-32 animate-pulse rounded-lg" style={{ background: "var(--skeleton-b)" }} />
+            <div className="mt-2 h-4 w-48 animate-pulse rounded" style={{ background: "var(--skeleton-b)" }} />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-52 animate-pulse rounded-2xl" style={{ background: "var(--skeleton-b)" }} />
+            ))}
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   const teamsByGen = teams.reduce<Record<number, SavedTeam[]>>((acc, team) => {
     if (!acc[team.generation]) acc[team.generation] = [];
@@ -408,12 +433,12 @@ export default function TeamsPage() {
 
         {/* Content */}
         {fetchingTeams ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-3">
+          <div className="flex flex-col items-center justify-center py-24 gap-3" role="status" aria-live="polite">
             <FiLoader size={24} className="animate-spin" style={{ color: "var(--text-muted)" }} />
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>Loading your teams…</p>
           </div>
         ) : fetchError ? (
-          <div className="panel p-6 text-center">
+          <div className="panel p-6 text-center" role="alert">
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>{fetchError}</p>
             <button type="button" onClick={loadTeams} className="btn-secondary mt-4">
               Try Again

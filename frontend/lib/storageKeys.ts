@@ -20,6 +20,14 @@ export function getTeamUpdatedAtStorageKey(generation: number, gameId: number): 
   return `team_updated_gen_${generation}_game_${gameId}_v${STORAGE_VERSION}`;
 }
 
+export function getTeamCheckpointStorageKey(generation: number, gameId: number): string {
+  return `team_checkpoint_gen_${generation}_game_${gameId}_v${STORAGE_VERSION}`;
+}
+
+export function getTeamCheckpointVersionStorageKey(generation: number, gameId: number, versionId: string): string {
+  return `team_checkpoint_gen_${generation}_game_${gameId}_version_${versionId}_v${STORAGE_VERSION}`;
+}
+
 export function getLockedSlotsStorageKey(generation: number, gameId: number): string {
   return `team_locked_gen_${generation}_game_${gameId}_v${STORAGE_VERSION}`;
 }
