@@ -9,6 +9,7 @@ import {
   getTeamStorageKey,
   getTeamUpdatedAtStorageKey,
   getTeamCheckpointStorageKey,
+  getTeamCheckpointVersionStorageKey,
 } from "@/lib/storageKeys";
 import type { SavedTeam, TeamStoryCheckpoint } from "@/lib/api";
 import type { Pokemon } from "@/lib/types";
@@ -119,9 +120,17 @@ function checkpointFromTeam(team: SavedTeam): TeamStoryCheckpoint | null {
   });
 }
 
-function loadLocalCheckpoint(generation: number, gameId: number): TeamStoryCheckpoint | null {
+function loadLocalCheckpoint(
+  generation: number,
+  gameId: number,
+  versionId?: string
+): TeamStoryCheckpoint | null {
   try {
-    const saved = localStorage.getItem(getTeamCheckpointStorageKey(generation, gameId));
+    // Prefer version-specific key; fall back to legacy game-level key
+    const key = versionId
+      ? getTeamCheckpointVersionStorageKey(generation, gameId, versionId)
+      : getTeamCheckpointStorageKey(generation, gameId);
+    const saved = localStorage.getItem(key);
     if (!saved) return null;
     return normalizeCheckpoint(JSON.parse(saved));
   } catch {
@@ -132,14 +141,18 @@ function loadLocalCheckpoint(generation: number, gameId: number): TeamStoryCheck
 function saveLocalCheckpoint(
   generation: number,
   gameId: number,
-  checkpoint: TeamStoryCheckpoint | null
+  checkpoint: TeamStoryCheckpoint | null,
+  versionId?: string
 ): void {
   try {
+    const key = versionId
+      ? getTeamCheckpointVersionStorageKey(generation, gameId, versionId)
+      : getTeamCheckpointStorageKey(generation, gameId);
     if (!checkpoint) {
-      localStorage.removeItem(getTeamCheckpointStorageKey(generation, gameId));
+      localStorage.removeItem(key);
       return;
     }
-    localStorage.setItem(getTeamCheckpointStorageKey(generation, gameId), JSON.stringify(checkpoint));
+    localStorage.setItem(key, JSON.stringify(checkpoint));
   } catch {
     // ignore storage errors
   }
@@ -168,6 +181,7 @@ function formatCombinedVersionTeamName(baseName: string, gameId: number, version
 interface UseTeamPersistenceOptions {
   generation: number;
   gameId: number;
+  selectedVersionId: string;
 }
 
 interface UseTeamPersistenceReturn {
@@ -192,6 +206,7 @@ interface UseTeamPersistenceReturn {
 export function useTeamPersistence({
   generation,
   gameId,
+  selectedVersionId,
 }: UseTeamPersistenceOptions): UseTeamPersistenceReturn {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
@@ -215,9 +230,15 @@ export function useTeamPersistence({
   // When gameId changes, reload team from localStorage immediately
   useEffect(() => {
     setTeamState(loadLocalTeam(generation, gameId));
-    setTeamCheckpointState(loadLocalCheckpoint(generation, gameId));
+    setTeamCheckpointState(null); // cleared until selectedVersionId resolves
     initialLoadDoneRef.current = false;
   }, [generation, gameId]);
+
+  // When selectedVersionId resolves or changes, load the version-specific checkpoint
+  useEffect(() => {
+    if (!selectedVersionId) return;
+    setTeamCheckpointState(loadLocalCheckpoint(generation, gameId, selectedVersionId));
+  }, [generation, gameId, selectedVersionId]);
 
   const refreshSavedTeams = useCallback(async () => {
     if (!isAuthenticated) {
@@ -327,7 +348,7 @@ export function useTeamPersistence({
   const setTeamCheckpoint = useCallback(
     async (checkpoint: TeamStoryCheckpoint | null) => {
       setTeamCheckpointState(checkpoint);
-      saveLocalCheckpoint(generation, gameId, checkpoint);
+      saveLocalCheckpoint(generation, gameId, checkpoint, selectedVersionId || undefined);
 
       if (!isAuthenticated) return;
       const currentId = activeTeamIdRef.current;
@@ -344,7 +365,7 @@ export function useTeamPersistence({
         // silent fail
       }
     },
-    [generation, gameId, isAuthenticated, refreshSavedTeams]
+    [generation, gameId, selectedVersionId, isAuthenticated, refreshSavedTeams]
   );
 
   const saveTeamAs = useCallback(
@@ -424,9 +445,9 @@ export function useTeamPersistence({
       setTeamCheckpointState(checkpoint);
       setActiveTeamId(found.id);
       saveLocalTeam(generation, gameId, normalizeTeam(found.pokemon));
-      saveLocalCheckpoint(generation, gameId, checkpoint);
+      saveLocalCheckpoint(generation, gameId, checkpoint, selectedVersionId || undefined);
     },
-    [savedTeams, generation, gameId]
+    [savedTeams, generation, gameId, selectedVersionId]
   );
 
   const deleteSavedTeam = useCallback(
@@ -439,14 +460,14 @@ export function useTeamPersistence({
           setActiveTeamId(null);
           setTeamState(createEmptyTeam());
           setTeamCheckpointState(null);
-          saveLocalCheckpoint(generation, gameId, null);
+          saveLocalCheckpoint(generation, gameId, null, selectedVersionId || undefined);
         }
         await refreshSavedTeams();
       } catch {
         // silent fail
       }
     },
-    [isAuthenticated, activeTeamId, refreshSavedTeams]
+    [isAuthenticated, activeTeamId, generation, gameId, selectedVersionId, refreshSavedTeams]
   );
 
   const renameSavedTeam = useCallback(

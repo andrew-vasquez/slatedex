@@ -7,6 +7,7 @@
     "build": "bun build src/index.ts --outdir dist --target bun",
     "start": "bun run src/index.ts",
     "reset-password": "bun run scripts/dev-reset-password.ts",
+    "set-user-role": "bun run scripts/set-user-role.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

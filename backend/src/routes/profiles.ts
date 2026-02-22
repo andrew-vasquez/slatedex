@@ -1,6 +1,8 @@
 import { Hono } from "hono";
+import { UserPlan, UserRole } from "../generated/prisma/client";
 import { prisma } from "../db";
 import { authMiddleware } from "../middleware/auth";
+import { getCurrentUsageSnapshot } from "../lib/ai/quota";
 
 type AuthEnv = {
   Variables: {
@@ -32,6 +34,13 @@ const TRUSTED_AVATAR_HOSTS = new Set([
   "avatars.githubusercontent.com",
   "cdn.discordapp.com",
 ]);
+
+function toBadge(role: UserRole, plan: UserPlan): "Owner" | "Admin" | "Pro" | null {
+  if (role === UserRole.OWNER) return "Owner";
+  if (role === UserRole.ADMIN) return "Admin";
+  if (plan === UserPlan.PRO) return "Pro";
+  return null;
+}
 
 type TeamSummary = {
   generation: number;
@@ -302,6 +311,8 @@ profiles.get("/me", authMiddleware, async (c) => {
       id: true,
       name: true,
       image: true,
+      role: true,
+      plan: true,
       createdAt: true,
       username: true,
       profile: {
@@ -350,7 +361,7 @@ profiles.get("/me", authMiddleware, async (c) => {
       createdAt: { gte: since },
     },
   });
-  const [summaryRows, totalTeams, topTeamRows, favoriteTeamRow] = await Promise.all([
+  const [summaryRows, totalTeams, topTeamRows, favoriteTeamRow, aiUsageSummary] = await Promise.all([
     prisma.team.findMany({
       where: { userId: user.id },
       select: {
@@ -392,6 +403,7 @@ profiles.get("/me", authMiddleware, async (c) => {
           },
         })
       : Promise.resolve(null),
+    getCurrentUsageSnapshot(user.id).catch(() => null),
   ]);
 
   const allSavedTeams = toTeamCards(topTeamRows);
@@ -407,6 +419,10 @@ profiles.get("/me", authMiddleware, async (c) => {
     username,
     name: user.name,
     image: user.image,
+    role: user.role,
+    plan: user.plan,
+    badge: toBadge(user.role, user.plan),
+    aiUsageSummary,
     memberSince: user.createdAt.toISOString(),
     bio: profile.bio,
     avatarUrl: profile.avatarUrl,
@@ -616,6 +632,8 @@ profiles.get("/:username", async (c) => {
       username: true,
       name: true,
       image: true,
+      role: true,
+      plan: true,
       createdAt: true,
       profile: {
         select: {
@@ -691,6 +709,7 @@ profiles.get("/:username", async (c) => {
     username: user.username,
     name: user.name,
     image: user.image,
+    badge: toBadge(user.role, user.plan),
     memberSince: user.createdAt.toISOString(),
     bio: user.profile?.bio ?? "",
     avatarUrl: user.profile?.avatarUrl ?? null,

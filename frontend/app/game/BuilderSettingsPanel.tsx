@@ -11,6 +11,7 @@ interface BuilderSettingsPanelProps {
   onReduceMotionChange: (value: boolean) => void;
   onDragBehaviorChange: (value: DragBehavior) => void;
   onVersionThemingChange: (value: boolean) => void;
+  onMobileHapticsChange: (value: boolean) => void;
   onReset: () => void;
 }
 
@@ -24,6 +25,7 @@ const BuilderSettingsPanel = ({
   onReduceMotionChange,
   onDragBehaviorChange,
   onVersionThemingChange,
+  onMobileHapticsChange,
   onReset,
 }: BuilderSettingsPanelProps) => {
   return (
@@ -197,6 +199,27 @@ const BuilderSettingsPanel = ({
             onChange={(e) => onVersionThemingChange(e.target.checked)}
             className="h-3.5 w-3.5 accent-[var(--accent)]"
             aria-label="Toggle version color theming"
+          />
+        </label>
+
+        <label
+          className="inline-flex items-center justify-between gap-3 rounded-xl border px-3 py-2 md:hover:cursor-pointer"
+          style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
+        >
+          <span>
+            <span className="block text-[0.62rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-secondary)" }}>
+              Mobile Haptics
+            </span>
+            <span className="text-[0.66rem]" style={{ color: "var(--text-muted)" }}>
+              Vibrate on key actions when supported.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={settings.mobileHaptics}
+            onChange={(e) => onMobileHapticsChange(e.target.checked)}
+            className="h-3.5 w-3.5 accent-[var(--accent)]"
+            aria-label="Toggle mobile haptics"
           />
         </label>
       </div>

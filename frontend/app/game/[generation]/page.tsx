@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { GENERATION_META, getGenerationMeta } from "@/lib/pokemon";
-import { getPokemonPoolsForGeneration } from "@/lib/pokeapi";
+import { getPokemonPoolsForGame } from "@/lib/pokeapi";
 import TeamBuilder from "@/app/game/TeamBuilder";
 
 export async function generateStaticParams() {
@@ -12,7 +12,9 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ generation: string }> }): Promise<Metadata> {
   const { generation: genStr } = await params;
-  const gen = getGenerationMeta(parseInt(genStr));
+  const generation = Number.parseInt(genStr, 10);
+  if (!Number.isInteger(generation)) return {};
+  const gen = getGenerationMeta(generation);
   if (!gen) return {};
 
   return {
@@ -23,14 +25,23 @@ export async function generateMetadata({ params }: { params: Promise<{ generatio
 
 export default async function GenerationPage({ params }: { params: Promise<{ generation: string }> }) {
   const { generation: genStr } = await params;
-  const generation = parseInt(genStr);
+  const generation = Number.parseInt(genStr, 10);
+  if (!Number.isInteger(generation)) {
+    notFound();
+  }
   const gen = getGenerationMeta(generation);
 
   if (!gen) {
     notFound();
   }
-
-  const initialPoolsByGame = await getPokemonPoolsForGeneration(generation);
+  const initialGame = gen.games[0];
+  if (!initialGame) {
+    notFound();
+  }
+  const initialPool = await getPokemonPoolsForGame(initialGame);
+  const initialPoolsByGame = {
+    [initialGame.id]: initialPool,
+  };
 
   return (
     <div className="min-h-screen" style={{ background: "var(--surface-0)" }}>

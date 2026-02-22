@@ -15,7 +15,6 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { FiCornerDownLeft, FiCornerDownRight, FiMessageCircle, FiRepeat } from "react-icons/fi";
-import AiCoachPanel from "./AiCoachPanel";
 import PokemonDragPreview from "@/app/game/PokemonDragPreview";
 import AnimatedNumber from "@/app/game/AnimatedNumber";
 import TeamBuilderHeader from "./TeamBuilderHeader";
@@ -26,11 +25,14 @@ import PokemonSelection from "./PokemonSelection";
 import TeamPanel from "./TeamPanel";
 import TeamCaptureGuide from "./TeamCaptureGuide";
 import MobileTeamSheet from "./MobileTeamSheet";
-import TeamToolsModal from "./TeamToolsModal";
 import UndoToast from "@/app/game/UndoToast";
+import ToastContainer from "@/app/game/ToastContainer";
+import OfflineBanner from "@/app/game/OfflineBanner";
 import PokemonDetailDrawer from "@/app/game/PokemonDetailDrawer";
 import { useAnimatedUnmount } from "@/app/game/hooks/useAnimatedUnmount";
+import { useToast, ToastContext } from "@/app/game/hooks/useToast";
 import { TYPE_EFFECTIVENESS, TYPE_RESISTANCES, getVersionColor } from "@/lib/constants";
+import { triggerHaptic, type HapticTone } from "@/lib/haptics";
 import { getTeamDefensiveCoverage, getTeamOffensiveCoverage } from "@/lib/teamAnalysis";
 import { useTeamPersistence } from "@/app/game/hooks/useTeamPersistence";
 import { useBuilderSettings } from "@/app/game/hooks/useBuilderSettings";
@@ -52,6 +54,10 @@ import type { CoverageMap, DexMode, OffensiveCoverageMap, Pokemon, PokemonPools,
 const DefensiveCoverage = dynamic(() => import("./DefensiveCoverage"), { loading: () => null });
 const OffensiveCoverage = dynamic(() => import("./OffensiveCoverage"), { loading: () => null });
 const TeamRecommendations = dynamic(() => import("./TeamRecommendations"), { loading: () => null });
+const TeamToolsModal = dynamic(() => import("./TeamToolsModal"), { loading: () => null, ssr: false });
+const AiCoachPanel = dynamic(() => import("./AiCoachPanel"), { loading: () => null, ssr: false });
+const CommandPalette = dynamic(() => import("@/app/game/CommandPalette"), { loading: () => null, ssr: false });
+const OnboardingTour = dynamic(() => import("@/app/game/OnboardingTour"), { loading: () => null, ssr: false });
 
 const HISTORY_LIMIT = 40;
 const SMART_PICKS_INCLUDE_LEGENDARIES_KEY = "smart_picks_include_legendaries_v1";
@@ -246,19 +252,27 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const [replaceTargetSlot, setReplaceTargetSlot] = useState<number | null>(null);
   const [undoToastMessage, setUndoToastMessage] = useState<string | null>(null);
   const dismissUndoToast = useCallback(() => setUndoToastMessage(null), []);
+  const toast = useToast();
   const [pendingImport, setPendingImport] = useState<PendingImportState | null>(null);
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
   const [poolsByGame, setPoolsByGame] = useState<Record<number, PokemonPools>>(initialPoolsByGame);
   const [poolLoadErrorByGame, setPoolLoadErrorByGame] = useState<Record<number, string>>({});
   const [isTeamToolsOpen, setIsTeamToolsOpen] = useState(false);
+  const [hasMountedTeamTools, setHasMountedTeamTools] = useState(false);
   const [teamToolsInitialTab, setTeamToolsInitialTab] = useState<TeamToolsTab>("saved");
   const [isAiCoachOpen, setIsAiCoachOpen] = useState(false);
+  const [hasMountedAiCoach, setHasMountedAiCoach] = useState(false);
   const [aiConversationTeamId, setAiConversationTeamId] = useState<string | null>(null);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [hasMountedCommandPalette, setHasMountedCommandPalette] = useState(false);
+  const [shouldMountOnboardingTour, setShouldMountOnboardingTour] = useState(false);
   const [headerOffsetPx, setHeaderOffsetPx] = useState(0);
 
   const pastTeamsRef = useRef<(Pokemon | null)[][]>([]);
   const futureTeamsRef = useRef<(Pokemon | null)[][]>([]);
   const poolsByGameRef = useRef<Record<number, PokemonPools>>(initialPoolsByGame);
+  const prevTeamSizeRef = useRef(0);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -297,9 +311,39 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       observer?.disconnect();
     };
   }, []);
+
+  useEffect(() => {
+    let timeoutId: number | null = null;
+    let idleId: number | null = null;
+
+    const mountTour = () => setShouldMountOnboardingTour(true);
+    const windowWithIdle = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    if (typeof windowWithIdle.requestIdleCallback === "function") {
+      idleId = windowWithIdle.requestIdleCallback(mountTour, { timeout: 1400 });
+    } else {
+      timeoutId = window.setTimeout(mountTour, 900);
+    }
+
+    return () => {
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      if (idleId !== null && typeof windowWithIdle.cancelIdleCallback === "function") {
+        windowWithIdle.cancelIdleCallback(idleId);
+      }
+    };
+  }, []);
   const poolRequestsRef = useRef<Map<number, Promise<PokemonPools | null>>>(new Map());
 
   const { settings, updateSetting, resetSettings } = useBuilderSettings();
+  const emitHaptic = useCallback(
+    (tone: HapticTone = "light") => {
+      triggerHaptic(tone, { enabled: settings.mobileHaptics, mobileOnly: true });
+    },
+    [settings.mobileHaptics]
+  );
 
   const selectedGame = useMemo(() => games.find((g) => g.id === selectedGameId) ?? games[0], [games, selectedGameId]);
   const isSelectedGamePoolReady = Boolean(poolsByGame[selectedGame.id]);
@@ -376,7 +420,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     refreshSavedTeams,
     carryTeamToGame,
     discardUnsavedDraft,
-  } = useTeamPersistence({ generation, gameId: selectedGame.id });
+  } = useTeamPersistence({ generation, gameId: selectedGame.id, selectedVersionId });
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -436,7 +480,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     persistTeam(previous);
     setUndoToastMessage(null);
     syncHistoryState();
-  }, [persistTeam, syncHistoryState, team]);
+    emitHaptic("light");
+  }, [emitHaptic, persistTeam, syncHistoryState, team]);
 
   const handleRedo = useCallback(() => {
     const next = futureTeamsRef.current.pop();
@@ -446,7 +491,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     persistTeam(next);
     setUndoToastMessage("Redo applied");
     syncHistoryState();
-  }, [persistTeam, syncHistoryState, team]);
+    emitHaptic("light");
+  }, [emitHaptic, persistTeam, syncHistoryState, team]);
 
   useEffect(() => {
     try {
@@ -558,10 +604,12 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
     const startPrefetch = () => {
       if (cancelled) return;
-      for (const gameId of pendingGameIds) {
-        if (cancelled) break;
-        void ensureGamePool(gameId);
-      }
+      void (async () => {
+        for (const gameId of pendingGameIds) {
+          if (cancelled) break;
+          await ensureGamePool(gameId);
+        }
+      })();
     };
 
     const windowWithIdle = window as Window & {
@@ -1016,16 +1064,19 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
         const newTeam = [...team];
         [newTeam[sourceSlot], newTeam[targetSlot]] = [newTeam[targetSlot], newTeam[sourceSlot]];
-        commitTeam(newTeam, { message: "Swapped team slots" });
+        if (commitTeam(newTeam, { message: "Swapped team slots" })) {
+          emitHaptic("light");
+        }
       } else {
         const newTeam = [...team];
         newTeam[targetSlot] = active.data.current.pokemon;
         if (commitTeam(newTeam, { message: `Added ${active.data.current.pokemon.name}` })) {
           setReplaceTargetSlot(null);
+          emitHaptic("light");
         }
       }
     },
-    [commitTeam, lockedSlots, team]
+    [commitTeam, emitHaptic, lockedSlots, team]
   );
 
   const removeFromTeam = useCallback(
@@ -1040,9 +1091,35 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       if (commitTeam(newTeam, { message: `Removed ${removed.name}` }) && replaceTargetSlot === index) {
         setReplaceTargetSlot(null);
       }
+      emitHaptic("light");
     },
-    [commitTeam, lockedSlots, replaceTargetSlot, team]
+    [commitTeam, emitHaptic, lockedSlots, replaceTargetSlot, team]
   );
+
+  const openAiCoach = useCallback(() => {
+    setHasMountedAiCoach(true);
+    setIsAiCoachOpen(true);
+    emitHaptic("medium");
+  }, [emitHaptic]);
+
+  const closeAiCoach = useCallback(() => {
+    setIsAiCoachOpen(false);
+  }, []);
+
+  const toggleAiCoach = useCallback(() => {
+    setHasMountedAiCoach(true);
+    setIsAiCoachOpen((prev) => !prev);
+    emitHaptic("light");
+  }, [emitHaptic]);
+
+  const closeCommandPalette = useCallback(() => {
+    setIsCommandPaletteOpen(false);
+  }, []);
+
+  const toggleCommandPalette = useCallback(() => {
+    setHasMountedCommandPalette(true);
+    setIsCommandPaletteOpen((prev) => !prev);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1052,6 +1129,12 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
         target.tagName === "TEXTAREA" ||
         target.tagName === "SELECT" ||
         target.isContentEditable;
+
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        toggleCommandPalette();
+        return;
+      }
 
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
@@ -1103,7 +1186,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleRedo, handleUndo, replaceTargetSlot, searchTerm, typeFilter]);
+  }, [handleRedo, handleUndo, replaceTargetSlot, searchTerm, toggleCommandPalette, typeFilter]);
 
   const clearableCount = useMemo(
     () => team.filter((slot, index) => slot !== null && !lockedSlots[index]).length,
@@ -1113,7 +1196,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const openClearDialog = useCallback(() => {
     if (clearableCount === 0) return;
     setIsClearDialogOpen(true);
-  }, [clearableCount]);
+    emitHaptic("light");
+  }, [clearableCount, emitHaptic]);
 
   const closeClearDialog = useCallback(() => {
     setIsClearDialogOpen(false);
@@ -1121,10 +1205,13 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
   const confirmClearTeam = useCallback(() => {
     const newTeam = team.map((slot, index) => (lockedSlots[index] ? slot : null));
-    commitTeam(newTeam, { message: "Cleared unlocked slots" });
+    const didCommit = commitTeam(newTeam, { message: "Cleared unlocked slots" });
     setIsClearDialogOpen(false);
     setReplaceTargetSlot(null);
-  }, [commitTeam, lockedSlots, team]);
+    if (didCommit) {
+      emitHaptic("medium");
+    }
+  }, [commitTeam, emitHaptic, lockedSlots, team]);
 
   const shuffleTeam = useCallback(() => {
     const movableIndexes = team
@@ -1145,8 +1232,10 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       newTeam[slotIndex] = shuffled[idx];
     });
 
-    commitTeam(newTeam, { message: "Shuffled unlocked slots" });
-  }, [commitTeam, lockedSlots, team]);
+    if (commitTeam(newTeam, { message: "Shuffled unlocked slots" })) {
+      emitHaptic("light");
+    }
+  }, [commitTeam, emitHaptic, lockedSlots, team]);
 
   const addPokemonToTeam = useCallback(
     (pokemon: Pokemon) => {
@@ -1155,22 +1244,41 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
         newTeam[replaceTargetSlot] = pokemon;
         if (commitTeam(newTeam, { message: `Replaced slot ${replaceTargetSlot + 1} with ${pokemon.name}` })) {
           setReplaceTargetSlot(null);
+          emitHaptic("light");
         }
         return;
       }
 
       const firstEmptyUnlockedSlot = team.findIndex((slot, index) => slot === null && !lockedSlots[index]);
-      if (firstEmptyUnlockedSlot === -1) return;
+      if (firstEmptyUnlockedSlot === -1) {
+        emitHaptic("error");
+        return;
+      }
 
       const newTeam = [...team];
       newTeam[firstEmptyUnlockedSlot] = pokemon;
-      commitTeam(newTeam, { message: `Added ${pokemon.name}` });
+      if (commitTeam(newTeam, { message: `Added ${pokemon.name}` })) {
+        emitHaptic("light");
+      }
     },
-    [commitTeam, lockedSlots, replaceMode, replaceTargetSlot, team]
+    [commitTeam, emitHaptic, lockedSlots, replaceMode, replaceTargetSlot, team]
   );
 
   const currentTeam = useMemo(() => team.filter((p): p is Pokemon => p !== null), [team]);
   const hasTeam = currentTeam.length > 0;
+
+  // Celebration when team goes from <6 to 6
+  useEffect(() => {
+    if (currentTeam.length === 6 && prevTeamSizeRef.current < 6 && prevTeamSizeRef.current > 0) {
+      setShowConfetti(true);
+      toast.success("Full team assembled! 🎉");
+      emitHaptic("success");
+      const timer = setTimeout(() => setShowConfetti(false), 3000);
+      return () => clearTimeout(timer);
+    }
+    prevTeamSizeRef.current = currentTeam.length;
+  }, [currentTeam.length, emitHaptic]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const {
     shouldRender: shouldRenderEmpty,
     isAnimatingOut: isEmptyExiting,
@@ -1420,9 +1528,10 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       newTeam[weakest.index] = pokemon;
       if (commitTeam(newTeam, { message: `Replaced ${weakest.slot.name} with ${pokemon.name}` })) {
         setReplaceTargetSlot(null);
+        emitHaptic("light");
       }
     },
-    [commitTeam, deficitByType, lockedSlots, team]
+    [commitTeam, deficitByType, emitHaptic, lockedSlots, team]
   );
   const handleReplaceTargeted = useCallback(
     (pokemon: Pokemon) => {
@@ -1433,17 +1542,22 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       newTeam[replaceTargetSlot] = pokemon;
       if (commitTeam(newTeam, { message: `Replaced ${existing.name} with ${pokemon.name}` })) {
         setReplaceTargetSlot(null);
+        emitHaptic("light");
       }
     },
-    [canReplaceTargeted, commitTeam, replaceTargetSlot, team]
+    [canReplaceTargeted, commitTeam, emitHaptic, replaceTargetSlot, team]
   );
 
   const toggleLockSlot = useCallback((index: number) => {
-    setLockedSlots((prev) => prev.map((value, slotIndex) => (slotIndex === index ? !value : value)));
+    setLockedSlots((prev) => {
+      const nextLocked = !prev[index];
+      emitHaptic(nextLocked ? "medium" : "light");
+      return prev.map((value, slotIndex) => (slotIndex === index ? nextLocked : value));
+    });
     if (replaceTargetSlot === index) {
       setReplaceTargetSlot(null);
     }
-  }, [replaceTargetSlot]);
+  }, [emitHaptic, replaceTargetSlot]);
 
   const handleLoadSavedTeam = useCallback(
     (teamId: string) => {
@@ -1454,8 +1568,9 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       }
 
       loadSavedTeam(teamId);
+      emitHaptic("success");
     },
-    [loadSavedTeam, pushHistory, savedTeams, team]
+    [emitHaptic, loadSavedTeam, pushHistory, savedTeams, team]
   );
 
   const buildPendingImportState = useCallback(
@@ -1505,6 +1620,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
         if (targetGame.id !== selectedGame.id) {
           setSelectedGameId(targetGame.id);
         }
+        emitHaptic("success");
         return "Imported payload. Applied to current team.";
       }
 
@@ -1514,11 +1630,12 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
         if (!resolvedImport) return;
         setPendingImport(resolvedImport);
         setSelectedGameId(targetGame.id);
+        emitHaptic("success");
       });
 
       return "Loading game data for import. It will apply automatically.";
     },
-    [buildPendingImportState, ensureGamePool, games, generation, selectedGame.id]
+    [buildPendingImportState, emitHaptic, ensureGamePool, games, generation, selectedGame.id]
   );
 
   useEffect(() => {
@@ -1590,10 +1707,13 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
   const openTeamTools = useCallback((tab: TeamToolsTab = "saved") => {
     setTeamToolsInitialTab(tab);
+    setHasMountedTeamTools(true);
     setIsTeamToolsOpen(true);
-  }, []);
+    emitHaptic("medium");
+  }, [emitHaptic]);
 
   return (
+    <ToastContext.Provider value={toast}>
     <div style={versionCssVars}>
     <DndContext
       id={`team-builder-dnd-${selectedGame.id}`}
@@ -1619,6 +1739,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           onSettingsReduceMotionChange={(value) => updateSetting("reduceMotion", value)}
           onSettingsDragBehaviorChange={(value) => updateSetting("dragBehavior", value)}
           onSettingsVersionThemingChange={(value) => updateSetting("versionTheming", value)}
+          onSettingsMobileHapticsChange={(value) => updateSetting("mobileHaptics", value)}
           onSettingsReset={resetSettings}
         />
 
@@ -1662,6 +1783,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
             {/* ── RIGHT: Sticky team sidebar (desktop only) ───────────── */}
             <div className="hidden lg:order-2 lg:flex lg:flex-col lg:gap-4 lg:sticky lg:top-28 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pb-4">
 
+              <div data-tour="team-panel">
               <TeamPanel
                 team={team}
                 currentTeamLength={currentTeam.length}
@@ -1675,6 +1797,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                 onSelectReplaceSlot={setReplaceTargetSlot}
                 onOpenTeamTools={() => openTeamTools("saved")}
               />
+              </div>
 
               {/* Controls + Stats (compact) */}
               <div className="panel p-4">
@@ -1745,7 +1868,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsAiCoachOpen(true)}
+                    data-tour="ai-coach"
+                    onClick={openAiCoach}
                     className="ai-coach-trigger action-btn w-full"
                   >
                     <FiMessageCircle size={13} />
@@ -1812,7 +1936,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                     </button>
                     <button
                       type="button"
-                      onClick={() => setIsAiCoachOpen(true)}
+                      onClick={openAiCoach}
                       className="ai-coach-trigger action-btn col-span-3 w-full sm:col-span-2"
                     >
                       <FiMessageCircle size={13} />
@@ -1998,50 +2122,56 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
         onCancel={handleUnsavedDialogCancel}
       />
 
-      <TeamToolsModal
-        isOpen={isTeamToolsOpen}
-        onClose={() => setIsTeamToolsOpen(false)}
-        initialTab={teamToolsInitialTab}
-        teamHasPokemon={currentTeam.length > 0}
-        isAuthenticated={isAuthenticated}
-        savedTeams={savedTeams}
-        activeTeamId={activeTeamId}
-        onSaveAs={saveTeamAs}
-        onLoadSavedTeam={handleLoadSavedTeam}
-        onOverwriteSavedTeam={overwriteSavedTeam}
-        onDeleteSavedTeam={deleteSavedTeam}
-        onRenameSavedTeam={renameSavedTeam}
-        onRefreshSavedTeams={refreshSavedTeams}
-        isSaving={isSaving}
-        payload={sharePayload}
-        onImport={queueImportPayload}
-        gameVersions={selectedGame.versions}
-        selectedVersionId={selectedVersionId}
-      />
+      {hasMountedTeamTools && (
+        <TeamToolsModal
+          isOpen={isTeamToolsOpen}
+          onClose={() => setIsTeamToolsOpen(false)}
+          initialTab={teamToolsInitialTab}
+          teamHasPokemon={currentTeam.length > 0}
+          isAuthenticated={isAuthenticated}
+          savedTeams={savedTeams}
+          activeTeamId={activeTeamId}
+          onSaveAs={saveTeamAs}
+          onLoadSavedTeam={handleLoadSavedTeam}
+          onOverwriteSavedTeam={overwriteSavedTeam}
+          onDeleteSavedTeam={deleteSavedTeam}
+          onRenameSavedTeam={renameSavedTeam}
+          onRefreshSavedTeams={refreshSavedTeams}
+          isSaving={isSaving}
+          payload={sharePayload}
+          onImport={queueImportPayload}
+          gameVersions={selectedGame.versions}
+          selectedVersionId={selectedVersionId}
+          hapticsEnabled={settings.mobileHaptics}
+        />
+      )}
 
-      <AiCoachPanel
-        isOpen={isAiCoachOpen}
-        onClose={() => setIsAiCoachOpen(false)}
-        headerOffsetPx={headerOffsetPx}
-        isAuthenticated={isAuthenticated}
-        teamHasPokemon={currentTeam.length > 0}
-        team={team}
-        generation={generation}
-        gameId={selectedGame.id}
-        selectedVersionId={selectedVersionId}
-        selectedVersionLabel={selectedVersionLabel}
-        dexMode={dexMode}
-        versionFilterEnabled={versionFilterEnabled}
-        typeFilter={typeFilter}
-        regionalDexName={pokemonPools.regionalDexName}
-        allowedPokemonNames={aiAllowedPokemonNames}
-        versionScopedPokemonPool={versionScopedPokemonPool}
-        teamCheckpoint={teamCheckpoint}
-        onTeamCheckpointChange={setTeamCheckpoint}
-        activeTeamId={activeTeamId}
-        boundTeamId={aiConversationTeamId}
-        onBindTeamId={handleAiConversationTeamBound}
-      />
+      {hasMountedAiCoach && (
+        <AiCoachPanel
+          isOpen={isAiCoachOpen}
+          onClose={closeAiCoach}
+          headerOffsetPx={headerOffsetPx}
+          isAuthenticated={isAuthenticated}
+          teamHasPokemon={currentTeam.length > 0}
+          team={team}
+          generation={generation}
+          gameId={selectedGame.id}
+          selectedVersionId={selectedVersionId}
+          selectedVersionLabel={selectedVersionLabel}
+          dexMode={dexMode}
+          versionFilterEnabled={versionFilterEnabled}
+          typeFilter={typeFilter}
+          regionalDexName={pokemonPools.regionalDexName}
+          allowedPokemonNames={aiAllowedPokemonNames}
+          versionScopedPokemonPool={versionScopedPokemonPool}
+          teamCheckpoint={teamCheckpoint}
+          onTeamCheckpointChange={setTeamCheckpoint}
+          activeTeamId={activeTeamId}
+          boundTeamId={aiConversationTeamId}
+          onBindTeamId={handleAiConversationTeamBound}
+          hapticsEnabled={settings.mobileHaptics}
+        />
+      )}
 
       <PokemonDetailDrawer
         pokemon={detailPokemon}
@@ -2055,9 +2185,31 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           key={undoToastMessage}
           message={undoToastMessage}
           onUndo={handleUndo}
+          onRedo={handleRedo}
+          canRedo={historyState.canRedo}
           onDismiss={dismissUndoToast}
         />
       )}
+
+      <ToastContainer toasts={toast.toasts} onDismiss={toast.dismiss} />
+      <OfflineBanner />
+      {hasMountedCommandPalette && (
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={closeCommandPalette}
+          allPokemon={activePokemonPool}
+          onAddPokemon={addPokemonToTeam}
+          currentTeamLength={team.filter(Boolean).length}
+          onClearTeam={() => setIsClearDialogOpen(true)}
+          onOpenTools={() => openTeamTools("saved")}
+          onFocusSearch={() => document.getElementById("pokemon-search")?.focus()}
+          onToggleAiCoach={toggleAiCoach}
+        />
+      )}
+
+      {showConfetti && <div className="confetti-container" aria-hidden="true">{Array.from({ length: 40 }, (_, i) => <div key={i} className="confetti-piece" style={{ "--confetti-x": `${Math.random() * 100}vw`, "--confetti-delay": `${Math.random() * 0.6}s`, "--confetti-color": ["#da2c43", "#3b82f6", "#22c55e", "#eab308", "#a855f7", "#f97316"][i % 6] } as React.CSSProperties} />)}</div>}
+
+      {shouldMountOnboardingTour && <OnboardingTour />}
 
       {!isDesktopScreen && (
         <MobileTeamSheet
@@ -2074,10 +2226,12 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           onOpenTeamTools={() => openTeamTools("saved")}
           selectedVersionId={selectedVersionId}
           selectedVersionLabel={selectedVersionLabel}
+          hapticsEnabled={settings.mobileHaptics}
         />
       )}
     </DndContext>
     </div>
+    </ToastContext.Provider>
   );
 };
 

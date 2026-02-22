@@ -6,6 +6,7 @@ import { FiSave, FiFolder, FiTrash2, FiEdit2, FiCheck, FiX, FiRefreshCw, FiDownl
 import { getVersionLabel } from "@/lib/pokemon";
 import { pokemonSpriteSrc } from "@/lib/image";
 import type { SavedTeam } from "@/lib/api";
+import { useToastContext } from "@/app/game/hooks/useToast";
 
 interface VersionOption {
   id: string;
@@ -46,6 +47,7 @@ const SavedTeamsPanel = ({
   gameVersions = [],
   selectedVersionId,
 }: SavedTeamsPanelProps) => {
+  const toastCtx = useToastContext();
   const [newTeamName, setNewTeamName] = useState("");
   const [saveStep, setSaveStep] = useState<SaveStep>("name");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -81,10 +83,12 @@ const SavedTeamsPanel = ({
           await onSaveAs(name, selectedVersionId ? [selectedVersionId] : undefined);
           setIsCreating(false);
           setNewTeamName("");
+          toastCtx.success(`Team "${name}" saved`);
         } catch (error) {
           const message = error instanceof Error ? error.message : "Could not save team.";
           setSaveError(message);
           setIsCreating(false);
+          toastCtx.error("Failed to save team");
         }
       }
     },
@@ -129,11 +133,12 @@ const SavedTeamsPanel = ({
       await new Promise((resolve) => window.setTimeout(resolve, DELETE_ANIMATION_MS));
       try {
         await onDelete(teamId);
+        toastCtx.success("Team deleted");
       } finally {
         setDeletingTeamIds((prev) => prev.filter((id) => id !== teamId));
       }
     },
-    [deletingTeamIds, onDelete]
+    [deletingTeamIds, onDelete] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
    const confirmRename = useCallback(
@@ -141,10 +146,11 @@ const SavedTeamsPanel = ({
       const name = editName.trim();
       if (name) {
         await onRename(teamId, name);
+        toastCtx.success(`Renamed to "${name}"`);
       }
       setEditingId(null);
     },
-    [editName, onRename]
+    [editName, onRename] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const handleOverwrite = useCallback(
@@ -152,9 +158,12 @@ const SavedTeamsPanel = ({
       setOverwriteConfirmId(null);
       try {
         await onOverwrite(teamId);
-      } catch {}
+        toastCtx.success("Team overwritten");
+      } catch {
+        toastCtx.error("Failed to overwrite team");
+      }
     },
-    [onOverwrite]
+    [onOverwrite] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const filledCount = (team: SavedTeam) => {

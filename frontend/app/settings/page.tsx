@@ -6,6 +6,7 @@ import { FiArrowLeft, FiUser, FiShield, FiFileText, FiChevronRight } from "react
 import { useAuth } from "@/components/providers/AuthProvider";
 import UserMenu from "@/components/auth/UserMenu";
 import Breadcrumb from "@/components/ui/Breadcrumb";
+import { fetchMyProfile, type UserRoleValue } from "@/lib/api";
 import {
   COOKIE_CONSENT_UPDATED_EVENT,
   createConsent,
@@ -57,6 +58,7 @@ const SETTINGS_SECTIONS: { title: string; items: SettingsItem[] }[] = [
 export default function SettingsPage() {
   const { isAuthenticated, isLoading, user, openAuthDialog } = useAuth();
   const [cookieConsent, setCookieConsent] = useState<CookieConsent | null>(null);
+  const [viewerRole, setViewerRole] = useState<UserRoleValue | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -78,13 +80,72 @@ export default function SettingsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setViewerRole(null);
+      return;
+    }
+
+    let cancelled = false;
+    fetchMyProfile()
+      .then((profile) => {
+        if (cancelled) return;
+        setViewerRole(profile.role);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setViewerRole(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+
   const updateConsent = (next: { analytics: boolean; marketing: boolean }) => {
     const consent = createConsent(next);
     writeCookieConsent(consent);
     setCookieConsent(consent);
   };
 
-  if (isLoading || !isAuthenticated) return null;
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen" style={{ background: "var(--bg-gradient)" }}>
+        <header className="glass sticky top-0 z-40 border-b" style={{ borderColor: "var(--border)" }}>
+          <div className="mx-auto flex max-w-screen-sm items-center justify-between px-4 py-3 sm:px-6">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 animate-pulse rounded-xl" style={{ background: "var(--skeleton-b)" }} />
+              <div className="h-4 w-20 animate-pulse rounded" style={{ background: "var(--skeleton-b)" }} />
+            </div>
+            <div className="h-8 w-8 animate-pulse rounded-full" style={{ background: "var(--skeleton-b)" }} />
+          </div>
+        </header>
+        <main className="mx-auto max-w-screen-sm px-4 py-8 sm:px-6">
+          <div className="mb-6">
+            <div className="h-7 w-28 animate-pulse rounded-lg" style={{ background: "var(--skeleton-b)" }} />
+            <div className="mt-2 h-4 w-44 animate-pulse rounded" style={{ background: "var(--skeleton-b)" }} />
+          </div>
+          <div className="space-y-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i}>
+                <div className="mb-2 h-3 w-16 animate-pulse rounded" style={{ background: "var(--skeleton-b)" }} />
+                <div className="panel overflow-hidden p-0">
+                  <div className="flex items-center gap-3 px-4 py-4">
+                    <div className="h-9 w-9 animate-pulse rounded-xl" style={{ background: "var(--skeleton-b)" }} />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3.5 w-24 animate-pulse rounded" style={{ background: "var(--skeleton-b)" }} />
+                      <div className="h-3 w-48 animate-pulse rounded" style={{ background: "var(--skeleton-b)" }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
+      </div>
+    );
+  }
+  const canAccessAdmin = viewerRole === "ADMIN" || viewerRole === "OWNER";
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-gradient)" }}>
@@ -143,7 +204,7 @@ export default function SettingsPage() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="flex items-center gap-3 px-4 py-4 transition-colors sm:px-5"
+                    className="settings-item flex items-center gap-3 px-4 py-4 sm:px-5"
                     style={{
                       borderTop: i > 0 ? "1px solid var(--border)" : "none",
                       color: "inherit",
@@ -170,6 +231,39 @@ export default function SettingsPage() {
               </div>
             </section>
           ))}
+
+          {canAccessAdmin && (
+            <section>
+              <h2
+                className="mb-2 text-[0.72rem] font-semibold uppercase tracking-[0.12em]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Administration
+              </h2>
+              <div className="panel overflow-hidden">
+                <Link
+                  href="/settings/admin"
+                  className="settings-item flex items-center gap-3 px-4 py-4 sm:px-5"
+                >
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                    style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                  >
+                    <FiShield size={16} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                      Admin Dashboard
+                    </p>
+                    <p className="mt-0.5 text-xs leading-snug" style={{ color: "var(--text-muted)" }}>
+                      User plans, quotas, roles, and platform metrics.
+                    </p>
+                  </div>
+                  <FiChevronRight size={16} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                </Link>
+              </div>
+            </section>
+          )}
 
           <section>
             <h2

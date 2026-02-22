@@ -2,9 +2,11 @@
 
 import { FiChevronDown, FiSearch, FiX } from "react-icons/fi";
 import { type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import PokemonCard from "@/app/game/PokemonCard";
 import AnimatedNumber from "@/app/game/AnimatedNumber";
 import { getAvailableTypes, TYPE_COLORS } from "@/lib/constants";
+import { pokemonSpriteSrc } from "@/lib/image";
 import type { CardDensity, DexMode, Pokemon, Game } from "@/lib/types";
 
 interface PokemonSelectionProps {
@@ -76,6 +78,51 @@ const PokemonSelection = ({
   const [filterTransitionToken, setFilterTransitionToken] = useState(0);
   const [isFilterTransitioning, setIsFilterTransitioning] = useState(false);
   const [isStepOneTipDismissed, setIsStepOneTipDismissed] = useState(false);
+
+  const SEARCH_HISTORY_KEY = `pokemon_search_history_gen${generation}`;
+  const MAX_HISTORY = 5;
+
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = localStorage.getItem(SEARCH_HISTORY_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+
+  const addToSearchHistory = useCallback((term: string) => {
+    const trimmed = term.trim().toLowerCase();
+    if (!trimmed || trimmed.length < 2) return;
+    setSearchHistory((prev) => {
+      const next = [trimmed, ...prev.filter((h) => h !== trimmed)].slice(0, MAX_HISTORY);
+      localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, [SEARCH_HISTORY_KEY]);
+
+  const clearSearchHistory = useCallback(() => {
+    setSearchHistory([]);
+    localStorage.removeItem(SEARCH_HISTORY_KEY);
+  }, [SEARCH_HISTORY_KEY]);
+
+  // Compare mode
+  const [isCompareMode, setIsCompareMode] = useState(false);
+  const [compareList, setCompareList] = useState<Pokemon[]>([]);
+  const MAX_COMPARE = 3;
+
+  const toggleCompare = useCallback((pokemon: Pokemon) => {
+    setCompareList((prev) => {
+      const exists = prev.find((p) => p.id === pokemon.id);
+      if (exists) return prev.filter((p) => p.id !== pokemon.id);
+      if (prev.length >= MAX_COMPARE) return prev;
+      return [...prev, pokemon];
+    });
+  }, []);
+
+  const exitCompareMode = useCallback(() => {
+    setIsCompareMode(false);
+    setCompareList([]);
+  }, []);
 
   const versionLabelMap: Record<string, string> = useMemo(
     () => Object.fromEntries(versions.map((version) => [version.id, version.label])),
@@ -282,13 +329,28 @@ const PokemonSelection = ({
                 Search, then refine with game and advanced filters.
               </p>
             </div>
-            <span
-              className="shrink-0 rounded-md px-2 py-0.5 text-[0.75rem] font-semibold tabular-nums"
-              style={{ background: "var(--surface-1)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
-              aria-label={`${filteredPokemon.length} Pokémon available`}
-            >
-              <AnimatedNumber value={filteredPokemon.length} />
-            </span>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => isCompareMode ? exitCompareMode() : setIsCompareMode(true)}
+                className="hidden sm:flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.68rem] font-semibold transition-colors cursor-pointer"
+                style={{
+                  background: isCompareMode ? "rgba(218,44,67,0.15)" : "var(--surface-1)",
+                  border: `1px solid ${isCompareMode ? "rgba(218,44,67,0.3)" : "var(--border)"}`,
+                  color: isCompareMode ? "var(--accent)" : "var(--text-muted)",
+                }}
+                aria-label={isCompareMode ? "Exit compare mode" : "Compare Pokémon"}
+              >
+                {isCompareMode ? "✕ Exit" : "⚖ Compare"}
+              </button>
+              <span
+                className="shrink-0 rounded-md px-2 py-0.5 text-[0.75rem] font-semibold tabular-nums"
+                style={{ background: "var(--surface-1)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
+                aria-label={`${filteredPokemon.length} Pokémon available`}
+              >
+                <AnimatedNumber value={filteredPokemon.length} />
+              </span>
+            </div>
           </div>
 
           <div className="mt-3 space-y-2.5">
@@ -310,6 +372,9 @@ const PokemonSelection = ({
                 placeholder="Search by name (press /)"
                 value={searchTerm}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
+                onBlur={() => {
+                  if (searchTerm.trim()) addToSearchHistory(searchTerm);
+                }}
                 autoComplete="off"
                 spellCheck={false}
                 className="w-full rounded-xl py-2 pl-8 pr-8 text-sm"
@@ -332,6 +397,32 @@ const PokemonSelection = ({
                 </button>
               )}
             </div>
+
+            {/* Recent searches */}
+            {searchHistory.length > 0 && !searchTerm && (
+              <div className="flex items-center gap-1.5 overflow-x-auto">
+                <span className="shrink-0 text-[0.6rem] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Recent</span>
+                {searchHistory.map((term) => (
+                  <button
+                    key={term}
+                    type="button"
+                    onClick={() => onSearchChange(term)}
+                    className="search-history-chip"
+                  >
+                    {term}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={clearSearchHistory}
+                  className="shrink-0 rounded p-0.5 transition-colors"
+                  style={{ color: "var(--text-muted)" }}
+                  aria-label="Clear search history"
+                >
+                  <FiX size={11} />
+                </button>
+              </div>
+            )}
 
             <div className="hidden flex-wrap gap-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.06em] sm:flex">
               <span className="rounded-md border px-2 py-0.5" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
@@ -646,20 +737,41 @@ const PokemonSelection = ({
                 }}
               >
                 {items.map((pokemon: Pokemon, itemIndex: number) => {
+                  const isSelected = isCompareMode && compareList.some((p) => p.id === pokemon.id);
                   return (
                     <div
                       key={pokemon.id}
                       role="listitem"
                       className="pokemon-list-item"
+                      style={{ position: "relative" }}
                     >
+                      {isCompareMode && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); toggleCompare(pokemon); }}
+                          className="absolute inset-0 z-10 cursor-pointer rounded-xl transition-all"
+                          style={{
+                            background: isSelected ? "rgba(218,44,67,0.12)" : "transparent",
+                            border: isSelected ? "2px solid var(--accent)" : "2px solid transparent",
+                            borderRadius: "inherit",
+                          }}
+                          aria-label={isSelected ? `Deselect ${pokemon.name}` : `Select ${pokemon.name} to compare`}
+                        >
+                          {isSelected && (
+                            <span className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full text-[0.6rem] font-bold text-white" style={{ background: "var(--accent)" }}>
+                              {compareList.findIndex((p) => p.id === pokemon.id) + 1}
+                            </span>
+                          )}
+                        </button>
+                      )}
                       <PokemonCard
                         pokemon={pokemon}
                         dragId={`available-${pokemon.id}`}
-                        onTap={onAddPokemon}
-                        canAddToTeam={currentTeamLength < 6}
+                        onTap={isCompareMode ? undefined : onAddPokemon}
+                        canAddToTeam={!isCompareMode && currentTeamLength < 6}
                         versionLabelMap={versionLabelMap}
-                        dragEnabled={dragEnabled}
-                        onInspect={onInspect}
+                        dragEnabled={!isCompareMode && dragEnabled}
+                        onInspect={isCompareMode ? undefined : onInspect}
                         isCompact={cardDensity === "compact"}
                         isAboveFold={row === 0 && itemIndex < columns}
                       />
@@ -671,6 +783,95 @@ const PokemonSelection = ({
           </div>
         )}
       </div>
+      {/* Compare panel */}
+      {isCompareMode && compareList.length >= 2 && (
+        <div className="compare-panel">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-display text-sm" style={{ color: "var(--text-primary)" }}>
+              Comparing {compareList.length} Pokémon
+            </h3>
+            <button type="button" onClick={exitCompareMode} className="text-[0.68rem] font-semibold cursor-pointer" style={{ color: "var(--text-muted)" }}>
+              Done
+            </button>
+          </div>
+          <div className="grid gap-2" style={{ gridTemplateColumns: `80px repeat(${compareList.length}, 1fr)` }}>
+            {/* Header row */}
+            <div />
+            {compareList.map((p) => (
+              <div key={p.id} className="text-center">
+                <Image
+                  src={pokemonSpriteSrc(p.sprite, p.id)}
+                  alt={p.name}
+                  width={40}
+                  height={40}
+                  className="mx-auto h-10 w-10 object-contain drop-shadow-md"
+                />
+                <p className="mt-0.5 text-[0.68rem] font-semibold" style={{ color: "var(--text-primary)" }}>{p.name}</p>
+                <div className="mt-0.5 flex justify-center gap-0.5">
+                  {p.types.map((type: string) => (
+                    <span key={type} className={`rounded px-1 py-px text-[0.5rem] font-semibold text-white ${TYPE_COLORS[type]}`}>
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {/* Stat rows */}
+            {([
+              { key: "hp", label: "HP", color: "#136f3a" },
+              { key: "attack", label: "ATK", color: "#b4232c" },
+              { key: "defense", label: "DEF", color: "#1d5fa4" },
+              { key: "specialAttack", label: "SPA", color: "#7c3aed" },
+              { key: "specialDefense", label: "SPD", color: "#d97706" },
+              { key: "speed", label: "SPE", color: "#0891b2" },
+            ] as const).map((stat) => {
+              const vals = compareList.map((p) => p[stat.key]);
+              const maxVal = Math.max(...vals);
+              return (
+                <div key={stat.key} className="contents">
+                  <span className="self-center text-[0.6rem] font-bold uppercase" style={{ color: stat.color }}>{stat.label}</span>
+                  {compareList.map((p) => {
+                    const v = p[stat.key];
+                    const isBest = v === maxVal && vals.filter((x) => x === maxVal).length === 1;
+                    return (
+                      <div key={p.id} className="flex items-center gap-1.5">
+                        <div className="flex-1 h-[5px] rounded-full" style={{ background: "var(--surface-1)" }}>
+                          <div className="h-full rounded-full" style={{ width: `${Math.min((v / 160) * 100, 100)}%`, background: stat.color, opacity: isBest ? 1 : 0.5 }} />
+                        </div>
+                        <span
+                          className="w-[24px] text-right font-mono text-[0.62rem] font-semibold tabular-nums"
+                          style={{ color: isBest ? stat.color : "var(--text-muted)" }}
+                        >{v}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+            {/* BST row */}
+            <div className="contents">
+              <span className="self-center text-[0.6rem] font-bold uppercase" style={{ color: "var(--text-secondary)" }}>BST</span>
+              {compareList.map((p) => {
+                const bst = p.hp + p.attack + p.defense + p.specialAttack + p.specialDefense + p.speed;
+                const bsts = compareList.map((pp) => pp.hp + pp.attack + pp.defense + pp.specialAttack + pp.specialDefense + pp.speed);
+                const isBest = bst === Math.max(...bsts) && bsts.filter((b) => b === bst).length === 1;
+                return (
+                  <span
+                    key={p.id}
+                    className="text-center font-mono text-[0.72rem] font-bold tabular-nums"
+                    style={{ color: isBest ? "var(--accent)" : "var(--text-secondary)" }}
+                  >{bst}</span>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+      {isCompareMode && compareList.length < 2 && (
+        <div className="compare-hint">
+          Select {2 - compareList.length} more Pokémon to compare
+        </div>
+      )}
     </section>
   );
 };

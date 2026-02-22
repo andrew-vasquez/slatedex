@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import { useDraggable } from "@dnd-kit/core";
-import { memo } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { FiInfo } from "react-icons/fi";
 import { TYPE_COLORS } from "@/lib/constants";
 import { pokemonSpriteSrc } from "@/lib/image";
@@ -34,6 +35,15 @@ const STAT_LABELS: Record<keyof typeof STAT_COLORS, string> = {
   defense: "DEF",
 };
 
+const ALL_STATS = [
+  { key: "hp", label: "HP", color: "#136f3a" },
+  { key: "attack", label: "ATK", color: "#b4232c" },
+  { key: "defense", label: "DEF", color: "#1d5fa4" },
+  { key: "specialAttack", label: "SPA", color: "#7c3aed" },
+  { key: "specialDefense", label: "SPD", color: "#d97706" },
+  { key: "speed", label: "SPE", color: "#0891b2" },
+] as const;
+
 const PokemonCard = ({
   pokemon,
   isDraggable: isDraggableProp = true,
@@ -55,6 +65,106 @@ const PokemonCard = ({
     data: { pokemon },
     disabled: !shouldEnableDrag,
   });
+
+  // Quick-peek popover state
+  const [showPeek, setShowPeek] = useState(false);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cardElRef = useRef<HTMLDivElement | null>(null);
+  const [peekRect, setPeekRect] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const openPeek = useCallback(() => {
+    if (cardElRef.current) {
+      const r = cardElRef.current.getBoundingClientRect();
+      setPeekRect({ top: r.top, left: r.left + r.width / 2, width: r.width });
+    }
+    setShowPeek(true);
+  }, []);
+  const closePeek = useCallback(() => {
+    setShowPeek(false);
+    setPeekRect(null);
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+  }, []);
+
+  const handleMouseEnter = useCallback(() => {
+    if (isTeamSlot) return;
+    hoverTimerRef.current = setTimeout(openPeek, 400);
+  }, [isTeamSlot, openPeek]);
+
+  const handleMouseLeave = useCallback(() => {
+    closePeek();
+  }, [closePeek]);
+
+  const handleTouchStart = useCallback(() => {
+    if (isTeamSlot || shouldEnableDrag) return;
+    longPressTimerRef.current = setTimeout(openPeek, 500);
+  }, [isTeamSlot, shouldEnableDrag, openPeek]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+  }, []);
+
+  // Clean up timers
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    };
+  }, []);
+
+  const bst = pokemon.hp + pokemon.attack + pokemon.defense + pokemon.specialAttack + pokemon.specialDefense + pokemon.speed;
+
+  const peekPopover = showPeek && !isDragging && peekRect && typeof document !== "undefined" && createPortal(
+    <div
+      className="pokemon-peek-popover"
+      style={{ top: peekRect.top - 8, left: peekRect.left }}
+      onMouseEnter={() => setShowPeek(true)}
+      onMouseLeave={closePeek}
+    >
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="font-semibold text-[0.78rem]" style={{ color: "var(--text-primary)" }}>{pokemon.name}</span>
+        <span className="font-mono text-[0.6rem]" style={{ color: "var(--text-muted)" }}>#{pokemon.id.toString().padStart(3, "0")}</span>
+        <span className="ml-auto font-mono text-[0.58rem] font-bold" style={{ color: "var(--text-secondary)" }}>BST {bst}</span>
+      </div>
+      <div className="grid grid-cols-3 gap-x-3 gap-y-1">
+        {ALL_STATS.map((s) => {
+          const val = pokemon[s.key];
+          const pct = Math.min((val / 160) * 100, 100);
+          return (
+            <div key={s.key} className="flex items-center gap-1.5">
+              <span className="w-[22px] text-[0.55rem] font-bold uppercase" style={{ color: s.color }}>{s.label}</span>
+              <div className="flex-1 h-[4px] rounded-full" style={{ background: "var(--surface-1)" }}>
+                <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: s.color }} />
+              </div>
+              <span className="w-[20px] text-right font-mono text-[0.58rem] font-semibold tabular-nums" style={{ color: "var(--text-secondary)" }}>{val}</span>
+            </div>
+          );
+        })}
+      </div>
+      {(pokemon.isLegendary || pokemon.isMythical || pokemon.isStarterLine) && (
+        <div className="flex gap-1 mt-1.5">
+          {pokemon.isLegendary && <span className="peek-tag" style={{ background: "rgba(234,179,8,0.15)", color: "#fbbf24" }}>Legendary</span>}
+          {pokemon.isMythical && <span className="peek-tag" style={{ background: "rgba(168,85,247,0.15)", color: "#a855f7" }}>Mythical</span>}
+          {pokemon.isStarterLine && <span className="peek-tag" style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e" }}>Starter</span>}
+        </div>
+      )}
+    </div>,
+    document.body
+  );
+
+  // Merge refs: dnd-kit setNodeRef + cardElRef for peek positioning
+  const mergedRef = useCallback((node: HTMLDivElement | null) => {
+    setNodeRef(node);
+    cardElRef.current = node;
+  }, [setNodeRef]);
+
+  const peekHandlers = isTeamSlot ? {} : {
+    onMouseEnter: handleMouseEnter,
+    onMouseLeave: handleMouseLeave,
+    onTouchStart: handleTouchStart,
+    onTouchEnd: handleTouchEnd,
+  };
 
   const style = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
@@ -98,8 +208,9 @@ const PokemonCard = ({
             alt={pokemon.name}
             width={56}
             height={56}
+            sizes="(min-width: 640px) 56px, 48px"
             loading="eager"
-            fetchPriority="high"
+            unoptimized
             className="h-full w-full object-contain drop-shadow-md"
           />
         </div>
@@ -122,14 +233,16 @@ const PokemonCard = ({
 
   if (isCompact) {
     return (
+      <>
       <div
-        ref={setNodeRef}
+        ref={mergedRef}
         suppressHydrationWarning
         data-dragging={isDragging ? "true" : undefined}
         style={{ ...style, background: "var(--surface-2)", border: "1px solid var(--border)" }}
         {...(shouldEnableDrag ? listeners : {})}
         {...(shouldEnableDrag ? attributes : {})}
         onClick={handleTap}
+        {...peekHandlers}
         className={`group pokemon-card-lift relative flex items-center gap-2.5 overflow-hidden rounded-lg border px-2 py-1.5 ${interactiveClass} ${isDragging ? "rotate-1" : ""}`}
         aria-label={`${pokemon.name} card`}
       >
@@ -142,8 +255,9 @@ const PokemonCard = ({
             alt={pokemon.name}
             width={32}
             height={32}
+            sizes="28px"
             loading={isAboveFold ? "eager" : "lazy"}
-            fetchPriority={isAboveFold ? "high" : "auto"}
+            unoptimized
             className="h-7 w-7 object-contain drop-shadow-sm transition-transform duration-200 group-hover:scale-110"
           />
         </div>
@@ -188,18 +302,22 @@ const PokemonCard = ({
           </button>
         )}
       </div>
+      {peekPopover}
+      </>
     );
   }
 
   return (
+    <>
     <div
-      ref={setNodeRef}
+      ref={mergedRef}
       suppressHydrationWarning
       data-dragging={isDragging ? "true" : undefined}
       style={{ ...style }}
       {...(shouldEnableDrag ? listeners : {})}
       {...(shouldEnableDrag ? attributes : {})}
       onClick={handleTap}
+      {...peekHandlers}
       className={`group pokemon-card-lift relative overflow-hidden rounded-xl border ${interactiveClass} ${isDragging ? "rotate-1" : ""}`}
       aria-label={`${pokemon.name} card`}
     >
@@ -219,8 +337,9 @@ const PokemonCard = ({
             alt={pokemon.name}
             width={48}
             height={48}
+            sizes="44px"
             loading={isAboveFold ? "eager" : "lazy"}
-            fetchPriority={isAboveFold ? "high" : "auto"}
+            unoptimized
             className="h-11 w-11 object-contain drop-shadow-md transition-transform duration-300 group-hover:scale-110"
           />
         </div>
@@ -314,6 +433,8 @@ const PokemonCard = ({
         </div>
       </div>
     </div>
+    {peekPopover}
+    </>
   );
 };
 

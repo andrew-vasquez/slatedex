@@ -11,6 +11,7 @@ export const DEFAULT_BUILDER_SETTINGS: BuilderSettings = {
   reduceMotion: false,
   dragBehavior: "auto",
   versionTheming: true,
+  mobileHaptics: true,
 };
 
 function isDexMode(value: unknown): value is DexMode {
@@ -51,6 +52,10 @@ function normalizeSettings(input: unknown): BuilderSettings {
       typeof candidate.versionTheming === "boolean"
         ? candidate.versionTheming
         : DEFAULT_BUILDER_SETTINGS.versionTheming,
+    mobileHaptics:
+      typeof candidate.mobileHaptics === "boolean"
+        ? candidate.mobileHaptics
+        : DEFAULT_BUILDER_SETTINGS.mobileHaptics,
   };
 }
 

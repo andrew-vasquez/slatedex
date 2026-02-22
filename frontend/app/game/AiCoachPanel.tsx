@@ -1,11 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  FiArrowRight,
   FiArrowUp,
-  FiCheck,
-  FiChevronDown,
   FiCompass,
   FiCopy,
   FiDownload,
@@ -18,36 +15,22 @@ import {
   FiZap,
 } from "react-icons/fi";
 import {
+  ApiError,
   analyzeAiTeam,
-  fetchAiBossGuidance,
   fetchAiMessages,
+  fetchAiUsage,
   sendAiChat,
-  type AiBossGuidanceEntry,
   type AiMessage,
+  type AiUsageSnapshot,
   type TeamStoryCheckpoint,
 } from "@/lib/api";
+import { triggerHaptic } from "@/lib/haptics";
 import { useAnimatedUnmount } from "@/app/game/hooks/useAnimatedUnmount";
-import { TYPE_COLORS } from "@/lib/constants";
 import type { DexMode, Pokemon } from "@/lib/types";
-
-function PokeballIcon({ className, size = 18 }: { className?: string; size?: number }) {
-  return (
-    <svg
-      viewBox="0 0 100 100"
-      width={size}
-      height={size}
-      className={className}
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <circle cx="50" cy="50" r="48" fill="none" stroke="currentColor" strokeWidth="4" />
-      <path d="M2,50 H38 A12,12 0 0,0 62,50 H98" fill="none" stroke="currentColor" strokeWidth="4" />
-      <path d="M2,50 H38 A12,12 0 0,1 62,50 H98" fill="none" stroke="currentColor" strokeWidth="4" />
-      <circle cx="50" cy="50" r="8" fill="currentColor" />
-      <circle cx="50" cy="50" r="4" fill="var(--surface-1)" />
-    </svg>
-  );
-}
+import { normalizeLookupToken } from "./ai/aiMessageParser";
+import { useAiCheckpoint } from "./ai/useAiCheckpoint";
+import AiCheckpointSelector from "./ai/AiCheckpointSelector";
+import AiMessageList from "./ai/AiMessageList";
 
 interface AiCoachPanelProps {
   isOpen: boolean;
@@ -71,17 +54,8 @@ interface AiCoachPanelProps {
   activeTeamId: string | null;
   boundTeamId: string | null;
   onBindTeamId: (teamId: string | null) => void;
+  hapticsEnabled?: boolean;
 }
-
-type AssistantMessageBlock =
-  | { type: "heading"; text: string }
-  | { type: "unordered"; items: string[] }
-  | { type: "ordered"; items: string[] }
-  | { type: "paragraph"; text: string };
-type AssistantMessageSection = {
-  heading: string;
-  blocks: Exclude<AssistantMessageBlock, { type: "heading" }>[];
-};
 
 type QueuedAiTask =
   | { id: string; kind: "chat"; message: string }
@@ -103,36 +77,16 @@ const SLASH_COMMANDS: SlashCommandDefinition[] = [
   { id: "threats", description: "Scan top matchup threats", task: { kind: "chat", message: "What are the biggest threats to this team, and what adjustments should I make?" } },
   { id: "boss", description: "Plan for next major boss", task: { kind: "chat", message: "What is my safest gameplan for the next major boss fight?" } },
   { id: "coverage", description: "Score defensive and offensive coverage", task: { kind: "chat", message: "Give this team a quick defensive and offensive coverage grade, then suggest one improvement." } },
-  { id: "speed", description: "Audit speed control and tempo", task: { kind: "chat", message: "Evaluate this team’s speed control and tempo plan, then suggest one speed-focused upgrade." } },
+  { id: "speed", description: "Audit speed control and tempo", task: { kind: "chat", message: "Evaluate this team's speed control and tempo plan, then suggest one speed-focused upgrade." } },
   { id: "lead", description: "Recommend lead and pivot plan", task: { kind: "chat", message: "Recommend my best default lead and first pivot line for most matchups in this run." } },
 ];
 
 const CHAT_INPUT_MAX_HEIGHT = 96;
-const AUTO_CHECKPOINT_KEY = "auto";
-const COLLAPSE_HEIGHT_PX = 300;
 const DRAWER_MIN_WIDTH = 352;
 const DRAWER_MAX_WIDTH = 800;
 const DRAWER_DEFAULT_WIDTH = 416;
 const DRAWER_WIDTH_KEY = "ai_coach_drawer_width";
 const DRAWER_PINNED_KEY = "ai_coach_pinned";
-const PSEUDO_LEGENDARY_ROOTS = new Set([
-  "dratini",
-  "larvitar",
-  "bagon",
-  "beldum",
-  "gible",
-  "deino",
-  "goomy",
-  "jangmo-o",
-  "dreepy",
-  "frigibax",
-]);
-
-function haptic(ms = 10) {
-  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-    navigator.vibrate(ms);
-  }
-}
 
 function exportMessagesAsMarkdown(msgs: AiMessage[], gen: number, versionLabel: string): void {
   const lines = [
@@ -154,181 +108,6 @@ function exportMessagesAsMarkdown(msgs: AiMessage[], gen: number, versionLabel: 
   URL.revokeObjectURL(url);
 }
 
-const POKEMON_TYPE_SET = new Set([
-  "normal", "fire", "water", "electric", "grass", "ice", "fighting", "poison",
-  "ground", "flying", "psychic", "bug", "rock", "ghost", "dragon", "dark", "steel", "fairy",
-]);
-const BOSS_SECTION_HEADING_PATTERN = /(boss matchup|boss outlook|gym|elite four|champion)/i;
-
-function relativeTime(iso: string): string {
-  const now = Date.now();
-  const then = new Date(iso).getTime();
-  const diffSec = Math.max(0, Math.floor((now - then) / 1000));
-  if (diffSec < 60) return "just now";
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  return `${diffDay}d ago`;
-}
-
-function checkpointKey(entry: AiBossGuidanceEntry): string {
-  return `${entry.stage}:${entry.gymOrder ?? 0}:${entry.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-}
-
-function checkpointLabel(entry: AiBossGuidanceEntry): string {
-  const stageLabel =
-    entry.stage === "gym"
-      ? `Gym ${entry.gymOrder ?? "?"}`
-      : entry.stage === "elite4"
-        ? "Elite Four"
-        : "Champion";
-  const levelLabel = entry.recommendedPlayerLevelRange ? ` · ${entry.recommendedPlayerLevelRange}` : "";
-  return `${stageLabel} · ${entry.name}${levelLabel}`;
-}
-
-function normalizeSpeciesName(value: string): string {
-  return value.trim().toLowerCase();
-}
-
-function getCheckpointEvolutionStageCap(checkpoint: AiBossGuidanceEntry | null): number {
-  if (!checkpoint) return 3;
-  if (checkpoint.stage !== "gym") return 3;
-  const gymOrder = checkpoint.gymOrder ?? 8;
-  if (gymOrder <= 1) return 1;
-  if (gymOrder <= 5) return 2;
-  return 3;
-}
-
-function isLegalAtCheckpoint(pokemon: Pokemon, checkpoint: AiBossGuidanceEntry | null): boolean {
-  if (!checkpoint) return true;
-  if (checkpoint.stage !== "gym") return true;
-
-  const gymOrder = checkpoint.gymOrder ?? 8;
-  if (gymOrder <= 6 && (pokemon.isLegendary || pokemon.isMythical)) return false;
-
-  const stageCap = getCheckpointEvolutionStageCap(checkpoint);
-  const stage = typeof pokemon.evolutionStage === "number" && pokemon.evolutionStage > 0 ? pokemon.evolutionStage : 3;
-  if (gymOrder <= 1) {
-    if (pokemon.isStarterLine) return stage <= 2;
-    if (stage > 1) return false;
-  } else if (stage > stageCap) {
-    return false;
-  }
-
-  const evolutionRoot = Array.isArray(pokemon.evolutionLine) && pokemon.evolutionLine.length > 0
-    ? normalizeSpeciesName(pokemon.evolutionLine[0])
-    : normalizeSpeciesName(pokemon.name);
-  if (gymOrder <= 5 && PSEUDO_LEGENDARY_ROOTS.has(evolutionRoot) && stage > 1) {
-    return false;
-  }
-
-  return true;
-}
-
-type CheckpointLegality = {
-  catchableNames: string[];
-  catchablePoolSize: number;
-  blockedFinalNames: string[];
-  evolutionFallbacks: Array<{ fromName: string; toName: string }>;
-};
-
-function estimateCheckpointCatchables(params: {
-  checkpoint: AiBossGuidanceEntry | null;
-  orderedPokemonPool: Pokemon[];
-}): CheckpointLegality {
-  const { checkpoint, orderedPokemonPool } = params;
-  if (!checkpoint || orderedPokemonPool.length === 0) {
-    return {
-      catchableNames: [],
-      catchablePoolSize: 0,
-      blockedFinalNames: [],
-      evolutionFallbacks: [],
-    };
-  }
-
-  const stageCap = getCheckpointEvolutionStageCap(checkpoint);
-  const legalPool = orderedPokemonPool.filter((pokemon) => isLegalAtCheckpoint(pokemon, checkpoint));
-  if (legalPool.length === 0) {
-    return {
-      catchableNames: [],
-      catchablePoolSize: 0,
-      blockedFinalNames: [],
-      evolutionFallbacks: [],
-    };
-  }
-  const legalNames = new Set(legalPool.map((pokemon) => normalizeSpeciesName(pokemon.name)));
-  const fallbackMap = new Map<string, string>();
-  const blockedFinals = new Set<string>();
-
-  for (const pokemon of orderedPokemonPool) {
-    const pokemonName = normalizeSpeciesName(pokemon.name);
-    const stage = typeof pokemon.evolutionStage === "number" && pokemon.evolutionStage > 0 ? pokemon.evolutionStage : 3;
-    if (pokemon.isFinalEvolution && !legalNames.has(pokemonName)) {
-      blockedFinals.add(pokemonName);
-    }
-    if (stage <= stageCap) continue;
-    const line = Array.isArray(pokemon.evolutionLine)
-      ? pokemon.evolutionLine.map((name) => normalizeSpeciesName(name)).filter(Boolean)
-      : [];
-    if (line.length === 0) continue;
-    const toName = line[Math.max(0, Math.min(stageCap, line.length) - 1)];
-    if (!toName || toName === pokemonName) continue;
-    if (legalNames.has(toName)) {
-      fallbackMap.set(pokemonName, toName);
-    }
-  }
-
-  const total = legalPool.length;
-  let poolCap = total;
-  if (checkpoint.stage === "gym") {
-    const progressByGym: Record<number, number> = {
-      1: 0.14,
-      2: 0.24,
-      3: 0.36,
-      4: 0.5,
-      5: 0.64,
-      6: 0.78,
-      7: 0.9,
-      8: 1,
-    };
-    const ratio = progressByGym[checkpoint.gymOrder ?? 8] ?? 1;
-    poolCap = Math.min(total, Math.max(8, Math.ceil(total * ratio)));
-  }
-
-  const checkpointPool = legalPool.slice(0, poolCap).map((pokemon) => normalizeSpeciesName(pokemon.name));
-  const sampleSize = Math.min(24, checkpointPool.length);
-  if (sampleSize === checkpointPool.length) {
-    return {
-      catchableNames: checkpointPool,
-      catchablePoolSize: checkpointPool.length,
-      blockedFinalNames: Array.from(blockedFinals).slice(0, 120),
-      evolutionFallbacks: Array.from(fallbackMap.entries())
-        .map(([fromName, toName]) => ({ fromName, toName }))
-        .slice(0, 180),
-    };
-  }
-
-  const sampled: string[] = [];
-  const step = checkpointPool.length / sampleSize;
-  for (let index = 0; index < sampleSize; index += 1) {
-    const candidate = checkpointPool[Math.floor(index * step)];
-    if (candidate && !sampled.includes(candidate)) {
-      sampled.push(candidate);
-    }
-  }
-
-  return {
-    catchableNames: sampled,
-    catchablePoolSize: checkpointPool.length,
-    blockedFinalNames: Array.from(blockedFinals).slice(0, 120),
-    evolutionFallbacks: Array.from(fallbackMap.entries())
-      .map(([fromName, toName]) => ({ fromName, toName }))
-      .slice(0, 180),
-  };
-}
-
 function appendUniqueMessages(current: AiMessage[], incoming: AiMessage[]): AiMessage[] {
   const seen = new Set(current.map((message) => message.id));
   const merged = [...current];
@@ -340,256 +119,35 @@ function appendUniqueMessages(current: AiMessage[], incoming: AiMessage[]): AiMe
   return merged;
 }
 
-function isUnorderedListLine(line: string): boolean {
-  return /^[-*•]\s+/.test(line);
-}
-
-function isOrderedListLine(line: string): boolean {
-  return /^\d+[.)]\s+/.test(line);
-}
-
-function stripListMarker(line: string): string {
-  return line.replace(/^[-*•]\s+/, "").replace(/^\d+[.)]\s+/, "").trim();
-}
-
-function cleanupMarkdownDecorators(text: string): string {
-  return text
-    .replace(/^\s{0,3}#{1,6}\s*/gm, "")
-    .replace(/\s+#{1,6}\s*$/gm, "")
-    .replace(/!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g, "$1")
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\*\*\*([^*]+)\*\*\*/g, "$1")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/\*([^*\n]+)\*/g, "$1")
-    .replace(/__([^_]+)__/g, "$1")
-    .replace(/_([^_\n]+)_/g, "$1")
-    .replace(/~~([^~\n]+)~~/g, "$1")
-    .replace(/^>\s?/gm, "")
-    .replace(/^\s*[-*_]{3,}\s*$/gm, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-function normalizeLookupToken(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9'-]/g, "");
-}
-
-function parseCompoundTypeToken(token: string): string[] | null {
-  if (!/[\/|]/.test(token)) return null;
-
-  const parts = token
-    .split(/[\/|]+/g)
-    .map((part) => part.trim().replace(/-?types?$/i, "").toLowerCase())
-    .filter(Boolean);
-
-  if (parts.length < 2) return null;
-  if (!parts.every((part) => POKEMON_TYPE_SET.has(part))) return null;
-  return parts;
-}
-
-function renderTypePill(type: string, key: string): ReactNode {
-  const bgClass = TYPE_COLORS[type] ?? "bg-stone-500";
-  const displayName = type.charAt(0).toUpperCase() + type.slice(1);
-  return (
-    <span
-      key={key}
-      className={`type-badge inline-flex items-center rounded px-1.5 py-px text-[0.65rem] font-semibold text-white ${bgClass}`}
-      style={{ lineHeight: 1.4 }}
-    >
-      {displayName}
-    </span>
-  );
-}
-
-function splitCoachEntityLine(line: string): { name: string; detail: string } | null {
-  const cleaned = line.trim();
-  if (!cleaned) return null;
-
-  const withParen = cleaned.match(/^([A-Z][A-Za-z0-9'.&/ -]{1,46})\s*\(([^)]+)\)\s*(?:[:\-–—]\s*)(.+)$/);
-  if (withParen) {
-    return {
-      name: `${withParen[1].trim()} (${withParen[2].trim()})`,
-      detail: withParen[3].trim(),
-    };
-  }
-
-  const withSeparator = cleaned.match(/^([A-Z][A-Za-z0-9'.&/ -]{1,46})\s*(?:[:\-–—]\s*)(.+)$/);
-  if (withSeparator) {
-    return {
-      name: withSeparator[1].trim(),
-      detail: withSeparator[2].trim(),
-    };
-  }
-
-  return null;
-}
-
-function renderStyledInlineText(
-  text: string,
-  pokemonNameLookup: Set<string>,
-  keyPrefix: string
-): ReactNode[] {
-  const tokens = text.split(/(\s+|[()[\]{}.,!?;:]+)/g).filter((token) => token.length > 0);
-  return tokens.map((token, tokenIndex) => {
-    if (/^\s+$/.test(token) || /^[()[\]{}.,!?;:]+$/.test(token)) return token;
-
-    const compoundTypes = parseCompoundTypeToken(token);
-    if (compoundTypes) {
-      return (
-        <span
-          key={`${keyPrefix}-type-pair-${tokenIndex}`}
-          className="mx-0.5 inline-flex items-center gap-1"
-          style={{ verticalAlign: "-0.05em", lineHeight: 1.4 }}
-        >
-          {compoundTypes.map((type, idx) =>
-            renderTypePill(type, `${keyPrefix}-type-pair-${tokenIndex}-${idx}`)
-          )}
-        </span>
-      );
-    }
-
-    const normalized = normalizeLookupToken(token);
-    if (!normalized) return token;
-
-    const strippedTypeSuffix = normalized.endsWith("type")
-      ? normalized.replace(/-?type$/, "")
-      : normalized;
-    if (POKEMON_TYPE_SET.has(strippedTypeSuffix)) {
-      return (
-        <span
-          key={`${keyPrefix}-type-${tokenIndex}`}
-          className="mx-0.5 inline-flex items-center"
-          style={{ verticalAlign: "-0.05em", lineHeight: 1.4 }}
-        >
-          {renderTypePill(strippedTypeSuffix, `${keyPrefix}-type-pill-${tokenIndex}`)}
-        </span>
-      );
-    }
-
-    if (pokemonNameLookup.has(normalized)) {
-      return (
-        <span
-          key={`${keyPrefix}-pokemon-${tokenIndex}`}
-          className="ai-inline-token ai-inline-token-pokemon"
-        >
-          {token}
-        </span>
-      );
-    }
-
-    return token;
-  });
-}
-
-function parseAssistantMessage(content: string): AssistantMessageBlock[] {
-  const normalized = content.replace(/\r\n?/g, "\n").trim();
-  if (!normalized) return [{ type: "paragraph", text: "" }];
-  const blocks: AssistantMessageBlock[] = [];
-  const lines = normalized.split("\n");
-  let index = 0;
-
-  while (index < lines.length) {
-    const line = lines[index].trim();
-    if (!line) {
-      index += 1;
-      continue;
-    }
-
-    const markdownHeading = line.match(/^#{1,6}\s*(.+)$/);
-    if (markdownHeading) {
-      const heading = cleanupMarkdownDecorators(markdownHeading[1]);
-      if (heading) blocks.push({ type: "heading", text: heading });
-      index += 1;
-      continue;
-    }
-
-    const sectionHeading = line.match(/^([A-Za-z][^:]{1,64}):$/);
-    if (sectionHeading) {
-      const heading = cleanupMarkdownDecorators(sectionHeading[1]);
-      if (heading) blocks.push({ type: "heading", text: heading });
-      index += 1;
-      continue;
-    }
-
-    if (isUnorderedListLine(line)) {
-      const items: string[] = [];
-      while (index < lines.length && isUnorderedListLine(lines[index].trim())) {
-        items.push(cleanupMarkdownDecorators(stripListMarker(lines[index].trim())));
-        index += 1;
-      }
-      if (items.length > 0) blocks.push({ type: "unordered", items });
-      continue;
-    }
-
-    if (isOrderedListLine(line)) {
-      const items: string[] = [];
-      while (index < lines.length && isOrderedListLine(lines[index].trim())) {
-        items.push(cleanupMarkdownDecorators(stripListMarker(lines[index].trim())));
-        index += 1;
-      }
-      if (items.length > 0) blocks.push({ type: "ordered", items });
-      continue;
-    }
-
-    const paragraphLines: string[] = [line];
-    index += 1;
-    while (index < lines.length) {
-      const candidate = lines[index].trim();
-      if (!candidate) break;
-      if (
-        /^#{1,6}\s*/.test(candidate) ||
-        /^([A-Za-z][^:]{1,64}):$/.test(candidate) ||
-        isUnorderedListLine(candidate) ||
-        isOrderedListLine(candidate)
-      ) {
-        break;
-      }
-      paragraphLines.push(candidate);
-      index += 1;
-    }
-    blocks.push({
-      type: "paragraph",
-      text: cleanupMarkdownDecorators(paragraphLines.join("\n")),
-    });
-  }
-
-  return blocks.length > 0 ? blocks : [{ type: "paragraph", text: cleanupMarkdownDecorators(normalized) }];
-}
-
-function groupAssistantBlocks(blocks: AssistantMessageBlock[]): AssistantMessageSection[] {
-  const sections: AssistantMessageSection[] = [];
-  let currentSection: AssistantMessageSection | null = null;
-
-  for (const block of blocks) {
-    if (block.type === "heading") {
-      const nextSection: AssistantMessageSection = {
-        heading: block.text,
-        blocks: [],
-      };
-      sections.push(nextSection);
-      currentSection = nextSection;
-      continue;
-    }
-
-    if (!currentSection) {
-      currentSection = {
-        heading: "Overview",
-        blocks: [],
-      };
-      sections.push(currentSection);
-    }
-    currentSection.blocks.push(block);
-  }
-
-  return sections.filter((section) => section.blocks.length > 0);
-}
-
 function isAbortError(error: unknown): boolean {
   return (
     (error instanceof DOMException && error.name === "AbortError") ||
     (error instanceof Error && error.name === "AbortError")
   );
+}
+
+function formatResetDate(iso?: string | null): string {
+  if (!iso) return "next month";
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return "next month";
+  return parsed.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function coerceUsageSnapshot(value: unknown): AiUsageSnapshot | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<AiUsageSnapshot>;
+  if (
+    typeof candidate.periodStart !== "string" ||
+    typeof candidate.resetsAt !== "string" ||
+    !candidate.chat ||
+    !candidate.analyze
+  ) {
+    return null;
+  }
+  return candidate as AiUsageSnapshot;
 }
 
 export default function AiCoachPanel({
@@ -614,6 +172,7 @@ export default function AiCoachPanel({
   activeTeamId,
   boundTeamId,
   onBindTeamId,
+  hapticsEnabled = true,
 }: AiCoachPanelProps) {
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [input, setInput] = useState("");
@@ -628,9 +187,6 @@ export default function AiCoachPanel({
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
   const [draftBeforeHistoryNav, setDraftBeforeHistoryNav] = useState("");
   const [activeSlashIndex, setActiveSlashIndex] = useState(0);
-  const [bossGuidance, setBossGuidance] = useState<AiBossGuidanceEntry[]>([]);
-  const [bossGuidanceLoading, setBossGuidanceLoading] = useState(false);
-  const [checkpointKeySelection, setCheckpointKeySelection] = useState<string>(AUTO_CHECKPOINT_KEY);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [collapsedMessages, setCollapsedMessages] = useState<Set<string>>(() => new Set());
@@ -647,7 +203,9 @@ export default function AiCoachPanel({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(() => new Set());
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const [checkpointDropdownOpen, setCheckpointDropdownOpen] = useState(false);
+  const [usageSnapshot, setUsageSnapshot] = useState<AiUsageSnapshot | null>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [swipeDragOffset, setSwipeDragOffset] = useState(0);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -659,42 +217,58 @@ export default function AiCoachPanel({
   const resizeStartXRef = useRef<number | null>(null);
   const resizeStartWidthRef = useRef(DRAWER_DEFAULT_WIDTH);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const checkpointDropdownRef = useRef<HTMLDivElement | null>(null);
   const swipeTouchStartY = useRef<number | null>(null);
   const swipeTouchLastY = useRef<number | null>(null);
   const swipeTouchLastTime = useRef(0);
   const swipeVelocity = useRef(0);
-  const [swipeDragOffset, setSwipeDragOffset] = useState(0);
+
+  const emitHaptic = useCallback(
+    (tone: Parameters<typeof triggerHaptic>[0] = "light") => {
+      triggerHaptic(tone, { enabled: hapticsEnabled, mobileOnly: true });
+    },
+    [hapticsEnabled]
+  );
+
+  const {
+    bossGuidanceLoading,
+    checkpointOptions,
+    selectedCheckpoint,
+    checkpointPendingLabel,
+    checkpointCatchables,
+    checkpointKeySelection,
+    checkpointDropdownOpen,
+    checkpointDropdownRef,
+    setCheckpointDropdownOpen,
+    handleCheckpointSelection,
+  } = useAiCheckpoint({
+    isOpen,
+    isAuthenticated,
+    selectedVersionId,
+    teamCheckpoint,
+    onTeamCheckpointChange,
+    versionScopedPokemonPool,
+    onError: setError,
+  });
 
   const effectiveTeamId = useMemo(() => boundTeamId ?? activeTeamId, [activeTeamId, boundTeamId]);
   const canUseAi = isAuthenticated && teamHasPokemon;
   const isBusy = isSending || isAnalyzing;
   const filledTeamSize = useMemo(() => team.filter(Boolean).length, [team]);
   const hasFullParty = filledTeamSize === 6;
-  const canAnalyze = canUseAi && hasFullParty;
+  const canSendChatByQuota = useMemo(() => {
+    if (!usageSnapshot) return true;
+    if (usageSnapshot.chat.unlimited) return true;
+    return (usageSnapshot.chat.remaining ?? 0) > 0;
+  }, [usageSnapshot]);
+  const canAnalyzeByQuota = useMemo(() => {
+    if (!usageSnapshot) return true;
+    if (usageSnapshot.analyze.unlimited) return true;
+    return (usageSnapshot.analyze.remaining ?? 0) > 0;
+  }, [usageSnapshot]);
+  const canSendChat = canUseAi && canSendChatByQuota;
+  const canAnalyze = canUseAi && hasFullParty && canAnalyzeByQuota;
   const showAllowedPool = dexMode === "regional" || versionFilterEnabled;
-  const checkpointOptions = useMemo(
-    () =>
-      bossGuidance.map((entry) => ({
-        key: checkpointKey(entry),
-        entry,
-        label: checkpointLabel(entry),
-      })),
-    [bossGuidance]
-  );
-  const selectedCheckpoint = useMemo(() => {
-    if (checkpointKeySelection === AUTO_CHECKPOINT_KEY) return null;
-    const match = checkpointOptions.find((option) => option.key === checkpointKeySelection);
-    return match?.entry ?? null;
-  }, [checkpointKeySelection, checkpointOptions]);
-  const checkpointCatchables = useMemo(
-    () =>
-      estimateCheckpointCatchables({
-        checkpoint: selectedCheckpoint,
-        orderedPokemonPool: versionScopedPokemonPool,
-      }),
-    [selectedCheckpoint, versionScopedPokemonPool]
-  );
+
   const pokemonNameLookup = useMemo(() => {
     const names = new Set<string>();
     team.forEach((member) => {
@@ -711,14 +285,6 @@ export default function AiCoachPanel({
   const { shouldRender, isAnimatingOut, onAnimationEnd } = useAnimatedUnmount(isOpen, 340);
   const safeHeaderOffsetPx = Math.max(0, Math.round(headerOffsetPx));
 
-  const quickPrompts = useMemo(
-    () => [
-      { label: "Swap ideas", text: "Give me 2 legal swap ideas based on my current filters." },
-      { label: "Boss strategy", text: "What is my safest gameplan for the next major boss fight?" },
-      { label: "Fix weakness", text: "Where is this team weakest and what is one fix?" },
-    ],
-    []
-  );
   const quickCommandChips = useMemo(
     () => [
       { id: "analyze", label: "/analyze", description: "Run full team analysis now" },
@@ -772,54 +338,32 @@ export default function AiCoachPanel({
   }, []);
 
   useEffect(() => {
-    if (!teamCheckpoint) {
-      setCheckpointKeySelection(AUTO_CHECKPOINT_KEY);
-      return;
-    }
-
-    const normalizedBossName = normalizeSpeciesName(teamCheckpoint.checkpointBossName ?? "");
-    const matchingOption = checkpointOptions.find((option) => {
-      const sameStage = option.entry.stage === teamCheckpoint.checkpointStage;
-      const sameGymOrder = (option.entry.gymOrder ?? null) === (teamCheckpoint.checkpointGymOrder ?? null);
-      const sameName = normalizeSpeciesName(option.entry.name) === normalizedBossName;
-      return sameStage && sameGymOrder && sameName;
-    });
-
-    if (matchingOption) {
-      setCheckpointKeySelection(matchingOption.key);
-      return;
-    }
-
-    setCheckpointKeySelection(AUTO_CHECKPOINT_KEY);
-  }, [checkpointOptions, selectedVersionId, teamCheckpoint]);
-
-  useEffect(() => {
-    if (!isOpen || !isAuthenticated || !selectedVersionId) {
-      setBossGuidance([]);
-      setBossGuidanceLoading(false);
+    if (!isOpen || !isAuthenticated) {
+      setUsageSnapshot(null);
+      setUsageLoading(false);
       return;
     }
 
     let cancelled = false;
-    setBossGuidanceLoading(true);
+    setUsageLoading(true);
 
-    fetchAiBossGuidance(selectedVersionId)
-      .then((result) => {
+    fetchAiUsage()
+      .then((snapshot) => {
         if (cancelled) return;
-        setBossGuidance(Array.isArray(result.bossGuidance) ? result.bossGuidance : []);
+        setUsageSnapshot(snapshot);
       })
       .catch(() => {
         if (cancelled) return;
-        setBossGuidance([]);
+        setUsageSnapshot(null);
       })
       .finally(() => {
-        if (!cancelled) setBossGuidanceLoading(false);
+        if (!cancelled) setUsageLoading(false);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, isOpen, selectedVersionId]);
+  }, [isAuthenticated, isOpen]);
 
   // Typewriter effect — reveal assistant message word-by-word
   useEffect(() => {
@@ -842,10 +386,8 @@ export default function AiCoachPanel({
 
     const tick = () => {
       const progress = current / totalLen;
-      // Speed curve: faster as we go
       const chunkSize = progress > 0.9 ? totalLen - current : progress > 0.6 ? 18 : 12;
 
-      // Advance to the next word boundary after chunkSize chars
       let next = Math.min(current + chunkSize, totalLen);
       if (next < totalLen) {
         const spaceIdx = msg.content.indexOf(" ", next);
@@ -860,7 +402,6 @@ export default function AiCoachPanel({
       }
     };
 
-    // Kick off first chunk immediately
     tick();
 
     if (current >= totalLen) return;
@@ -941,7 +482,6 @@ export default function AiCoachPanel({
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      // Esc → close (or close search first)
       if (e.key === "Escape") {
         if (isSearchOpen) {
           setIsSearchOpen(false);
@@ -952,19 +492,16 @@ export default function AiCoachPanel({
         return;
       }
       const isMod = e.metaKey || e.ctrlKey;
-      // Cmd+K → focus input
       if (isMod && e.key === "k") {
         e.preventDefault();
         textareaRef.current?.focus();
         return;
       }
-      // Cmd+Shift+A → analyze
       if (isMod && e.shiftKey && (e.key === "a" || e.key === "A")) {
         e.preventDefault();
         if (canAnalyze) void handleAnalyze();
         return;
       }
-      // Cmd+F → toggle search
       if (isMod && e.key === "f") {
         e.preventDefault();
         setIsSearchOpen((prev) => !prev);
@@ -976,26 +513,12 @@ export default function AiCoachPanel({
     return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, isSearchOpen, onClose, canAnalyze]);
 
-  // Close checkpoint dropdown on click outside
-  useEffect(() => {
-    if (!checkpointDropdownOpen) return;
-    const onClick = (e: MouseEvent) => {
-      if (checkpointDropdownRef.current && !checkpointDropdownRef.current.contains(e.target as Node)) {
-        setCheckpointDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [checkpointDropdownOpen]);
-
   // Focus trap
   useEffect(() => {
     if (!isOpen || !drawerRef.current) return;
-
     const frame = requestAnimationFrame(() => {
       textareaRef.current?.focus();
     });
-
     return () => cancelAnimationFrame(frame);
   }, [isOpen]);
 
@@ -1003,10 +526,7 @@ export default function AiCoachPanel({
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     const container = messagesContainerRef.current;
     if (container) {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior,
-      });
+      container.scrollTo({ top: container.scrollHeight, behavior });
       return;
     }
     messagesEndRef.current?.scrollIntoView({ behavior });
@@ -1110,7 +630,6 @@ export default function AiCoachPanel({
     [resizeTextarea]
   );
 
-  // Auto-resize textarea
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     if (historyIndex !== null) {
@@ -1169,6 +688,9 @@ export default function AiCoachPanel({
           );
 
           onBindTeamId(result.teamId);
+          if (result.usage) {
+            setUsageSnapshot(result.usage);
+          }
           setMessages((current) =>
             appendUniqueMessages(current, [result.userMessage, result.assistantMessage])
           );
@@ -1176,6 +698,15 @@ export default function AiCoachPanel({
           setTypingMessageId(result.assistantMessage.id);
         } catch (sendError: unknown) {
           if (isAbortError(sendError)) return;
+          if (sendError instanceof ApiError && sendError.status === 429) {
+            const quotaSnapshot =
+              sendError.data && typeof sendError.data === "object"
+                ? coerceUsageSnapshot((sendError.data as { usage?: unknown }).usage)
+                : null;
+            if (quotaSnapshot) {
+              setUsageSnapshot(quotaSnapshot);
+            }
+          }
           const messageText = sendError instanceof Error ? sendError.message : "Could not send message.";
           if (messageText.toLowerCase().includes("team not found")) {
             onBindTeamId(null);
@@ -1228,6 +759,9 @@ export default function AiCoachPanel({
         );
 
         onBindTeamId(result.teamId);
+        if (result.usage) {
+          setUsageSnapshot(result.usage);
+        }
         setMessages((current) =>
           appendUniqueMessages(current, [result.userMessage, result.assistantMessage])
         );
@@ -1235,6 +769,15 @@ export default function AiCoachPanel({
         setTypingMessageId(result.assistantMessage.id);
       } catch (analyzeError: unknown) {
         if (isAbortError(analyzeError)) return;
+        if (analyzeError instanceof ApiError && analyzeError.status === 429) {
+          const quotaSnapshot =
+            analyzeError.data && typeof analyzeError.data === "object"
+              ? coerceUsageSnapshot((analyzeError.data as { usage?: unknown }).usage)
+              : null;
+          if (quotaSnapshot) {
+            setUsageSnapshot(quotaSnapshot);
+          }
+        }
         const messageText = analyzeError instanceof Error ? analyzeError.message : "Could not analyze team.";
         if (messageText.toLowerCase().includes("team not found")) {
           onBindTeamId(null);
@@ -1315,12 +858,21 @@ export default function AiCoachPanel({
   async function handleSend(messageOverride?: string) {
     const message = (messageOverride ?? input).trim();
     if (!message || !canUseAi) return;
-    haptic();
+    emitHaptic("light");
 
     const slashMatch = message.match(/^\/([a-z-]+)\s*$/i);
     if (slashMatch) {
       const handled = await executeSlashCommand(slashMatch[1].toLowerCase());
       if (handled) clearComposer();
+      return;
+    }
+
+    if (!canSendChat) {
+      setError(
+        `Chat quota reached for this month. Try Analyze if available. Resets ${formatResetDate(
+          usageSnapshot?.resetsAt
+        )}.`
+      );
       return;
     }
 
@@ -1401,47 +953,20 @@ export default function AiCoachPanel({
   }, []);
 
   const handleQuickCommand = (commandId: string) => {
-    haptic();
+    emitHaptic("light");
     void executeSlashCommand(commandId);
   };
-
-  const handleCheckpointSelection = useCallback(
-    async (nextKey: string) => {
-      try {
-        setCheckpointKeySelection(nextKey);
-        if (nextKey === AUTO_CHECKPOINT_KEY) {
-          await onTeamCheckpointChange(null);
-          return;
-        }
-
-        const selected = checkpointOptions.find((option) => option.key === nextKey);
-        if (!selected) {
-          await onTeamCheckpointChange(null);
-          return;
-        }
-
-        await onTeamCheckpointChange({
-          checkpointBossName: selected.entry.name,
-          checkpointStage: selected.entry.stage,
-          checkpointGymOrder: selected.entry.gymOrder ?? null,
-        });
-      } catch {
-        setError("Could not save checkpoint right now.");
-      }
-    },
-    [checkpointOptions, onTeamCheckpointChange]
-  );
 
   const handleCopyMessage = useCallback(async (messageId: string, content: string) => {
     try {
       await navigator.clipboard.writeText(content);
-      haptic(6);
+      emitHaptic("light");
       setCopiedMessageId(messageId);
       setTimeout(() => setCopiedMessageId((prev) => (prev === messageId ? null : prev)), 1800);
     } catch {
       // Clipboard API may fail in some contexts
     }
-  }, []);
+  }, [emitHaptic]);
 
   const toggleCollapse = useCallback((messageId: string) => {
     setCollapsedMessages((prev) => {
@@ -1469,13 +994,11 @@ export default function AiCoachPanel({
     const currentY = e.touches[0].clientY;
     const delta = currentY - swipeTouchStartY.current;
 
-    // Only track downward swipes
     if (delta < 0) {
       setSwipeDragOffset(0);
       return;
     }
 
-    // Track velocity
     const now = Date.now();
     const dt = now - swipeTouchLastTime.current;
     if (dt > 0 && swipeTouchLastY.current !== null) {
@@ -1498,10 +1021,10 @@ export default function AiCoachPanel({
     setSwipeDragOffset(0);
 
     if (shouldClose) {
-      haptic(12);
+      emitHaptic("medium");
       onClose();
     }
-  }, [isDesktop, swipeDragOffset, onClose]);
+  }, [emitHaptic, isDesktop, swipeDragOffset, onClose]);
 
   // Resize handle drag (desktop only)
   const handleResizePointerDown = useCallback((e: React.PointerEvent) => {
@@ -1550,117 +1073,18 @@ export default function AiCoachPanel({
       .join("\n\n");
     try {
       await navigator.clipboard.writeText(text);
-      haptic(6);
+      emitHaptic("light");
       setSelectedMessageIds(new Set());
     } catch {
       // Clipboard API may fail
     }
-  }, [messages, selectedMessageIds]);
+  }, [emitHaptic, messages, selectedMessageIds]);
 
   const handleExport = useCallback(() => {
     if (messages.length === 0) return;
     exportMessagesAsMarkdown(messages, generation, selectedVersionLabel);
-    haptic(6);
-  }, [messages, generation, selectedVersionLabel]);
-
-  const renderAssistantBlock = useCallback(
-    (
-      messageId: string,
-      block: Exclude<AssistantMessageBlock, { type: "heading" }>,
-      blockIndex: number,
-      sectionHeading?: string
-    ) => {
-      const shouldFormatCoachEntities =
-        typeof sectionHeading === "string" &&
-        BOSS_SECTION_HEADING_PATTERN.test(sectionHeading);
-
-      if (block.type === "unordered") {
-        return (
-          <ul key={`${messageId}-ul-${blockIndex}`}>
-            {block.items.map((item, itemIndex) => {
-              const entityLine = shouldFormatCoachEntities ? splitCoachEntityLine(item) : null;
-              if (entityLine) {
-                return (
-                  <li key={`${messageId}-ul-item-${blockIndex}-${itemIndex}`} className="ai-coach-entity-row">
-                    <span className="ai-coach-entity-name">
-                      {renderStyledInlineText(
-                        entityLine.name,
-                        pokemonNameLookup,
-                        `${messageId}-ul-entity-name-${blockIndex}-${itemIndex}`
-                      )}
-                    </span>
-                    <span className="ai-coach-entity-detail">
-                      {renderStyledInlineText(
-                        entityLine.detail,
-                        pokemonNameLookup,
-                        `${messageId}-ul-entity-detail-${blockIndex}-${itemIndex}`
-                      )}
-                    </span>
-                  </li>
-                );
-              }
-
-              return (
-                <li key={`${messageId}-ul-item-${blockIndex}-${itemIndex}`}>
-                  {renderStyledInlineText(
-                    item,
-                    pokemonNameLookup,
-                    `${messageId}-ul-item-${blockIndex}-${itemIndex}`
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        );
-      }
-      if (block.type === "ordered") {
-        return (
-          <ol key={`${messageId}-ol-${blockIndex}`}>
-            {block.items.map((item, itemIndex) => {
-              const entityLine = shouldFormatCoachEntities ? splitCoachEntityLine(item) : null;
-              if (entityLine) {
-                return (
-                  <li key={`${messageId}-ol-item-${blockIndex}-${itemIndex}`} className="ai-coach-entity-row">
-                    <span className="ai-coach-entity-name">
-                      {renderStyledInlineText(
-                        entityLine.name,
-                        pokemonNameLookup,
-                        `${messageId}-ol-entity-name-${blockIndex}-${itemIndex}`
-                      )}
-                    </span>
-                    <span className="ai-coach-entity-detail">
-                      {renderStyledInlineText(
-                        entityLine.detail,
-                        pokemonNameLookup,
-                        `${messageId}-ol-entity-detail-${blockIndex}-${itemIndex}`
-                      )}
-                    </span>
-                  </li>
-                );
-              }
-
-              return (
-                <li key={`${messageId}-ol-item-${blockIndex}-${itemIndex}`}>
-                  {renderStyledInlineText(
-                    item,
-                    pokemonNameLookup,
-                    `${messageId}-ol-item-${blockIndex}-${itemIndex}`
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        );
-      }
-
-      return (
-        <p key={`${messageId}-p-${blockIndex}`} className="whitespace-pre-wrap">
-          {renderStyledInlineText(block.text, pokemonNameLookup, `${messageId}-p-${blockIndex}`)}
-        </p>
-      );
-    },
-    [pokemonNameLookup]
-  );
+    emitHaptic("success");
+  }, [emitHaptic, messages, generation, selectedVersionLabel]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.nativeEvent.isComposing) return;
@@ -1773,7 +1197,6 @@ export default function AiCoachPanel({
     ? isAnimatingOut ? "ai-drawer-desktop-out" : "ai-drawer-desktop-in"
     : isAnimatingOut ? "ai-drawer-mobile-out" : "ai-drawer-mobile-in";
 
-  // Gate content
   const showGate = !isAuthenticated || !teamHasPokemon;
   const gateMessage = !isAuthenticated
     ? "Sign in to use AI Coach chat and team analysis."
@@ -1809,9 +1232,7 @@ export default function AiCoachPanel({
         ref={drawerRef}
         tabIndex={-1}
         className={`ai-drawer ${animClass} pointer-events-auto fixed ${
-          isDesktop
-            ? "right-0 bottom-0"
-            : "inset-0"
+          isDesktop ? "right-0 bottom-0" : "inset-0"
         }`}
         onAnimationEnd={onAnimationEnd}
         style={{
@@ -1832,7 +1253,7 @@ export default function AiCoachPanel({
           />
         )}
 
-        {/* ── Mobile swipe handle ── */}
+        {/* Mobile swipe handle */}
         {!isDesktop && (
           <div
             className="flex justify-center py-2"
@@ -1846,7 +1267,8 @@ export default function AiCoachPanel({
             />
           </div>
         )}
-        {/* ── Header ── */}
+
+        {/* Header */}
         <div
           className="flex items-center justify-between gap-2 px-4 py-3 sm:px-5"
           style={{ borderBottom: "1px solid var(--border)" }}
@@ -1885,7 +1307,6 @@ export default function AiCoachPanel({
           </div>
 
           <div className="flex items-center gap-1">
-            {/* Search toggle */}
             {isDesktop && messages.length > 0 && (
               <button
                 type="button"
@@ -1901,7 +1322,6 @@ export default function AiCoachPanel({
               </button>
             )}
 
-            {/* Export */}
             {isDesktop && messages.length > 0 && (
               <button
                 type="button"
@@ -1914,7 +1334,6 @@ export default function AiCoachPanel({
               </button>
             )}
 
-            {/* Pin/dock toggle */}
             {isDesktop && (
               <button
                 type="button"
@@ -1927,7 +1346,6 @@ export default function AiCoachPanel({
               </button>
             )}
 
-            {/* Shortcuts tooltip */}
             {isDesktop && (
               <div className="relative">
                 <button
@@ -1952,7 +1370,6 @@ export default function AiCoachPanel({
               </div>
             )}
 
-            {/* Close */}
             <button
               type="button"
               onClick={onClose}
@@ -2024,7 +1441,7 @@ export default function AiCoachPanel({
         )}
 
         {showGate ? (
-          /* ── Gate: not authenticated or no team ── */
+          /* Gate: not authenticated or no team */
           <div className="flex flex-1 items-center justify-center p-6">
             <div className="max-w-[16rem] text-center">
               <div
@@ -2043,254 +1460,35 @@ export default function AiCoachPanel({
           </div>
         ) : (
           <>
-            {/* ── Messages area ── */}
-            <div className="relative flex min-h-0 flex-1 flex-col">
-              <div
-                ref={messagesContainerRef}
-                className="ai-drawer-messages min-h-0 px-4 py-4 sm:px-5"
-                onScroll={handleMessagesScroll}
-              >
-              {isLoadingHistory ? (
-                <div className="flex items-center justify-center py-12">
-                  <FiLoader size={18} className="animate-spin" style={{ color: "var(--text-muted)" }} />
-                  <span className="ml-2 text-sm" style={{ color: "var(--text-muted)" }}>
-                    Loading history...
-                  </span>
-                </div>
-              ) : messages.length === 0 && !isBusy ? (
-                /* ── Empty state with quick prompts ── */
-                <div className="flex h-full flex-col items-center justify-center">
-                  <div className="max-w-[18rem] text-center">
-                    <div
-                      className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
-                      style={{
-                        background: "linear-gradient(135deg, var(--version-color-soft, rgba(218,44,67,0.14)) 0%, transparent 100%)",
-                        border: "1px solid var(--version-color-border, rgba(218,44,67,0.2))",
-                      }}
-                    >
-                      <FiZap size={24} style={{ color: "var(--version-color, var(--accent))" }} />
-                    </div>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                      How can I help with your team?
-                    </p>
-                    <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-                      Ask about matchups, swaps, or tap Analyze below.
-                    </p>
-                  </div>
+            {/* Messages area */}
+            <AiMessageList
+              displayMessages={displayMessages}
+              messages={messages}
+              pokemonNameLookup={pokemonNameLookup}
+              typingMessageId={typingMessageId}
+              revealedLength={revealedLength}
+              collapsedMessages={collapsedMessages}
+              toggleCollapse={toggleCollapse}
+              onAutoCollapse={(id) => setCollapsedMessages((prev) => new Set(prev).add(id))}
+              copiedMessageId={copiedMessageId}
+              handleCopyMessage={handleCopyMessage}
+              isSending={isSending}
+              isAnalyzing={isAnalyzing}
+              isLoadingHistory={isLoadingHistory}
+              showScrollToBottom={showScrollToBottom}
+              setShowScrollToBottom={setShowScrollToBottom}
+              scrollToBottom={scrollToBottom}
+              shouldFollowRef={shouldFollowMessagesRef}
+              selectedMessageIds={selectedMessageIds}
+              handleMessageClick={handleMessageClick}
+              canSendChat={canSendChat}
+              handleSend={handleSend}
+              messagesEndRef={messagesEndRef}
+              messagesContainerRef={messagesContainerRef}
+              handleMessagesScroll={handleMessagesScroll}
+            />
 
-                  <div className="mt-6 flex w-full flex-col gap-2">
-                    {quickPrompts.map((prompt) => (
-                      <button
-                        key={prompt.label}
-                        type="button"
-                        onClick={() => void handleSend(prompt.text)}
-                        disabled={!canUseAi}
-                        className="ai-quick-prompt"
-                      >
-                        <FiArrowRight size={13} style={{ flexShrink: 0, color: "var(--text-muted)" }} />
-                        {prompt.text}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                /* ── Message list ── */
-                <div className="space-y-3">
-                  {(() => {
-                    const lastAssistantId = [...displayMessages].reverse().find((m) => m.role === "assistant")?.id;
-                    return displayMessages.map((message) => {
-                    const isAssistant = message.role === "assistant";
-                    const isTyping = message.id === typingMessageId;
-                    const isLatestAssistant = message.id === lastAssistantId;
-                    const displayContent = isTyping
-                      ? message.content.slice(0, revealedLength)
-                      : message.content;
-                    const assistantBlocks = isAssistant ? parseAssistantMessage(displayContent) : [];
-                    const hasSectionHeadings = assistantBlocks.some((block) => block.type === "heading");
-                    const assistantSections = hasSectionHeadings
-                      ? groupAssistantBlocks(assistantBlocks)
-                      : [];
-                    const isSelected = selectedMessageIds.has(message.id);
-
-                    return (
-                      <div
-                        key={message.id}
-                        className={`ai-message-enter flex ${isAssistant ? "justify-start" : "justify-end"}`}
-                        onClick={(e) => handleMessageClick(message.id, e)}
-                      >
-                        <article
-                          className={`ai-message-bubble group relative rounded-2xl ${
-                            isAssistant ? "rounded-tl-md" : "rounded-tr-md"
-                          }${isSelected ? " ai-message-selected" : ""}`}
-                          style={{
-                            background: isSelected
-                              ? "var(--version-color-soft, rgba(218,44,67,0.18))"
-                              : isAssistant ? "var(--surface-2)" : "var(--version-color-soft, rgba(218,44,67,0.12))",
-                            border: `1px solid ${isSelected ? "var(--version-color, var(--accent))" : isAssistant ? "var(--border)" : "var(--version-color-border, rgba(218,44,67,0.22))"}`,
-                            color: "var(--text-primary)",
-                          }}
-                        >
-                          {isAssistant && (
-                            <div className="mb-1 flex items-center justify-between">
-                              <p
-                                className="flex items-center gap-1 text-[0.62rem] font-semibold uppercase tracking-[0.08em]"
-                                style={{ color: "var(--version-color, var(--accent))" }}
-                              >
-                                <FiMessageCircle size={9} />
-                                Coach
-                              </p>
-                              {!isTyping && (
-                                <button
-                                  type="button"
-                                  onClick={() => void handleCopyMessage(message.id, message.content)}
-                                  className="ai-copy-btn"
-                                  aria-label={copiedMessageId === message.id ? "Copied" : "Copy message"}
-                                >
-                                  {copiedMessageId === message.id
-                                    ? <FiCheck size={11} strokeWidth={3} />
-                                    : <FiCopy size={11} />}
-                                </button>
-                              )}
-                            </div>
-                          )}
-                          {isAssistant ? (
-                            <div
-                              className={`ai-message-content${isTyping ? " ai-typing-cursor" : ""}${
-                                !isTyping && collapsedMessages.has(message.id) ? " ai-message-collapsed" : ""
-                              }`}
-                              ref={(el) => {
-                                if (!el || isTyping || isLatestAssistant) return;
-                                if (el.scrollHeight > COLLAPSE_HEIGHT_PX && !collapsedMessages.has(message.id)) {
-                                  // Auto-collapse older messages on first render if tall
-                                  if (!el.dataset.measured) {
-                                    el.dataset.measured = "1";
-                                    setCollapsedMessages((prev) => new Set(prev).add(message.id));
-                                  }
-                                }
-                              }}
-                            >
-                              {hasSectionHeadings
-                                ? assistantSections.map((section, sectionIndex) => (
-                                    <details
-                                      key={`${message.id}-section-${sectionIndex}`}
-                                      className="ai-message-section"
-                                      open
-                                    >
-                                      <summary>
-                                        {renderStyledInlineText(
-                                          section.heading,
-                                          pokemonNameLookup,
-                                          `${message.id}-section-heading-${sectionIndex}`
-                                        )}
-                                      </summary>
-                                      <div className="ai-message-section-body">
-                                        {section.blocks.map((sectionBlock, blockIndex) =>
-                                          renderAssistantBlock(
-                                            `${message.id}-section-${sectionIndex}`,
-                                            sectionBlock,
-                                            blockIndex,
-                                            section.heading
-                                          )
-                                        )}
-                                      </div>
-                                    </details>
-                                  ))
-                                : assistantBlocks.map((block, blockIndex) => {
-                                    if (block.type === "heading") return null;
-                                    return renderAssistantBlock(message.id, block, blockIndex, undefined);
-                                  })}
-                            </div>
-                          ) : (
-                            <p className={`whitespace-pre-wrap${isTyping ? " ai-typing-cursor" : ""}`}>
-                              {displayContent}
-                            </p>
-                          )}
-                          {/* Show more / Show less toggle */}
-                          {isAssistant && !isTyping && collapsedMessages.has(message.id) && (
-                            <button
-                              type="button"
-                              onClick={() => toggleCollapse(message.id)}
-                              className="ai-show-more-btn"
-                            >
-                              Show more
-                            </button>
-                          )}
-                          {isAssistant && !isTyping && !collapsedMessages.has(message.id) && message.content.length > 600 && (
-                            <button
-                              type="button"
-                              onClick={() => toggleCollapse(message.id)}
-                              className="ai-show-more-btn"
-                            >
-                              Show less
-                            </button>
-                          )}
-                        </article>
-                        {!isTyping && message.createdAt && (
-                          <time
-                            dateTime={message.createdAt}
-                            className="mt-0.5 block text-[0.58rem]"
-                            style={{ color: "var(--text-muted)", opacity: 0.7 }}
-                          >
-                            {relativeTime(message.createdAt)}
-                          </time>
-                        )}
-                      </div>
-                    );
-                  });
-                  })()}
-
-                  {/* Thinking indicator */}
-                  {(isSending || isAnalyzing) && (
-                    <div className="ai-message-enter flex justify-start">
-                      <div
-                        className="ai-message-bubble flex items-center gap-2.5 rounded-2xl rounded-tl-md"
-                        style={{
-                          background: "var(--surface-2)",
-                          border: "1px solid var(--border)",
-                        }}
-                      >
-                        <PokeballIcon
-                          size={16}
-                          className="ai-thinking-pokeball"
-                        />
-                        <span
-                          className="text-[0.78rem] font-medium"
-                          style={{ color: "var(--text-muted)" }}
-                        >
-                          Coach is thinking
-                        </span>
-                        <span className="ai-thinking-dots flex items-center gap-[3px]">
-                          <span />
-                          <span />
-                          <span />
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div ref={messagesEndRef} />
-                </div>
-              )}
-            </div>
-
-              {/* Scroll-to-bottom FAB */}
-              {showScrollToBottom && messages.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    shouldFollowMessagesRef.current = true;
-                    setShowScrollToBottom(false);
-                    scrollToBottom("smooth");
-                  }}
-                  className="ai-scroll-fab"
-                  aria-label="Scroll to latest message"
-                >
-                  <FiChevronDown size={18} strokeWidth={2.5} />
-                </button>
-              )}
-            </div>
-
-            {/* ── Error ── */}
+            {/* Error */}
             {error && (
               <div className="px-4 sm:px-5">
                 <p
@@ -2306,8 +1504,19 @@ export default function AiCoachPanel({
               </div>
             )}
 
-            {/* ── Input area ── */}
+            {/* Input area */}
             <div className="ai-drawer-input-area">
+              {canUseAi && (
+                <div className="mb-2 rounded-lg border px-2.5 py-1.5" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+                  <p className="text-[0.64rem]" style={{ color: "var(--text-muted)" }}>
+                    {usageLoading
+                      ? "Checking monthly AI limits..."
+                      : usageSnapshot
+                        ? `Chat: ${usageSnapshot.chat.used}/${usageSnapshot.chat.limit ?? "∞"} • Analyze: ${usageSnapshot.analyze.used}/${usageSnapshot.analyze.limit ?? "∞"} • Resets ${formatResetDate(usageSnapshot.resetsAt)}`
+                        : "Monthly AI limits unavailable right now."}
+                  </p>
+                </div>
+              )}
               {(isBusy || queuedTasks.length > 0) && (
                 <div className="mb-2.5 flex items-center justify-between gap-2">
                   <p className="text-[0.68rem]" style={{ color: "var(--text-muted)" }}>
@@ -2365,163 +1574,28 @@ export default function AiCoachPanel({
                 </p>
               )}
 
-              <div
-                className="mb-2.5 rounded-xl px-2.5 py-2"
-                style={{
-                  border: "1px solid var(--border)",
-                  background: "var(--surface-2)",
-                  overflow: "visible",
-                  position: "relative",
-                }}
-              >
-                <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <p
-                    className="text-[0.66rem] font-semibold uppercase tracking-[0.08em]"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Story Checkpoint
-                  </p>
-                  {bossGuidanceLoading && (
-                    <span className="text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
-                      Loading...
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-1.5 overflow-x-auto pb-1 sm:hidden">
-                  <button
-                    type="button"
-                    onClick={() => void handleCheckpointSelection(AUTO_CHECKPOINT_KEY)}
-                    className="shrink-0 rounded-full border px-2.5 py-1 text-[0.66rem] font-semibold transition-colors"
-                    style={{
-                      borderColor:
-                        checkpointKeySelection === AUTO_CHECKPOINT_KEY
-                          ? "var(--version-color-border, rgba(218,44,67,0.35))"
-                          : "var(--border)",
-                      background:
-                        checkpointKeySelection === AUTO_CHECKPOINT_KEY
-                          ? "var(--version-color-soft, rgba(218,44,67,0.12))"
-                          : "var(--surface-1)",
-                      color:
-                        checkpointKeySelection === AUTO_CHECKPOINT_KEY
-                          ? "var(--version-color, var(--accent))"
-                          : "var(--text-secondary)",
-                    }}
-                  >
-                    Auto
-                  </button>
-                  {checkpointOptions.map((option) => {
-                    const isSelected = checkpointKeySelection === option.key;
-                    return (
-                      <button
-                        key={option.key}
-                        type="button"
-                        onClick={() => void handleCheckpointSelection(option.key)}
-                        className="shrink-0 rounded-full border px-2.5 py-1 text-[0.66rem] font-semibold transition-colors"
-                        title={option.label}
-                        style={{
-                          borderColor: isSelected
-                            ? "var(--version-color-border, rgba(218,44,67,0.35))"
-                            : "var(--border)",
-                          background: isSelected
-                            ? "var(--version-color-soft, rgba(218,44,67,0.12))"
-                            : "var(--surface-1)",
-                          color: isSelected
-                            ? "var(--version-color, var(--accent))"
-                            : "var(--text-secondary)",
-                        }}
-                      >
-                        {option.entry.stage === "gym"
-                          ? `G${option.entry.gymOrder ?? "?"} ${option.entry.name}`
-                          : option.entry.stage === "elite4"
-                            ? `E4 ${option.entry.name}`
-                            : `Champ ${option.entry.name}`}
-                      </button>
-                    );
-                  })}
-                </div>
+              {/* Story Checkpoint */}
+              <AiCheckpointSelector
+                bossGuidanceLoading={bossGuidanceLoading}
+                checkpointOptions={checkpointOptions}
+                selectedCheckpoint={selectedCheckpoint}
+                checkpointPendingLabel={checkpointPendingLabel}
+                checkpointKeySelection={checkpointKeySelection}
+                checkpointDropdownOpen={checkpointDropdownOpen}
+                checkpointDropdownRef={checkpointDropdownRef}
+                setCheckpointDropdownOpen={setCheckpointDropdownOpen}
+                handleCheckpointSelection={handleCheckpointSelection}
+                checkpointCatchables={checkpointCatchables}
+              />
 
-                {/* Desktop: custom dropdown */}
-                <div className="hidden sm:block" style={{ position: "relative" }} ref={checkpointDropdownRef}>
-                  <button
-                    type="button"
-                    onClick={() => setCheckpointDropdownOpen((prev) => !prev)}
-                    className="ai-checkpoint-trigger"
-                  >
-                    <span className="truncate">
-                      {checkpointKeySelection === AUTO_CHECKPOINT_KEY
-                        ? "Auto"
-                        : (() => {
-                            const match = checkpointOptions.find((o) => o.key === checkpointKeySelection);
-                            return match ? checkpointLabel(match.entry) : "Auto";
-                          })()}
-                    </span>
-                    <FiChevronDown
-                      size={13}
-                      className={`shrink-0 transition-transform duration-150${checkpointDropdownOpen ? " rotate-180" : ""}`}
-                    />
-                  </button>
-                  {checkpointDropdownOpen && (
-                    <div className="ai-checkpoint-menu">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void handleCheckpointSelection(AUTO_CHECKPOINT_KEY);
-                          setCheckpointDropdownOpen(false);
-                        }}
-                        className={`ai-checkpoint-item${checkpointKeySelection === AUTO_CHECKPOINT_KEY ? " is-selected" : ""}`}
-                      >
-                        <span className="font-semibold">Auto</span>
-                        <span className="ai-checkpoint-item-sub">Uses boss names from your prompt</span>
-                      </button>
-                      {checkpointOptions.map((option) => {
-                        const isSelected = checkpointKeySelection === option.key;
-                        const stageTag =
-                          option.entry.stage === "gym"
-                            ? `G${option.entry.gymOrder ?? "?"}`
-                            : option.entry.stage === "elite4"
-                              ? "E4"
-                              : "CH";
-                        return (
-                          <button
-                            key={option.key}
-                            type="button"
-                            onClick={() => {
-                              void handleCheckpointSelection(option.key);
-                              setCheckpointDropdownOpen(false);
-                            }}
-                            className={`ai-checkpoint-item${isSelected ? " is-selected" : ""}`}
-                          >
-                            <span className="flex items-center gap-1.5">
-                              <span className="ai-checkpoint-tag">{stageTag}</span>
-                              <span className="font-semibold">{option.entry.name}</span>
-                            </span>
-                            {option.entry.recommendedPlayerLevelRange && (
-                              <span className="ai-checkpoint-item-sub">
-                                Lv. {option.entry.recommendedPlayerLevelRange}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-                <p className="mt-1.5 text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
-                  {selectedCheckpoint
-                    ? checkpointCatchables.catchablePoolSize > 0
-                      ? `Checkpoint pool: ~${checkpointCatchables.catchablePoolSize} legal species, ${checkpointCatchables.evolutionFallbacks.length} evolution fallback rules applied.`
-                      : "Checkpoint selected. Catch pool sample unavailable, so the coach will keep encounter timing conservative."
-                    : "Auto mode uses boss names or gym numbering from your prompt."}
-                </p>
-              </div>
-
+              {/* Quick command chips */}
               <div className="mb-2 flex flex-wrap gap-2 sm:gap-1.5">
                 {quickCommandChips.map((chip) => (
                   <button
                     key={chip.id}
                     type="button"
                     onClick={() => handleQuickCommand(chip.id)}
-                    disabled={!canUseAi}
+                    disabled={chip.id === "analyze" ? !canAnalyze : !canSendChat}
                     className="ai-command-chip"
                     title={chip.description}
                     aria-label={chip.description}
@@ -2531,6 +1605,7 @@ export default function AiCoachPanel({
                 ))}
               </div>
 
+              {/* Slash command menu */}
               {isSlashMenuOpen && (
                 <div className="ai-slash-menu mb-2.5">
                   <div className="ai-slash-menu-head">
@@ -2577,12 +1652,12 @@ export default function AiCoachPanel({
                   onKeyDown={handleKeyDown}
                   rows={1}
                   placeholder="Ask about threats, swaps, roles..."
-                  disabled={!canUseAi}
+                  disabled={!canSendChat}
                 />
                 <button
                   type="button"
                   onClick={() => void handleSend()}
-                  disabled={!canUseAi || !input.trim()}
+                  disabled={!canSendChat || !input.trim()}
                   className="ai-drawer-send-btn"
                   aria-label={isBusy ? "Queue message" : "Send message"}
                 >
@@ -2591,7 +1666,11 @@ export default function AiCoachPanel({
               </div>
 
               <p className="mt-2 text-center text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
-                {isBusy
+                {!canSendChat
+                  ? `Chat quota reached. You can still use Analyze if available. Resets ${formatResetDate(
+                      usageSnapshot?.resetsAt
+                    )}.`
+                  : isBusy
                   ? "Press Enter to queue your next prompt while Coach is working."
                   : "Suggestions follow your active filters and gen rules. Tap Send or type / for commands."}
               </p>

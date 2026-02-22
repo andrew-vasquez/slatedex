@@ -28,6 +28,37 @@ function getApiUrl(): string {
 
 const API_URL = getApiUrl();
 
+export type UserRoleValue = "USER" | "ADMIN" | "OWNER";
+export type UserPlanValue = "FREE" | "PRO";
+export type UserBadgeValue = "Owner" | "Admin" | "Pro" | null;
+
+export interface AiUsageActionSummary {
+  used: number;
+  limit: number | null;
+  remaining: number | null;
+  unlimited: boolean;
+}
+
+export interface AiUsageSnapshot {
+  periodStart: string;
+  resetsAt: string;
+  plan: UserPlanValue;
+  chat: AiUsageActionSummary;
+  analyze: AiUsageActionSummary;
+}
+
+export class ApiError extends Error {
+  status: number;
+  data: unknown;
+
+  constructor(message: string, status: number, data: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.data = data;
+  }
+}
+
 export interface SavedTeam {
   id: string;
   name: string;
@@ -71,6 +102,7 @@ export interface PublicProfile {
   username: string;
   name: string;
   image: string | null;
+  badge?: UserBadgeValue;
   memberSince: string;
   bio: string;
   avatarUrl: string | null;
@@ -87,6 +119,10 @@ export interface PublicProfile {
 }
 
 export interface MyProfile extends PublicProfile {
+  role: UserRoleValue;
+  plan: UserPlanValue;
+  badge: UserBadgeValue;
+  aiUsageSummary?: AiUsageSnapshot | null;
   usernameChangeWindow: {
     max: number;
     used: number;
@@ -142,6 +178,63 @@ export interface AiTeamContextPayload {
   checkpointEvolutionFallbacks?: Array<{ fromName: string; toName: string }>;
 }
 
+export interface AdminOverview {
+  range: "30d" | "90d" | "12m";
+  period: {
+    from: string;
+    to: string;
+  };
+  kpis: {
+    totalUsers: number;
+    newUsersInRange: number;
+    totalTeams: number;
+    totalChats: number;
+    totalAnalyzes: number;
+    activeUsersLast30d: number;
+    usersAtQuotaCurrentMonth: number;
+  };
+  charts: {
+    newUsersByDay: Array<{ day: string; value: number }>;
+    newTeamsByDay: Array<{ day: string; value: number }>;
+    aiUsageByDay: Array<{ day: string; chat: number; analyze: number }>;
+    usersByPlan: Array<{ key: UserPlanValue; value: number }>;
+    usersByRole: Array<{ key: UserRoleValue; value: number }>;
+  };
+  topUsersThisMonth: Array<{
+    userId: string;
+    name: string;
+    email: string;
+    username: string | null;
+    chatCount: number;
+    analyzeCount: number;
+    total: number;
+  }>;
+}
+
+export interface AdminUserRow {
+  id: string;
+  name: string;
+  email: string;
+  username: string | null;
+  role: UserRoleValue;
+  plan: UserPlanValue;
+  badge: UserBadgeValue;
+  teamCount: number;
+  entitlements: {
+    monthlyChatLimit: number;
+    monthlyAnalyzeLimit: number;
+    unlimitedAiChat: boolean;
+    unlimitedAiAnalyze: boolean;
+  };
+  usage: {
+    periodStart: string;
+    chat: AiUsageActionSummary;
+    analyze: AiUsageActionSummary;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const requestUrl = `${API_URL}${path}`;
   const res = await fetch(requestUrl, {
@@ -153,17 +246,28 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     },
   });
 
+  const body = await res.json().catch(() => null);
+
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
     if (res.status === 404 && path.startsWith("/api/ai/")) {
-      throw new Error(
-        `AI endpoint returned 404 at ${requestUrl}. Check NEXT_PUBLIC_API_URL points to backend base URL (no /api suffix/path) and backend is deployed with /api/ai routes.`
+      throw new ApiError(
+        `AI endpoint returned 404 at ${requestUrl}. Check NEXT_PUBLIC_API_URL points to backend base URL (no /api suffix/path) and backend is deployed with /api/ai routes.`,
+        res.status,
+        body
       );
     }
-    throw new Error(body.error ?? `Request failed: ${res.status}`);
+    const fallbackMessage = `Request failed: ${res.status}`;
+    const message =
+      body &&
+      typeof body === "object" &&
+      "error" in body &&
+      typeof (body as { error?: unknown }).error === "string"
+        ? (body as { error: string }).error
+        : fallbackMessage;
+    throw new ApiError(message, res.status, body);
   }
 
-  return res.json();
+  return body as T;
 }
 
 export function fetchTeams(generation?: number, gameId?: number): Promise<SavedTeam[]> {
@@ -172,6 +276,14 @@ export function fetchTeams(generation?: number, gameId?: number): Promise<SavedT
   if (gameId != null) params.set("gameId", String(gameId));
   const qs = params.toString();
   return apiFetch(`/api/teams${qs ? `?${qs}` : ""}`);
+}
+
+export function fetchTeamCountsByGame(generation?: number): Promise<Array<{ gameId: number; count: number }>> {
+  const params = new URLSearchParams({ summary: "countsByGame" });
+  if (generation != null) params.set("generation", String(generation));
+  return apiFetch<{ counts: Array<{ gameId: number; count: number }> }>(
+    `/api/teams?${params.toString()}`
+  ).then((result) => result.counts ?? []);
 }
 
 export function createTeam(data: {
@@ -329,7 +441,11 @@ export function fetchAiBossGuidance(versionId: string): Promise<{
   bossGuidance: AiBossGuidanceEntry[];
 }> {
   const qs = new URLSearchParams({ versionId }).toString();
-  return apiFetch(`/api/ai/boss-guidance?${qs}`);
+  return apiFetch(`/api/ai/boss-guidance?${qs}`, { cache: "no-store" });
+}
+
+export function fetchAiUsage(): Promise<AiUsageSnapshot> {
+  return apiFetch("/api/ai/usage");
 }
 
 export function sendAiChat(
@@ -338,6 +454,7 @@ export function sendAiChat(
 ): Promise<{
   teamId: string;
   reply: string;
+  usage?: AiUsageSnapshot;
   userMessage: AiMessage;
   assistantMessage: AiMessage;
 }> {
@@ -354,6 +471,7 @@ export function analyzeAiTeam(
 ): Promise<{
   teamId: string;
   analysisText: string;
+  usage?: AiUsageSnapshot;
   userMessage: AiMessage;
   assistantMessage: AiMessage;
 }> {
@@ -361,5 +479,66 @@ export function analyzeAiTeam(
     method: "POST",
     body: JSON.stringify(payload),
     signal: options?.signal,
+  });
+}
+
+export function fetchAdminOverview(range: "30d" | "90d" | "12m" = "30d"): Promise<AdminOverview> {
+  const qs = new URLSearchParams({ range }).toString();
+  return apiFetch(`/api/admin/overview?${qs}`);
+}
+
+export function fetchAdminUsers(params?: {
+  query?: string;
+  cursor?: string;
+  limit?: number;
+}): Promise<{ items: AdminUserRow[]; nextCursor: string | null }> {
+  const searchParams = new URLSearchParams();
+  if (params?.query) searchParams.set("query", params.query);
+  if (params?.cursor) searchParams.set("cursor", params.cursor);
+  if (typeof params?.limit === "number") searchParams.set("limit", String(params.limit));
+  const qs = searchParams.toString();
+  return apiFetch(`/api/admin/users${qs ? `?${qs}` : ""}`);
+}
+
+export function updateAdminUserEntitlements(
+  userId: string,
+  payload: {
+    plan?: UserPlanValue;
+    monthlyChatLimit?: number;
+    monthlyAnalyzeLimit?: number;
+    unlimitedAiChat?: boolean;
+    unlimitedAiAnalyze?: boolean;
+  }
+): Promise<{
+  success: true;
+  user: {
+    id: string;
+    role: UserRoleValue;
+    plan: UserPlanValue;
+    monthlyChatLimit: number;
+    monthlyAnalyzeLimit: number;
+    unlimitedAiChat: boolean;
+    unlimitedAiAnalyze: boolean;
+  };
+}> {
+  return apiFetch(`/api/admin/users/${encodeURIComponent(userId)}/entitlements`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateAdminUserRole(
+  userId: string,
+  role: UserRoleValue
+): Promise<{
+  success: true;
+  user: {
+    id: string;
+    role: UserRoleValue;
+  };
+}> {
+  return apiFetch(`/api/admin/users/${encodeURIComponent(userId)}/role`, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
   });
 }

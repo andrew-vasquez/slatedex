@@ -35,6 +35,7 @@ export interface BuilderSettings {
   reduceMotion: boolean;
   dragBehavior: DragBehavior;
   versionTheming: boolean;
+  mobileHaptics: boolean;
 }
 
 export interface PokemonPools {

@@ -5,6 +5,8 @@ import { FiCopy, FiFolder, FiLink, FiShare2, FiUploadCloud, FiX } from "react-ic
 import SavedTeamsPanel from "./SavedTeamsPanel";
 import { encodeSharedTeamPayload, parseSharedTeamInput, type SharedTeamPayload } from "@/lib/teamShare";
 import { useAnimatedUnmount } from "@/app/game/hooks/useAnimatedUnmount";
+import { useToastContext } from "@/app/game/hooks/useToast";
+import { triggerHaptic } from "@/lib/haptics";
 import type { SavedTeam } from "@/lib/api";
 
 type TeamToolsTab = "saved" | "share";
@@ -33,6 +35,7 @@ interface TeamToolsModalProps {
   gameVersions?: VersionOption[];
   selectedVersionId?: string | null;
   initialTab?: TeamToolsTab;
+  hapticsEnabled?: boolean;
 }
 
 const TeamToolsModal = ({
@@ -54,6 +57,7 @@ const TeamToolsModal = ({
   gameVersions,
   selectedVersionId,
   initialTab = "saved",
+  hapticsEnabled = true,
 }: TeamToolsModalProps) => {
   const [activeTab, setActiveTab] = useState<TeamToolsTab>("saved");
   const [importInput, setImportInput] = useState("");
@@ -61,6 +65,7 @@ const TeamToolsModal = ({
   const [tabTransitionKey, setTabTransitionKey] = useState(0);
   const modalRef = useRef<HTMLElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const toastCtx = useToastContext();
 
   const token = useMemo(() => encodeSharedTeamPayload(payload), [payload]);
   const { shouldRender, isAnimatingOut, onAnimationEnd } = useAnimatedUnmount(isOpen, 200);
@@ -157,8 +162,12 @@ const TeamToolsModal = ({
       const url = `${window.location.origin}${window.location.pathname}?team=${encodeURIComponent(token)}`;
       await navigator.clipboard.writeText(url);
       setShareStatus("Share link copied.");
+      toastCtx.success("Share link copied to clipboard");
+      triggerHaptic("success", { enabled: hapticsEnabled, mobileOnly: true });
     } catch {
       setShareStatus("Could not copy share link.");
+      toastCtx.error("Failed to copy share link");
+      triggerHaptic("error", { enabled: hapticsEnabled, mobileOnly: true });
     }
   };
 
@@ -166,8 +175,12 @@ const TeamToolsModal = ({
     try {
       await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
       setShareStatus("Team JSON copied.");
+      toastCtx.success("Team JSON copied to clipboard");
+      triggerHaptic("success", { enabled: hapticsEnabled, mobileOnly: true });
     } catch {
       setShareStatus("Could not copy JSON.");
+      toastCtx.error("Failed to copy JSON");
+      triggerHaptic("error", { enabled: hapticsEnabled, mobileOnly: true });
     }
   };
 
@@ -175,11 +188,17 @@ const TeamToolsModal = ({
     const parsed = parseSharedTeamInput(importInput);
     if (!parsed) {
       setShareStatus("Invalid share link or JSON payload.");
+      triggerHaptic("error", { enabled: hapticsEnabled, mobileOnly: true });
       return;
     }
 
     const result = onImport(parsed);
     setShareStatus(result);
+    if (result.toLowerCase().includes("invalid")) {
+      triggerHaptic("error", { enabled: hapticsEnabled, mobileOnly: true });
+      return;
+    }
+    triggerHaptic("success", { enabled: hapticsEnabled, mobileOnly: true });
     if (!result.toLowerCase().includes("invalid")) {
       setImportInput("");
       onClose();
@@ -228,7 +247,10 @@ const TeamToolsModal = ({
         <div className="mt-4 inline-flex rounded-xl border p-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
           <button
             type="button"
-            onClick={() => setActiveTab("saved")}
+            onClick={() => {
+              setActiveTab("saved");
+              triggerHaptic("light", { enabled: hapticsEnabled, mobileOnly: true });
+            }}
             className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[0.78rem] font-semibold transition-colors duration-200"
             style={{
               background: activeTab === "saved" ? "var(--accent-soft)" : "transparent",
@@ -241,7 +263,10 @@ const TeamToolsModal = ({
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab("share")}
+            onClick={() => {
+              setActiveTab("share");
+              triggerHaptic("light", { enabled: hapticsEnabled, mobileOnly: true });
+            }}
             className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[0.78rem] font-semibold transition-colors duration-200"
             style={{
               background: activeTab === "share" ? "var(--accent-soft)" : "transparent",

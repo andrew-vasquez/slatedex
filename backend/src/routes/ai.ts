@@ -14,6 +14,12 @@ import { getBossGuidanceForVersion } from "../lib/ai/bossData";
 import { buildAnalyzePrompt, buildChatPrompt } from "../lib/ai/prompts";
 import { AiRequestError, generateAiText } from "../lib/ai/openai";
 import { capturePostHogEventImmediate } from "../lib/posthog";
+import {
+  getCurrentUsageSnapshot,
+  releaseUsageReservation,
+  reserveUsage,
+  type CurrentAiUsageSnapshot,
+} from "../lib/ai/quota";
 import type {
   DexMode,
   PersistedAiMessage,
@@ -972,6 +978,15 @@ ai.get("/boss-guidance", async (c) => {
   });
 });
 
+ai.get("/usage", async (c) => {
+  const user = c.get("user");
+  const usage = await getCurrentUsageSnapshot(user.id);
+  if (!usage) {
+    return c.json({ error: "User not found." }, 404);
+  }
+  return c.json(usage);
+});
+
 ai.post("/chat", async (c) => {
   if (!config.ai.enabled) {
     return c.json({ error: "AI Coach is disabled." }, 503);
@@ -1111,6 +1126,23 @@ ai.post("/chat", async (c) => {
   };
   const context = buildTeamContext(contextPayload, bossGuidance);
 
+  let reservedPeriodStart: Date | null = null;
+  let reservedUsageSnapshot: CurrentAiUsageSnapshot | null = null;
+  try {
+    const usageReservation = await reserveUsage({ userId: user.id, action: "chat" });
+    if (!usageReservation.allowed) {
+      return c.json(
+        { error: "Monthly AI chat limit reached. Update your plan or wait for reset.", usage: usageReservation.snapshot },
+        429
+      );
+    }
+    reservedPeriodStart = usageReservation.periodStart;
+    reservedUsageSnapshot = usageReservation.snapshot;
+  } catch (error) {
+    console.error("[ai/chat] failed to reserve usage", error);
+    return c.json({ error: "Could not validate AI usage limits. Please try again." }, 503);
+  }
+
   let conversationId: string | null = null;
 
   try {
@@ -1182,6 +1214,7 @@ ai.post("/chat", async (c) => {
     return c.json({
       teamId: team.id,
       reply: normalizedReply,
+      usage: reservedUsageSnapshot,
       userMessage: {
         id: userMessageRow.id,
         role: "user",
@@ -1198,6 +1231,15 @@ ai.post("/chat", async (c) => {
       },
     });
   } catch (error) {
+    if (reservedPeriodStart) {
+      void releaseUsageReservation({
+        userId: user.id,
+        action: "chat",
+        periodStart: reservedPeriodStart,
+      }).catch((releaseError) => {
+        console.error("[ai/chat] failed to release usage reservation", releaseError);
+      });
+    }
     const mapped = toAiHttpError(error);
     await capturePostHogEventImmediate({
       distinctId: user.id,
@@ -1348,6 +1390,23 @@ ai.post("/analyze", async (c) => {
   const context = buildTeamContext(contextPayload, bossGuidance);
   const prompt = buildAnalyzePrompt({ context });
 
+  let reservedPeriodStart: Date | null = null;
+  let reservedUsageSnapshot: CurrentAiUsageSnapshot | null = null;
+  try {
+    const usageReservation = await reserveUsage({ userId: user.id, action: "analyze" });
+    if (!usageReservation.allowed) {
+      return c.json(
+        { error: "Monthly AI analyze limit reached. Update your plan or wait for reset.", usage: usageReservation.snapshot },
+        429
+      );
+    }
+    reservedPeriodStart = usageReservation.periodStart;
+    reservedUsageSnapshot = usageReservation.snapshot;
+  } catch (error) {
+    console.error("[ai/analyze] failed to reserve usage", error);
+    return c.json({ error: "Could not validate AI usage limits. Please try again." }, 503);
+  }
+
   let conversationId: string | null = null;
 
   try {
@@ -1410,6 +1469,7 @@ ai.post("/analyze", async (c) => {
     return c.json({
       teamId: team.id,
       analysisText: normalizedAnalysis,
+      usage: reservedUsageSnapshot,
       userMessage: {
         id: userMessageRow.id,
         role: "user",
@@ -1426,6 +1486,15 @@ ai.post("/analyze", async (c) => {
       },
     });
   } catch (error) {
+    if (reservedPeriodStart) {
+      void releaseUsageReservation({
+        userId: user.id,
+        action: "analyze",
+        periodStart: reservedPeriodStart,
+      }).catch((releaseError) => {
+        console.error("[ai/analyze] failed to release usage reservation", releaseError);
+      });
+    }
     const mapped = toAiHttpError(error);
     await capturePostHogEventImmediate({
       distinctId: user.id,

@@ -248,6 +248,7 @@ teams.get("/", async (c) => {
   const user = c.get("user");
   const generationRaw = c.req.query("generation");
   const gameIdRaw = c.req.query("gameId");
+  const summaryRaw = c.req.query("summary");
 
   const where: Record<string, unknown> = { userId: user.id };
   if (generationRaw !== undefined) {
@@ -264,6 +265,22 @@ teams.get("/", async (c) => {
       return c.json({ error: "gameId must be a positive integer." }, 400);
     }
     where.gameId = gameId;
+  }
+
+  if (summaryRaw === "countsByGame") {
+    const counts = await prisma.team.groupBy({
+      by: ["gameId"],
+      where,
+      _count: { _all: true },
+      orderBy: { gameId: "asc" },
+    });
+
+    return c.json({
+      counts: counts.map((entry) => ({
+        gameId: entry.gameId,
+        count: entry._count._all,
+      })),
+    });
   }
 
   const userTeams = await prisma.team.findMany({

@@ -24,6 +24,7 @@ interface TeamBuilderHeaderProps {
   onSettingsReduceMotionChange: (value: boolean) => void;
   onSettingsDragBehaviorChange: (value: DragBehavior) => void;
   onSettingsVersionThemingChange: (value: boolean) => void;
+  onSettingsMobileHapticsChange: (value: boolean) => void;
   onSettingsReset: () => void;
 }
 
@@ -54,6 +55,7 @@ const TeamBuilderHeader = ({
   onSettingsReduceMotionChange,
   onSettingsDragBehaviorChange,
   onSettingsVersionThemingChange,
+  onSettingsMobileHapticsChange,
   onSettingsReset,
 }: TeamBuilderHeaderProps) => {
   const completion = Math.round((teamLength / 6) * 100);
@@ -491,6 +493,7 @@ const TeamBuilderHeader = ({
                     onReduceMotionChange={onSettingsReduceMotionChange}
                     onDragBehaviorChange={onSettingsDragBehaviorChange}
                     onVersionThemingChange={onSettingsVersionThemingChange}
+                    onMobileHapticsChange={onSettingsMobileHapticsChange}
                     onReset={onSettingsReset}
                   />
                 </div>
@@ -652,6 +655,7 @@ const TeamBuilderHeader = ({
                     onReduceMotionChange={onSettingsReduceMotionChange}
                     onDragBehaviorChange={onSettingsDragBehaviorChange}
                     onVersionThemingChange={onSettingsVersionThemingChange}
+                    onMobileHapticsChange={onSettingsMobileHapticsChange}
                     onReset={onSettingsReset}
                   />
                 </div>
