@@ -2,7 +2,37 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-const TOUR_KEY = "poke-builder:tour-completed";
+const TOUR_KEY_BASE = "poke-builder:tour-completed";
+
+function getTourKey(userId?: string | null) {
+  return userId ? `${TOUR_KEY_BASE}:${userId}` : TOUR_KEY_BASE;
+}
+
+function isTourCompleted(userId?: string | null): boolean {
+  try {
+    // Check user-specific key first
+    if (userId && localStorage.getItem(getTourKey(userId))) return true;
+    // Also check the legacy anonymous key
+    if (localStorage.getItem(TOUR_KEY_BASE)) {
+      // Migrate: if user is signed in but only the anonymous flag exists, copy it
+      if (userId) localStorage.setItem(getTourKey(userId), "1");
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function markTourCompleted(userId?: string | null) {
+  try {
+    localStorage.setItem(getTourKey(userId), "1");
+    // Also set anonymous key so it persists if they sign out
+    if (userId) localStorage.setItem(TOUR_KEY_BASE, "1");
+  } catch { /* noop */ }
+}
+
+const MOBILE_BREAKPOINT = 768;
 
 interface TourStep {
   target: string;
@@ -40,20 +70,19 @@ const TOUR_STEPS: TourStep[] = [
 
 interface OnboardingTourProps {
   enabled?: boolean;
+  userId?: string | null;
 }
 
-const OnboardingTour = ({ enabled = true }: OnboardingTourProps) => {
+const OnboardingTour = ({ enabled = true, userId }: OnboardingTourProps) => {
   const [currentStep, setCurrentStep] = useState(-1);
   const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
-    try {
-      if (localStorage.getItem(TOUR_KEY)) return;
-    } catch { /* noop */ }
+    if (isTourCompleted(userId)) return;
     const timer = setTimeout(() => setCurrentStep(0), 1200);
     return () => clearTimeout(timer);
-  }, [enabled]);
+  }, [enabled, userId]);
 
   const updateSpotlight = useCallback((stepIndex: number) => {
     if (stepIndex < 0 || stepIndex >= TOUR_STEPS.length) return;
@@ -89,34 +118,44 @@ const OnboardingTour = ({ enabled = true }: OnboardingTourProps) => {
       setCurrentStep((s) => s + 1);
     } else {
       setCurrentStep(-1);
-      try { localStorage.setItem(TOUR_KEY, "1"); } catch { /* noop */ }
+      markTourCompleted(userId);
     }
-  }, [currentStep]);
+  }, [currentStep, userId]);
 
   const handleSkip = useCallback(() => {
     setCurrentStep(-1);
-    try { localStorage.setItem(TOUR_KEY, "1"); } catch { /* noop */ }
-  }, []);
+    markTourCompleted(userId);
+  }, [userId]);
 
   if (currentStep < 0 || currentStep >= TOUR_STEPS.length) return null;
 
   const step = TOUR_STEPS[currentStep];
   const pad = 8;
+  const isMobile = typeof window !== "undefined" && window.innerWidth < MOBILE_BREAKPOINT;
+  // On mobile, force left/right positions to bottom to prevent off-screen clipping
+  const effectivePosition = isMobile && (step.position === "left" || step.position === "right")
+    ? "bottom"
+    : step.position;
 
   const tooltipStyle: React.CSSProperties = {};
   if (spotlightRect) {
-    const maxLeft = Math.max(16, window.innerWidth - 316);
-    if (step.position === "bottom") {
-      tooltipStyle.top = spotlightRect.bottom + pad + 12;
-      tooltipStyle.left = Math.min(maxLeft, Math.max(16, spotlightRect.left + spotlightRect.width / 2 - 150));
-    } else if (step.position === "top") {
-      tooltipStyle.bottom = window.innerHeight - spotlightRect.top + pad + 12;
-      tooltipStyle.left = Math.min(maxLeft, Math.max(16, spotlightRect.left + spotlightRect.width / 2 - 150));
-    } else if (step.position === "left") {
-      tooltipStyle.top = Math.max(16, spotlightRect.top + spotlightRect.height / 2 - 40);
-      tooltipStyle.right = window.innerWidth - spotlightRect.left + pad + 12;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const tooltipW = Math.min(300, vw - 32);
+    const maxLeft = Math.max(16, vw - tooltipW - 16);
+
+    if (effectivePosition === "bottom") {
+      const rawTop = spotlightRect.bottom + pad + 12;
+      tooltipStyle.top = Math.min(rawTop, vh - 180);
+      tooltipStyle.left = Math.min(maxLeft, Math.max(16, spotlightRect.left + spotlightRect.width / 2 - tooltipW / 2));
+    } else if (effectivePosition === "top") {
+      tooltipStyle.bottom = vh - spotlightRect.top + pad + 12;
+      tooltipStyle.left = Math.min(maxLeft, Math.max(16, spotlightRect.left + spotlightRect.width / 2 - tooltipW / 2));
+    } else if (effectivePosition === "left") {
+      tooltipStyle.top = Math.max(16, Math.min(spotlightRect.top + spotlightRect.height / 2 - 40, vh - 180));
+      tooltipStyle.right = vw - spotlightRect.left + pad + 12;
     } else {
-      tooltipStyle.top = Math.max(16, spotlightRect.top + spotlightRect.height / 2 - 40);
+      tooltipStyle.top = Math.max(16, Math.min(spotlightRect.top + spotlightRect.height / 2 - 40, vh - 180));
       tooltipStyle.left = Math.min(maxLeft, spotlightRect.right + pad + 12);
     }
   } else {

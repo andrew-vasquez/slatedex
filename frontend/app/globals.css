@@ -1702,6 +1702,22 @@ html[data-motion="reduced"] *::after {
   opacity: 0.9;
 }
 
+@media (max-width: 767px) {
+  .tour-tooltip {
+    width: calc(100vw - 32px);
+    max-width: calc(100vw - 32px);
+  }
+  .tour-tooltip-title { font-size: 0.92rem; }
+  .tour-tooltip-desc { font-size: 0.78rem; }
+  .tour-tooltip-skip,
+  .tour-tooltip-next {
+    padding: 0.45rem 0.8rem;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
 /* ── Command palette ────────────────────────────────────── */
 
 .command-palette-backdrop {
