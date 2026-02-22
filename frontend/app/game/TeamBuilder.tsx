@@ -273,8 +273,6 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const pastTeamsRef = useRef<(Pokemon | null)[][]>([]);
   const futureTeamsRef = useRef<(Pokemon | null)[][]>([]);
   const poolsByGameRef = useRef<Record<number, PokemonPools>>(initialPoolsByGame);
-  const prevTeamSizeRef = useRef(0);
-  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1269,17 +1267,6 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const currentTeam = useMemo(() => team.filter((p): p is Pokemon => p !== null), [team]);
   const hasTeam = currentTeam.length > 0;
 
-  // Celebration when team goes from <6 to 6
-  useEffect(() => {
-    if (currentTeam.length === 6 && prevTeamSizeRef.current < 6 && prevTeamSizeRef.current > 0) {
-      setShowConfetti(true);
-      emitHaptic("success");
-      const timer = setTimeout(() => setShowConfetti(false), 3000);
-      return () => clearTimeout(timer);
-    }
-    prevTeamSizeRef.current = currentTeam.length;
-  }, [currentTeam.length, emitHaptic]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const {
     shouldRender: shouldRenderEmpty,
     isAnimatingOut: isEmptyExiting,
@@ -2207,8 +2194,6 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           onToggleAiCoach={toggleAiCoach}
         />
       )}
-
-      {showConfetti && <div className="confetti-container" aria-hidden="true">{Array.from({ length: 40 }, (_, i) => <div key={i} className="confetti-piece" style={{ "--confetti-x": `${Math.random() * 100}vw`, "--confetti-delay": `${Math.random() * 0.6}s`, "--confetti-color": ["#da2c43", "#3b82f6", "#22c55e", "#eab308", "#a855f7", "#f97316"][i % 6] } as React.CSSProperties} />)}</div>}
 
       {shouldMountOnboardingTour && <OnboardingTour userId={user?.id} />}
 
