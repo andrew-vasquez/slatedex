@@ -1273,7 +1273,6 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   useEffect(() => {
     if (currentTeam.length === 6 && prevTeamSizeRef.current < 6 && prevTeamSizeRef.current > 0) {
       setShowConfetti(true);
-      toast.success("Full team assembled! 🎉");
       emitHaptic("success");
       const timer = setTimeout(() => setShowConfetti(false), 3000);
       return () => clearTimeout(timer);
