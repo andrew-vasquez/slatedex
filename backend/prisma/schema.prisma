@@ -35,6 +35,7 @@ model User {
   usernameLogs  ProfileUsernameChange[]
   aiConversations AiConversation[]
   aiMonthlyUsages AiMonthlyUsage[]
+  opponentTeams   OpponentTeam[]
 
   @@unique([email])
   @@map("user")
@@ -202,4 +203,29 @@ model AiMonthlyUsage {
   @@index([periodStart])
   @@index([userId, updatedAt])
   @@map("ai_monthly_usage")
+}
+
+enum OpponentTeamSource {
+  MANUAL
+  PRESET
+}
+
+model OpponentTeam {
+  id             String             @id @default(cuid())
+  name           String
+  generation     Int
+  gameId         Int
+  selectedVersionId String?
+  source         OpponentTeamSource @default(MANUAL)
+  presetBossKey  String?
+  pokemon        Json
+  notes          String?
+  userId         String
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([userId, generation, gameId])
+  @@map("opponent_team")
 }

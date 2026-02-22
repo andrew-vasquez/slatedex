@@ -484,7 +484,14 @@ const TeamBuilderHeader = ({
               </button>
 
               {isSettingsOpen && (
-                <div className="absolute left-0 top-[calc(100%+0.45rem)] z-[80] w-[22rem] max-w-[calc(100vw-2rem)] sm:left-auto sm:right-0">
+                <>
+                  <div
+                    className="fixed inset-0 z-[79] sm:hidden"
+                    style={{ background: "rgba(0,0,0,0.25)", touchAction: "none" }}
+                    onClick={() => setIsSettingsOpen(false)}
+                    aria-hidden="true"
+                  />
+                  <div className="absolute left-0 top-[calc(100%+0.45rem)] z-[80] w-[22rem] max-w-[calc(100vw-2rem)] sm:left-auto sm:right-0">
                   <BuilderSettingsPanel
                     settings={settings}
                     onDexModeChange={onSettingsDexModeChange}
@@ -497,6 +504,7 @@ const TeamBuilderHeader = ({
                     onReset={onSettingsReset}
                   />
                 </div>
+                </>
               )}
             </div>
 
