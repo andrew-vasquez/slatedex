@@ -36,6 +36,7 @@ import { triggerHaptic, type HapticTone } from "@/lib/haptics";
 import { getTeamDefensiveCoverage, getTeamOffensiveCoverage } from "@/lib/teamAnalysis";
 import { useTeamPersistence } from "@/app/game/hooks/useTeamPersistence";
 import { useBuilderSettings } from "@/app/game/hooks/useBuilderSettings";
+import { useAuth } from "@/components/providers/AuthProvider";
 import {
   getAiConversationTeamStorageKey,
   getPlayBuilderPreferencesStorageKey,
@@ -224,6 +225,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const isFirstGameWriteRef = useRef(true);
 
   const [selectedGameId, setSelectedGameId] = useState<number>(games[0].id);
+  const { user } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [draggedPokemon, setDraggedPokemon] = useState<Pokemon | null>(null);
@@ -2209,7 +2211,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
       {showConfetti && <div className="confetti-container" aria-hidden="true">{Array.from({ length: 40 }, (_, i) => <div key={i} className="confetti-piece" style={{ "--confetti-x": `${Math.random() * 100}vw`, "--confetti-delay": `${Math.random() * 0.6}s`, "--confetti-color": ["#da2c43", "#3b82f6", "#22c55e", "#eab308", "#a855f7", "#f97316"][i % 6] } as React.CSSProperties} />)}</div>}
 
-      {shouldMountOnboardingTour && <OnboardingTour />}
+      {shouldMountOnboardingTour && <OnboardingTour userId={user?.id} />}
 
       {!isDesktopScreen && (
         <MobileTeamSheet
