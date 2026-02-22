@@ -88,6 +88,9 @@ interface PendingImportState {
   lockedSlots: boolean[];
   selectedVersionId: string | null;
   dexMode: DexMode | null;
+  checkpointBossName: string | null;
+  checkpointStage: "gym" | "elite4" | "champion" | null;
+  checkpointGymOrder: number | null;
 }
 
 type PendingUnsavedAction =
@@ -251,10 +254,49 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const [teamToolsInitialTab, setTeamToolsInitialTab] = useState<TeamToolsTab>("saved");
   const [isAiCoachOpen, setIsAiCoachOpen] = useState(false);
   const [aiConversationTeamId, setAiConversationTeamId] = useState<string | null>(null);
+  const [headerOffsetPx, setHeaderOffsetPx] = useState(0);
 
   const pastTeamsRef = useRef<(Pokemon | null)[][]>([]);
   const futureTeamsRef = useRef<(Pokemon | null)[][]>([]);
   const poolsByGameRef = useRef<Record<number, PokemonPools>>(initialPoolsByGame);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const header = document.getElementById("team-builder-header");
+    if (!header) {
+      setHeaderOffsetPx(0);
+      return;
+    }
+
+    let rafId: number | null = null;
+    const updateOffset = () => {
+      const height = Math.max(0, Math.round(header.getBoundingClientRect().height));
+      setHeaderOffsetPx(height);
+    };
+    const scheduleUpdate = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(updateOffset);
+    };
+
+    updateOffset();
+
+    window.addEventListener("resize", scheduleUpdate);
+    window.addEventListener("orientationchange", scheduleUpdate);
+
+    let observer: ResizeObserver | null = null;
+    if ("ResizeObserver" in window) {
+      observer = new ResizeObserver(scheduleUpdate);
+      observer.observe(header);
+    }
+
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", scheduleUpdate);
+      window.removeEventListener("orientationchange", scheduleUpdate);
+      observer?.disconnect();
+    };
+  }, []);
   const poolRequestsRef = useRef<Map<number, Promise<PokemonPools | null>>>(new Map());
 
   const { settings, updateSetting, resetSettings } = useBuilderSettings();
@@ -320,6 +362,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const {
     team,
     setTeam: persistTeam,
+    teamCheckpoint,
+    setTeamCheckpoint,
     savedTeams,
     activeTeamId,
     saveTeamAs,
@@ -933,7 +977,6 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     if (dexMode !== "regional" && !versionFilterEnabled) return [];
     return versionScopedPokemonPool.map((pokemon) => pokemon.name.toLowerCase());
   }, [dexMode, versionFilterEnabled, versionScopedPokemonPool]);
-
   const filteredPokemon = useMemo(() => {
     let pool = availablePokemon;
     if (typeFilter.length > 0) {
@@ -1437,6 +1480,9 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
         lockedSlots: Array.from({ length: 6 }, (_, index) => payload.lockedSlots?.includes(index) ?? false),
         selectedVersionId: payload.selectedVersionId ?? null,
         dexMode: payload.dexMode ?? null,
+        checkpointBossName: payload.checkpointBossName ?? null,
+        checkpointStage: payload.checkpointStage ?? null,
+        checkpointGymOrder: payload.checkpointGymOrder ?? null,
       };
     },
     []
@@ -1487,13 +1533,29 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     if (pendingImport.dexMode) {
       handleDexModeChange(pendingImport.dexMode);
     }
+    void setTeamCheckpoint(
+      pendingImport.checkpointBossName || pendingImport.checkpointStage || pendingImport.checkpointGymOrder
+        ? {
+            checkpointBossName: pendingImport.checkpointBossName,
+            checkpointStage: pendingImport.checkpointStage,
+            checkpointGymOrder: pendingImport.checkpointGymOrder,
+          }
+        : null
+    );
 
     setLockedSlots(pendingImport.lockedSlots);
     commitTeam(pendingImport.team, { message: "Imported shared team" });
     setPendingImport(null);
     setReplaceMode(false);
     setReplaceTargetSlot(null);
-  }, [commitTeam, handleDexModeChange, pendingImport, selectedGame.id, selectedGame.versions]);
+  }, [
+    commitTeam,
+    handleDexModeChange,
+    pendingImport,
+    selectedGame.id,
+    selectedGame.versions,
+    setTeamCheckpoint,
+  ]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1519,8 +1581,11 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       lockedSlots: lockedSlots.map((locked, index) => (locked ? index : -1)).filter((index) => index >= 0),
       selectedVersionId,
       dexMode,
+      checkpointBossName: teamCheckpoint?.checkpointBossName ?? null,
+      checkpointStage: teamCheckpoint?.checkpointStage ?? null,
+      checkpointGymOrder: teamCheckpoint?.checkpointGymOrder ?? null,
     }),
-    [dexMode, generation, lockedSlots, selectedGame.id, selectedVersionId, team]
+    [dexMode, generation, lockedSlots, selectedGame.id, selectedVersionId, team, teamCheckpoint]
   );
 
   const openTeamTools = useCallback((tab: TeamToolsTab = "saved") => {
@@ -1957,6 +2022,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       <AiCoachPanel
         isOpen={isAiCoachOpen}
         onClose={() => setIsAiCoachOpen(false)}
+        headerOffsetPx={headerOffsetPx}
         isAuthenticated={isAuthenticated}
         teamHasPokemon={currentTeam.length > 0}
         team={team}
@@ -1969,6 +2035,9 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
         typeFilter={typeFilter}
         regionalDexName={pokemonPools.regionalDexName}
         allowedPokemonNames={aiAllowedPokemonNames}
+        versionScopedPokemonPool={versionScopedPokemonPool}
+        teamCheckpoint={teamCheckpoint}
+        onTeamCheckpointChange={setTeamCheckpoint}
         activeTeamId={activeTeamId}
         boundTeamId={aiConversationTeamId}
         onBindTeamId={handleAiConversationTeamBound}

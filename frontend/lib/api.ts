@@ -34,6 +34,9 @@ export interface SavedTeam {
   generation: number;
   gameId: number;
   selectedVersionId: string | null;
+  checkpointBossName: string | null;
+  checkpointStage: AiBossStage | null;
+  checkpointGymOrder: number | null;
   pokemon: (Pokemon | null)[];
   userId: string;
   createdAt: string;
@@ -94,6 +97,12 @@ export interface MyProfile extends PublicProfile {
 
 export type AiMessageRole = "user" | "assistant" | "system_event";
 export type AiMessageKind = "chat" | "analysis";
+export type AiBossStage = "gym" | "elite4" | "champion";
+export interface TeamStoryCheckpoint {
+  checkpointBossName: string | null;
+  checkpointStage: AiBossStage | null;
+  checkpointGymOrder: number | null;
+}
 
 export interface AiMessage {
   id: string;
@@ -101,6 +110,16 @@ export interface AiMessage {
   kind: AiMessageKind;
   content: string;
   createdAt: string;
+}
+
+export interface AiBossGuidanceEntry {
+  name: string;
+  stage: AiBossStage;
+  primaryTypes: string[];
+  notes?: string;
+  gymOrder?: number;
+  recommendedPlayerLevelRange?: string;
+  expectedEvolutionBand?: string;
 }
 
 export interface AiTeamContextPayload {
@@ -114,6 +133,13 @@ export interface AiTeamContextPayload {
   typeFilter?: string[];
   allowedPokemonNames?: string[];
   regionalDexName?: string | null;
+  checkpointBossName?: string | null;
+  checkpointStage?: AiBossStage | null;
+  checkpointGymOrder?: number | null;
+  checkpointCatchableNames?: string[];
+  checkpointCatchablePoolSize?: number | null;
+  checkpointBlockedFinalNames?: string[];
+  checkpointEvolutionFallbacks?: Array<{ fromName: string; toName: string }>;
 }
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
@@ -154,6 +180,9 @@ export function createTeam(data: {
   gameId: number;
   pokemon: (Pokemon | null)[];
   selectedVersionId?: string | null;
+  checkpointBossName?: string | null;
+  checkpointStage?: AiBossStage | null;
+  checkpointGymOrder?: number | null;
 }): Promise<SavedTeam> {
   return apiFetch("/api/teams", {
     method: "POST",
@@ -167,6 +196,9 @@ export function updateTeam(
     name?: string;
     pokemon?: (Pokemon | null)[];
     selectedVersionId?: string | null;
+    checkpointBossName?: string | null;
+    checkpointStage?: AiBossStage | null;
+    checkpointGymOrder?: number | null;
   }
 ): Promise<SavedTeam> {
   return apiFetch(`/api/teams/${id}`, {
@@ -290,6 +322,14 @@ export function updateMyProfile(data: {
 export function fetchAiMessages(teamId: string): Promise<{ teamId: string; messages: AiMessage[] }> {
   const qs = new URLSearchParams({ teamId }).toString();
   return apiFetch(`/api/ai/messages?${qs}`);
+}
+
+export function fetchAiBossGuidance(versionId: string): Promise<{
+  versionId: string | null;
+  bossGuidance: AiBossGuidanceEntry[];
+}> {
+  const qs = new URLSearchParams({ versionId }).toString();
+  return apiFetch(`/api/ai/boss-guidance?${qs}`);
 }
 
 export function sendAiChat(

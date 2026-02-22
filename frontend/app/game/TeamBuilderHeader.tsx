@@ -349,7 +349,12 @@ const TeamBuilderHeader = ({
   );
 
   return (
-    <header className="glass sticky top-0 z-40 border-b lg:fixed lg:left-0 lg:right-0" style={{ borderColor: "var(--border)" }} role="banner">
+    <header
+      id="team-builder-header"
+      className="glass sticky top-0 z-40 border-b lg:fixed lg:left-0 lg:right-0"
+      style={{ borderColor: "var(--border)" }}
+      role="banner"
+    >
       <div
         className={`mx-auto max-w-screen-xl px-4 sm:px-6 ${isDesktopCompact ? "py-2.5 lg:py-2" : "py-3 lg:py-3"}`}
         style={{ transition: "padding 0.2s ease" }}

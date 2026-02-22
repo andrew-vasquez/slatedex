@@ -38,6 +38,11 @@ const MAX_POKEMON_NAME_LENGTH = 48;
 const MAX_SPRITE_LENGTH = 500;
 const MAX_ALLOWED_POKEMON_NAMES = 1_200;
 const MAX_TYPE_FILTER_VALUES = 6;
+const MAX_CHECKPOINT_BOSS_NAME_LENGTH = 80;
+const MAX_CHECKPOINT_CATCHABLE_NAMES = 80;
+const MAX_CHECKPOINT_BLOCKED_FINAL_NAMES = 240;
+const MAX_CHECKPOINT_EVOLUTION_FALLBACKS = 260;
+const MAX_EVOLUTION_LINE_LENGTH = 5;
 const ALLOWED_EXCLUSIVE_STATUSES = new Set(["exclusive", "shared", "unknown"]);
 const ALLOWED_DEX_MODES = new Set<DexMode>(["regional", "national"]);
 const MAX_ANALYTICS_ERROR_MESSAGE_LENGTH = 500;
@@ -190,6 +195,30 @@ function parsePokemonSlot(raw: unknown): TeamPokemonPersistenceSlot | "invalid" 
     slot.isStarterLine = candidate.isStarterLine;
   }
 
+  if (candidate.evolutionStage !== undefined) {
+    if (
+      typeof candidate.evolutionStage !== "number" ||
+      !Number.isInteger(candidate.evolutionStage) ||
+      candidate.evolutionStage < 1 ||
+      candidate.evolutionStage > MAX_EVOLUTION_LINE_LENGTH
+    ) {
+      return "invalid";
+    }
+    slot.evolutionStage = candidate.evolutionStage;
+  }
+
+  if (candidate.evolutionLine !== undefined) {
+    if (!Array.isArray(candidate.evolutionLine)) return "invalid";
+    if (candidate.evolutionLine.length === 0 || candidate.evolutionLine.length > MAX_EVOLUTION_LINE_LENGTH) {
+      return "invalid";
+    }
+    const evolutionLine = candidate.evolutionLine
+      .map((value) => (typeof value === "string" ? value.trim() : ""))
+      .filter(Boolean);
+    if (evolutionLine.length !== candidate.evolutionLine.length) return "invalid";
+    slot.evolutionLine = evolutionLine;
+  }
+
   if (candidate.gameIndexVersionIds !== undefined) {
     const versionIds = parseVersionIds(candidate.gameIndexVersionIds);
     if (!versionIds) return "invalid";
@@ -231,6 +260,13 @@ function toTeamContextPokemon(slot: Record<string, unknown>): TeamPokemonContext
     specialAttack: slot.specialAttack as number,
     specialDefense: slot.specialDefense as number,
     speed: slot.speed as number,
+    evolutionStage:
+      typeof slot.evolutionStage === "number" && Number.isInteger(slot.evolutionStage)
+        ? (slot.evolutionStage as number)
+        : undefined,
+    evolutionLine: Array.isArray(slot.evolutionLine)
+      ? (slot.evolutionLine as string[])
+      : undefined,
   };
 }
 
@@ -350,6 +386,177 @@ function parseRegionalDexName(raw: unknown): string | null | "invalid" {
   return normalized;
 }
 
+function parseCheckpointBossName(raw: unknown): string | null | "invalid" {
+  if (raw === undefined || raw === null || raw === "") return null;
+  if (typeof raw !== "string") return "invalid";
+  const normalized = raw.trim();
+  if (!normalized || normalized.length > MAX_CHECKPOINT_BOSS_NAME_LENGTH) return "invalid";
+  return normalized;
+}
+
+function parseCheckpointStage(raw: unknown): "gym" | "elite4" | "champion" | null | "invalid" {
+  if (raw === undefined || raw === null || raw === "") return null;
+  if (typeof raw !== "string") return "invalid";
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === "gym" || normalized === "elite4" || normalized === "champion") {
+    return normalized;
+  }
+  return "invalid";
+}
+
+function coerceCheckpointStage(raw: unknown): "gym" | "elite4" | "champion" | null {
+  const parsed = parseCheckpointStage(raw);
+  if (parsed === "invalid") return null;
+  return parsed;
+}
+
+function parseCheckpointGymOrder(raw: unknown): number | null | "invalid" {
+  if (raw === undefined || raw === null || raw === "") return null;
+  if (typeof raw !== "number" || !Number.isInteger(raw)) return "invalid";
+  if (raw < 1 || raw > 12) return "invalid";
+  return raw;
+}
+
+function parseCheckpointCatchableNames(raw: unknown): string[] | null | "invalid" {
+  if (raw === undefined || raw === null) return null;
+  if (!Array.isArray(raw)) return "invalid";
+  if (raw.length > MAX_CHECKPOINT_CATCHABLE_NAMES) return "invalid";
+
+  const values: string[] = [];
+  for (const value of raw) {
+    if (typeof value !== "string") return "invalid";
+    const normalized = value.trim().toLowerCase();
+    if (!normalized || normalized.length > MAX_POKEMON_NAME_LENGTH) return "invalid";
+    if (!/^[a-z0-9-]+$/.test(normalized)) return "invalid";
+    values.push(normalized);
+  }
+
+  return Array.from(new Set(values));
+}
+
+function parseCheckpointBlockedFinalNames(raw: unknown): string[] | null | "invalid" {
+  if (raw === undefined || raw === null) return null;
+  if (!Array.isArray(raw)) return "invalid";
+  if (raw.length > MAX_CHECKPOINT_BLOCKED_FINAL_NAMES) return "invalid";
+
+  const values: string[] = [];
+  for (const value of raw) {
+    if (typeof value !== "string") return "invalid";
+    const normalized = value.trim().toLowerCase();
+    if (!normalized || normalized.length > MAX_POKEMON_NAME_LENGTH) return "invalid";
+    if (!/^[a-z0-9-]+$/.test(normalized)) return "invalid";
+    values.push(normalized);
+  }
+
+  return Array.from(new Set(values));
+}
+
+function parseCheckpointEvolutionFallbacks(
+  raw: unknown
+): Array<{ fromName: string; toName: string }> | null | "invalid" {
+  if (raw === undefined || raw === null) return null;
+  if (!Array.isArray(raw)) return "invalid";
+  if (raw.length > MAX_CHECKPOINT_EVOLUTION_FALLBACKS) return "invalid";
+
+  const deduped = new Map<string, { fromName: string; toName: string }>();
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") return "invalid";
+    const candidate = entry as { fromName?: unknown; toName?: unknown };
+    if (typeof candidate.fromName !== "string" || typeof candidate.toName !== "string") return "invalid";
+    const fromName = candidate.fromName.trim().toLowerCase();
+    const toName = candidate.toName.trim().toLowerCase();
+    if (!fromName || !toName || fromName.length > MAX_POKEMON_NAME_LENGTH || toName.length > MAX_POKEMON_NAME_LENGTH) {
+      return "invalid";
+    }
+    if (!/^[a-z0-9-]+$/.test(fromName) || !/^[a-z0-9-]+$/.test(toName)) return "invalid";
+    if (fromName === toName) continue;
+    deduped.set(fromName, { fromName, toName });
+  }
+
+  return Array.from(deduped.values());
+}
+
+function parseCheckpointCatchablePoolSize(raw: unknown): number | null | "invalid" {
+  if (raw === undefined || raw === null || raw === "") return null;
+  if (typeof raw !== "number" || !Number.isInteger(raw)) return "invalid";
+  if (raw < 1 || raw > MAX_ALLOWED_POKEMON_NAMES) return "invalid";
+  return raw;
+}
+
+function normalizeLookupToken(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function inferGymOrderFromText(text: string): number | null {
+  const patterns: Array<{ pattern: RegExp; value: number }> = [
+    { pattern: /\b(first|1st|gym\s*1|gym\s*one)\b/i, value: 1 },
+    { pattern: /\b(second|2nd|gym\s*2|gym\s*two)\b/i, value: 2 },
+    { pattern: /\b(third|3rd|gym\s*3|gym\s*three)\b/i, value: 3 },
+    { pattern: /\b(fourth|4th|gym\s*4|gym\s*four)\b/i, value: 4 },
+    { pattern: /\b(fifth|5th|gym\s*5|gym\s*five)\b/i, value: 5 },
+    { pattern: /\b(sixth|6th|gym\s*6|gym\s*six)\b/i, value: 6 },
+    { pattern: /\b(seventh|7th|gym\s*7|gym\s*seven)\b/i, value: 7 },
+    { pattern: /\b(eighth|8th|gym\s*8|gym\s*eight)\b/i, value: 8 },
+  ];
+
+  for (const entry of patterns) {
+    if (entry.pattern.test(text)) return entry.value;
+  }
+  return null;
+}
+
+function inferCheckpointFromMessage(
+  message: string,
+  bossGuidance: ReturnType<typeof getBossGuidanceForVersion>
+): {
+  name: string;
+  stage: "gym" | "elite4" | "champion";
+  gymOrder?: number;
+} | null {
+  if (!message || bossGuidance.length === 0) return null;
+  const lowered = message.toLowerCase();
+
+  if (/\bchampion\b/.test(lowered)) {
+    const champion = bossGuidance.find((entry) => entry.stage === "champion");
+    if (champion) {
+      return { name: champion.name, stage: champion.stage, gymOrder: champion.gymOrder };
+    }
+  }
+
+  if (/\belite\s*four\b|\belite4\b|\be4\b/.test(lowered)) {
+    const elite = bossGuidance.find((entry) => entry.stage === "elite4");
+    if (elite) {
+      return { name: elite.name, stage: elite.stage, gymOrder: elite.gymOrder };
+    }
+  }
+
+  const gymOrderHint = inferGymOrderFromText(lowered);
+  if (gymOrderHint !== null) {
+    const gym = bossGuidance.find((entry) => entry.stage === "gym" && entry.gymOrder === gymOrderHint);
+    if (gym) {
+      return { name: gym.name, stage: gym.stage, gymOrder: gym.gymOrder };
+    }
+  }
+
+  for (const entry of bossGuidance) {
+    const normalizedEntry = normalizeLookupToken(entry.name);
+    if (normalizedEntry && normalizeLookupToken(lowered).includes(normalizedEntry)) {
+      return { name: entry.name, stage: entry.stage, gymOrder: entry.gymOrder };
+    }
+
+    const aliases = entry.name
+      .split(/[\/,&]/g)
+      .map((part) => part.trim().toLowerCase())
+      .filter((token) => token.length >= 3);
+
+    if (aliases.some((alias) => lowered.includes(alias))) {
+      return { name: entry.name, stage: entry.stage, gymOrder: entry.gymOrder };
+    }
+  }
+
+  return null;
+}
+
 function enforceLegacyTypeLanguage(text: string, generation: number): string {
   let next = text;
 
@@ -362,6 +569,60 @@ function enforceLegacyTypeLanguage(text: string, generation: number): string {
     next = next.replace(/\bsteel(?:-type)?\b/gi, "a type not available in Gen 1");
   }
 
+  return next;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function replaceSpeciesName(text: string, fromName: string, toName: string): string {
+  const escaped = escapeRegExp(fromName);
+  const pattern = new RegExp(`(^|[^a-z0-9-])(${escaped})(?=[^a-z0-9-]|$)`, "gim");
+  return text.replace(pattern, (match, prefix: string) => {
+    const sourceName = match.slice(prefix.length);
+    const replacement =
+      sourceName.length > 0 && sourceName[0] === sourceName[0].toUpperCase()
+        ? toName.charAt(0).toUpperCase() + toName.slice(1)
+        : toName;
+    return `${prefix}${replacement}`;
+  });
+}
+
+type ProgressionValidationContext = {
+  progression?: {
+    checkpoint?: { stage?: "gym" | "elite4" | "champion" } | null;
+    assumedTeamForms?: Array<{ sourceSpeciesName: string; assumedSpeciesName: string }>;
+    checkpointEvolutionFallbacks?: Array<{ fromName: string; toName: string }>;
+  };
+};
+
+function enforceCheckpointEvolutionGuardrails(
+  text: string,
+  context: ProgressionValidationContext | null | undefined
+): string {
+  if (!text.trim()) return text;
+  const checkpointStage = context?.progression?.checkpoint?.stage ?? null;
+  if (checkpointStage !== "gym") return text;
+
+  const fallbackMap = new Map<string, string>();
+  for (const fallback of context?.progression?.checkpointEvolutionFallbacks ?? []) {
+    const from = fallback.fromName.trim().toLowerCase();
+    const to = fallback.toName.trim().toLowerCase();
+    if (!from || !to || from === to) continue;
+    fallbackMap.set(from, to);
+  }
+  for (const assumed of context?.progression?.assumedTeamForms ?? []) {
+    const from = assumed.sourceSpeciesName.trim().toLowerCase();
+    const to = assumed.assumedSpeciesName.trim().toLowerCase();
+    if (!from || !to || from === to) continue;
+    fallbackMap.set(from, to);
+  }
+
+  let next = text;
+  for (const [fromName, toName] of fallbackMap.entries()) {
+    next = replaceSpeciesName(next, fromName, toName);
+  }
   return next;
 }
 
@@ -694,6 +955,23 @@ ai.get("/messages", async (c) => {
   });
 });
 
+ai.get("/boss-guidance", async (c) => {
+  const versionId = parseSelectedVersionId(c.req.query("versionId"));
+  if (versionId === "invalid") {
+    return c.json({ error: "versionId is invalid." }, 400);
+  }
+
+  if (!versionId) {
+    return c.json({ versionId: null, bossGuidance: [] });
+  }
+
+  const bossGuidance = getBossGuidanceForVersion(versionId);
+  return c.json({
+    versionId,
+    bossGuidance,
+  });
+});
+
 ai.post("/chat", async (c) => {
   if (!config.ai.enabled) {
     return c.json({ error: "AI Coach is disabled." }, 503);
@@ -718,6 +996,19 @@ ai.post("/chat", async (c) => {
   const typeFilter = parseTypeFilter(payload.typeFilter);
   const allowedPokemonNames = parseAllowedPokemonNames(payload.allowedPokemonNames);
   const regionalDexName = parseRegionalDexName(payload.regionalDexName);
+  const checkpointBossName = parseCheckpointBossName(payload.checkpointBossName);
+  const checkpointStage = parseCheckpointStage(payload.checkpointStage);
+  const checkpointGymOrder = parseCheckpointGymOrder(payload.checkpointGymOrder);
+  const checkpointCatchableNames = parseCheckpointCatchableNames(payload.checkpointCatchableNames);
+  const checkpointCatchablePoolSize = parseCheckpointCatchablePoolSize(
+    payload.checkpointCatchablePoolSize
+  );
+  const checkpointBlockedFinalNames = parseCheckpointBlockedFinalNames(
+    payload.checkpointBlockedFinalNames
+  );
+  const checkpointEvolutionFallbacks = parseCheckpointEvolutionFallbacks(
+    payload.checkpointEvolutionFallbacks
+  );
   const message = parseMessage(payload.message);
   const parsedTeam = payload.team !== undefined ? parsePokemonTeam(payload.team) : {};
 
@@ -738,6 +1029,27 @@ ai.post("/chat", async (c) => {
   }
   if (regionalDexName === "invalid") {
     return c.json({ error: "regionalDexName is invalid." }, 400);
+  }
+  if (checkpointBossName === "invalid") {
+    return c.json({ error: "checkpointBossName is invalid." }, 400);
+  }
+  if (checkpointStage === "invalid") {
+    return c.json({ error: "checkpointStage is invalid." }, 400);
+  }
+  if (checkpointGymOrder === "invalid") {
+    return c.json({ error: "checkpointGymOrder is invalid." }, 400);
+  }
+  if (checkpointCatchableNames === "invalid") {
+    return c.json({ error: "checkpointCatchableNames is invalid." }, 400);
+  }
+  if (checkpointCatchablePoolSize === "invalid") {
+    return c.json({ error: "checkpointCatchablePoolSize is invalid." }, 400);
+  }
+  if (checkpointBlockedFinalNames === "invalid") {
+    return c.json({ error: "checkpointBlockedFinalNames is invalid." }, 400);
+  }
+  if (checkpointEvolutionFallbacks === "invalid") {
+    return c.json({ error: "checkpointEvolutionFallbacks is invalid." }, 400);
   }
   if (!message) {
     return c.json({ error: "message is required and must be under 2000 characters." }, 400);
@@ -764,6 +1076,8 @@ ai.post("/chat", async (c) => {
     return c.json({ error: "Team is empty. Add at least one Pokemon first." }, 400);
   }
 
+  const bossGuidance = getBossGuidanceForVersion(team.selectedVersionId);
+  const inferredCheckpoint = inferCheckpointFromMessage(message, bossGuidance);
   const contextPayload: TeamContextPayload = {
     generation: team.generation,
     gameId: team.gameId,
@@ -776,8 +1090,25 @@ ai.post("/chat", async (c) => {
       regionalDexName: regionalDexName ?? null,
     },
     allowedPokemonNames: allowedPokemonNames ?? [],
+    progression: {
+      checkpointBossName:
+        checkpointBossName ?? team.checkpointBossName ?? inferredCheckpoint?.name ?? null,
+      checkpointStage:
+        checkpointStage ??
+        coerceCheckpointStage(team.checkpointStage) ??
+        inferredCheckpoint?.stage ??
+        null,
+      checkpointGymOrder:
+        checkpointGymOrder ??
+        (typeof team.checkpointGymOrder === "number" ? team.checkpointGymOrder : null) ??
+        inferredCheckpoint?.gymOrder ??
+        null,
+      checkpointCatchableNames: checkpointCatchableNames ?? [],
+      checkpointCatchablePoolSize: checkpointCatchablePoolSize ?? null,
+      checkpointBlockedFinalNames: checkpointBlockedFinalNames ?? [],
+      checkpointEvolutionFallbacks: checkpointEvolutionFallbacks ?? [],
+    },
   };
-  const bossGuidance = getBossGuidanceForVersion(team.selectedVersionId);
   const context = buildTeamContext(contextPayload, bossGuidance);
 
   let conversationId: string | null = null;
@@ -806,7 +1137,10 @@ ai.post("/chat", async (c) => {
     const chatBaseText = shouldUseAnalysisScaffoldForChat(message)
       ? ensureAnalysisScaffold(aiResult.text, context)
       : aiResult.text;
-    const normalizedReply = enforceLegacyTypeLanguage(chatBaseText, team.generation);
+    const normalizedReply = enforceCheckpointEvolutionGuardrails(
+      enforceLegacyTypeLanguage(chatBaseText, team.generation),
+      context
+    );
 
     const userMessageRow = await saveMessage({
       conversationId: conversation.id,
@@ -909,6 +1243,19 @@ ai.post("/analyze", async (c) => {
   const typeFilter = parseTypeFilter(payload.typeFilter);
   const allowedPokemonNames = parseAllowedPokemonNames(payload.allowedPokemonNames);
   const regionalDexName = parseRegionalDexName(payload.regionalDexName);
+  const checkpointBossName = parseCheckpointBossName(payload.checkpointBossName);
+  const checkpointStage = parseCheckpointStage(payload.checkpointStage);
+  const checkpointGymOrder = parseCheckpointGymOrder(payload.checkpointGymOrder);
+  const checkpointCatchableNames = parseCheckpointCatchableNames(payload.checkpointCatchableNames);
+  const checkpointCatchablePoolSize = parseCheckpointCatchablePoolSize(
+    payload.checkpointCatchablePoolSize
+  );
+  const checkpointBlockedFinalNames = parseCheckpointBlockedFinalNames(
+    payload.checkpointBlockedFinalNames
+  );
+  const checkpointEvolutionFallbacks = parseCheckpointEvolutionFallbacks(
+    payload.checkpointEvolutionFallbacks
+  );
   const parsedTeam = payload.team !== undefined ? parsePokemonTeam(payload.team) : {};
 
   if (selectedVersionId === "invalid") {
@@ -928,6 +1275,27 @@ ai.post("/analyze", async (c) => {
   }
   if (regionalDexName === "invalid") {
     return c.json({ error: "regionalDexName is invalid." }, 400);
+  }
+  if (checkpointBossName === "invalid") {
+    return c.json({ error: "checkpointBossName is invalid." }, 400);
+  }
+  if (checkpointStage === "invalid") {
+    return c.json({ error: "checkpointStage is invalid." }, 400);
+  }
+  if (checkpointGymOrder === "invalid") {
+    return c.json({ error: "checkpointGymOrder is invalid." }, 400);
+  }
+  if (checkpointCatchableNames === "invalid") {
+    return c.json({ error: "checkpointCatchableNames is invalid." }, 400);
+  }
+  if (checkpointCatchablePoolSize === "invalid") {
+    return c.json({ error: "checkpointCatchablePoolSize is invalid." }, 400);
+  }
+  if (checkpointBlockedFinalNames === "invalid") {
+    return c.json({ error: "checkpointBlockedFinalNames is invalid." }, 400);
+  }
+  if (checkpointEvolutionFallbacks === "invalid") {
+    return c.json({ error: "checkpointEvolutionFallbacks is invalid." }, 400);
   }
   if (!parsedTeam.value && parsedTeam.error) {
     return c.json({ error: parsedTeam.error }, 400);
@@ -963,6 +1331,18 @@ ai.post("/analyze", async (c) => {
       regionalDexName: regionalDexName ?? null,
     },
     allowedPokemonNames: allowedPokemonNames ?? [],
+    progression: {
+      checkpointBossName: checkpointBossName ?? team.checkpointBossName ?? null,
+      checkpointStage: checkpointStage ?? coerceCheckpointStage(team.checkpointStage) ?? null,
+      checkpointGymOrder:
+        checkpointGymOrder ??
+        (typeof team.checkpointGymOrder === "number" ? team.checkpointGymOrder : null) ??
+        null,
+      checkpointCatchableNames: checkpointCatchableNames ?? [],
+      checkpointCatchablePoolSize: checkpointCatchablePoolSize ?? null,
+      checkpointBlockedFinalNames: checkpointBlockedFinalNames ?? [],
+      checkpointEvolutionFallbacks: checkpointEvolutionFallbacks ?? [],
+    },
   };
   const bossGuidance = getBossGuidanceForVersion(team.selectedVersionId);
   const context = buildTeamContext(contextPayload, bossGuidance);
@@ -985,7 +1365,10 @@ ai.post("/analyze", async (c) => {
       },
     });
     const scaffoldedAnalysis = ensureAnalysisScaffold(aiResult.text, context);
-    const normalizedAnalysis = enforceLegacyTypeLanguage(scaffoldedAnalysis, team.generation);
+    const normalizedAnalysis = enforceCheckpointEvolutionGuardrails(
+      enforceLegacyTypeLanguage(scaffoldedAnalysis, team.generation),
+      context
+    );
     const userMessage = "Analyze my current team.";
 
     const userMessageRow = await saveMessage({

@@ -1,4 +1,5 @@
 import type { DexMode } from "@/lib/types";
+import type { AiBossStage } from "@/lib/api";
 
 export interface SharedTeamPayload {
   v: 1;
@@ -8,6 +9,9 @@ export interface SharedTeamPayload {
   lockedSlots?: number[];
   selectedVersionId?: string;
   dexMode?: DexMode;
+  checkpointBossName?: string | null;
+  checkpointStage?: AiBossStage | null;
+  checkpointGymOrder?: number | null;
 }
 
 function encodeBase64Url(input: string): string {
@@ -51,6 +55,20 @@ function normalizePayload(input: unknown): SharedTeamPayload | null {
     : [];
 
   const dexMode = candidate.dexMode === "regional" || candidate.dexMode === "national" ? candidate.dexMode : undefined;
+  const checkpointStage =
+    candidate.checkpointStage === "gym" ||
+    candidate.checkpointStage === "elite4" ||
+    candidate.checkpointStage === "champion"
+      ? candidate.checkpointStage
+      : undefined;
+  const checkpointBossName =
+    typeof candidate.checkpointBossName === "string" && candidate.checkpointBossName.trim().length > 0
+      ? candidate.checkpointBossName.trim()
+      : undefined;
+  const checkpointGymOrder =
+    typeof candidate.checkpointGymOrder === "number" && Number.isInteger(candidate.checkpointGymOrder)
+      ? candidate.checkpointGymOrder
+      : undefined;
 
   if (!Number.isInteger(candidate.generation) || !Number.isInteger(candidate.gameId)) {
     return null;
@@ -64,6 +82,9 @@ function normalizePayload(input: unknown): SharedTeamPayload | null {
     lockedSlots,
     selectedVersionId: typeof candidate.selectedVersionId === "string" ? candidate.selectedVersionId : undefined,
     dexMode,
+    checkpointBossName,
+    checkpointStage,
+    checkpointGymOrder,
   };
 }
 

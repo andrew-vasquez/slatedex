@@ -244,16 +244,29 @@ function normalizeVersionId(value: string | null | undefined): string {
   return value.trim().toLowerCase().replace(/[_\s]+/g, "-");
 }
 
-const EARLY_GYM_EVOLUTION_BAND =
-  "Early gym pacing: mostly base or first-evolution Pokemon; starter is usually first evolution around Lv16. Avoid assuming final evolutions.";
+const GYM_1_EVOLUTION_BAND =
+  "Gym 1 pacing: use base forms and a few first evolutions only. Treat final evolutions as unrealistic at this checkpoint.";
+const GYM_2_EVOLUTION_BAND =
+  "Gym 2 pacing: mostly base or first-evolution Pokemon; starter is usually first evolution around Lv16. Avoid final evolutions.";
 const MID_GYM_EVOLUTION_BAND =
-  "Mid gym pacing: mostly first/second evolutions, with occasional final evolutions from fast-level lines.";
+  "Mid gym pacing (Gyms 3-5): mostly first/second evolutions, with occasional final evolutions from fast-level lines.";
 const LATE_GYM_EVOLUTION_BAND =
-  "Late gym pacing: final evolutions become common and should be treated as realistic.";
+  "Late gym pacing (Gyms 6-8): final evolutions become common and should be treated as realistic.";
 const ELITE_FOUR_EVOLUTION_BAND =
   "Elite Four pacing: expect mostly final evolutions and optimized movesets.";
 const CHAMPION_EVOLUTION_BAND =
   "Champion pacing: expect full final-evolution rosters and broad coverage.";
+
+function getGymCheckpointLevelRange(gymOrder: number): string {
+  if (gymOrder <= 1) return "Lv 8-16";
+  if (gymOrder === 2) return "Lv 16-24";
+  if (gymOrder === 3) return "Lv 24-30";
+  if (gymOrder === 4) return "Lv 30-36";
+  if (gymOrder === 5) return "Lv 36-42";
+  if (gymOrder === 6) return "Lv 42-48";
+  if (gymOrder === 7) return "Lv 48-54";
+  return "Lv 52-58";
+}
 
 function enrichBossGuidance(entries: BossGuideEntry[]): BossGuideEntry[] {
   let gymOrder = 0;
@@ -261,19 +274,34 @@ function enrichBossGuidance(entries: BossGuideEntry[]): BossGuideEntry[] {
   return entries.map((entry) => {
     if (entry.stage === "gym") {
       gymOrder += 1;
+      if (gymOrder <= 1) {
+        return {
+          ...entry,
+          gymOrder,
+          recommendedPlayerLevelRange: getGymCheckpointLevelRange(gymOrder),
+          expectedEvolutionBand: GYM_1_EVOLUTION_BAND,
+          notes:
+            entry.notes ??
+            "Use early-route catches and starter base/first-stage forms. Do not assume final-stage evolution availability.",
+        };
+      }
       if (gymOrder <= 2) {
         return {
           ...entry,
           gymOrder,
-          recommendedPlayerLevelRange: "Lv 10-22",
-          expectedEvolutionBand: EARLY_GYM_EVOLUTION_BAND,
+          recommendedPlayerLevelRange: getGymCheckpointLevelRange(gymOrder),
+          expectedEvolutionBand: GYM_2_EVOLUTION_BAND,
+          notes:
+            entry.notes ??
+            "Keep capture suggestions in early-game encounter windows and avoid late-game evolution assumptions.",
         };
       }
+
       if (gymOrder <= 5) {
         return {
           ...entry,
           gymOrder,
-          recommendedPlayerLevelRange: "Lv 23-38",
+          recommendedPlayerLevelRange: getGymCheckpointLevelRange(gymOrder),
           expectedEvolutionBand: MID_GYM_EVOLUTION_BAND,
         };
       }
@@ -281,7 +309,7 @@ function enrichBossGuidance(entries: BossGuideEntry[]): BossGuideEntry[] {
       return {
         ...entry,
         gymOrder,
-        recommendedPlayerLevelRange: "Lv 39-55",
+        recommendedPlayerLevelRange: getGymCheckpointLevelRange(gymOrder),
         expectedEvolutionBand: LATE_GYM_EVOLUTION_BAND,
       };
     }

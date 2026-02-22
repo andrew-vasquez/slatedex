@@ -20,6 +20,8 @@ export interface Pokemon {
   isMythical?: boolean;
   isStarterLine?: boolean;
   isPostgame?: boolean;
+  evolutionStage?: number;
+  evolutionLine?: string[];
 }
 
 export type DexMode = "regional" | "national";

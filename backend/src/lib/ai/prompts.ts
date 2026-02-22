@@ -27,6 +27,8 @@ interface PromptContext {
     id: number;
     name: string;
     types: string[];
+    evolutionStage: number | null;
+    evolutionLine: string[];
     stats: {
       hp: number;
       attack: number;
@@ -52,6 +54,28 @@ interface PromptContext {
       physicalCount: number;
       specialCount: number;
     };
+  };
+  progression: {
+    checkpoint: {
+      name: string;
+      stage: "gym" | "elite4" | "champion";
+      gymOrder: number | null;
+      primaryTypes: string[];
+      notes: string | null;
+      recommendedPlayerLevelRange: string | null;
+      expectedEvolutionBand: string | null;
+    } | null;
+    storyPhase: "early" | "mid" | "late" | "elite4" | "champion" | null;
+    checkpointCatchablePokemonNames: string[];
+    checkpointCatchablePoolSize: number;
+    checkpointEvolutionStageCap: number;
+    checkpointBlockedFinalNames: string[];
+    checkpointEvolutionFallbacks: Array<{ fromName: string; toName: string }>;
+    assumedTeamForms: Array<{
+      sourceSpeciesName: string;
+      assumedSpeciesName: string;
+      reason: string;
+    }>;
   };
   bossGuidance: Array<{
     name: string;
@@ -98,6 +122,65 @@ function buildConstraintInstruction(context: PromptContext): string {
   if (context.filters.versionFilterEnabled && context.selectedVersionId) {
     rules.push(
       `Version filter is enabled for ${context.selectedVersionId}; avoid version-exclusive suggestions outside that filter.`
+    );
+  }
+
+  return rules.join(" ");
+}
+
+function buildProgressionInstruction(context: PromptContext): string {
+  const checkpoint = context.progression.checkpoint;
+  const catchableCount = context.progression.checkpointCatchablePokemonNames.length;
+  const catchablePoolSize = context.progression.checkpointCatchablePoolSize;
+  const assumedTeamForms = context.progression.assumedTeamForms;
+  const blockedFinalsCount = context.progression.checkpointBlockedFinalNames.length;
+
+  if (!checkpoint) {
+    return [
+      "No explicit story checkpoint is selected.",
+      "If user asks for early/mid/late gym planning, resolve checkpoint from their wording first (for example: first gym, Brock, gym 3).",
+      "If checkpoint remains ambiguous, ask a concise clarification before giving specific species-stage advice.",
+    ].join(" ");
+  }
+
+  const checkpointLabel =
+    checkpoint.stage === "gym" && checkpoint.gymOrder
+      ? `Gym ${checkpoint.gymOrder} (${checkpoint.name})`
+      : checkpoint.name;
+  const rules: string[] = [
+    `Active story checkpoint is ${checkpointLabel}. Keep recommendations realistic for this exact point in the run.`,
+    checkpoint.recommendedPlayerLevelRange
+      ? `Assume player level range ${checkpoint.recommendedPlayerLevelRange}.`
+      : "Use conservative level assumptions for this checkpoint.",
+    checkpoint.expectedEvolutionBand
+      ? `Evolution realism rule: ${checkpoint.expectedEvolutionBand}`
+      : "Use progression-accurate evolution stages and avoid late-game assumptions.",
+    "Do not suggest late-game final evolutions for early checkpoints unless user explicitly states overleveling/trade acceleration.",
+    "Pseudo-legendary finals and late availability species (for example Dragonite) should be treated as late-game only by default.",
+  ];
+
+  if (assumedTeamForms.length > 0) {
+    rules.push(
+      `Use progression.assumedTeamForms when discussing current team members at this checkpoint. If a final-stage mon appears in team context, refer to its assumed checkpoint form instead.`
+    );
+  }
+
+  if (catchableCount > 0) {
+    rules.push(
+      `Use progression.checkpointCatchablePokemonNames for "catch around now" ideas (${catchableCount} sampled names from roughly ${catchablePoolSize} legal options at this checkpoint).`
+    );
+    rules.push(
+      "Prioritize those names for capture suggestions unless the user's existing team already includes a different legal line."
+    );
+  } else {
+    rules.push(
+      "No checkpoint catchable sample list was provided, so say encounter timing is approximate instead of claiming exact route availability."
+    );
+  }
+
+  if (blockedFinalsCount > 0) {
+    rules.push(
+      `Avoid recommending species in progression.checkpointBlockedFinalNames (${blockedFinalsCount} known late-form blockers for this checkpoint).`
     );
   }
 
@@ -155,7 +238,11 @@ export function buildChatPrompt(params: {
     {
       role: "system",
       content:
-        "When discussing bosses/gyms, follow progression realism from context.bossGuidance: respect recommendedPlayerLevelRange and expectedEvolutionBand. For early gyms (especially gym 1-2, e.g. Brock), avoid assuming final evolutions like Dragonite/Charizard/Pidgeot unless explicitly marked as an exception in notes.",
+        "When discussing bosses/gyms, follow progression realism from context.bossGuidance: respect recommendedPlayerLevelRange and expectedEvolutionBand. For early gyms (especially gym 1-2, e.g. Brock), avoid assuming final evolutions like Dragonite/Charizard/Pidgeot unless explicitly marked as an exception in notes. Use context.progression checkpoint when available.",
+    },
+    {
+      role: "system",
+      content: buildProgressionInstruction(context),
     },
     {
       role: "system",
@@ -211,7 +298,11 @@ export function buildAnalyzePrompt(params: {
     {
       role: "system",
       content:
-        "Boss Matchup Outlook must be progression-aware. For each gym, use its recommendedPlayerLevelRange and expectedEvolutionBand. For early gyms, discuss realistic pre-evo/mid-evo states (starter often first evolution around Lv16) and avoid late-game final-evolution assumptions.",
+        "Boss Matchup Outlook must be progression-aware. For each gym, use its recommendedPlayerLevelRange and expectedEvolutionBand. For early gyms, discuss realistic pre-evo/mid-evo states (starter often first evolution around Lv16) and avoid late-game final-evolution assumptions. If context.progression checkpoint exists, anchor to it first.",
+    },
+    {
+      role: "system",
+      content: buildProgressionInstruction(context),
     },
     {
       role: "system",

@@ -2294,6 +2294,7 @@ html[data-motion="reduced"] *::after {
   background: var(--surface-1);
   border-left: 1px solid var(--border);
   box-shadow: -12px 0 48px rgba(2, 6, 20, 0.4);
+  overscroll-behavior: contain;
 }
 
 .ai-drawer-messages {
@@ -2302,7 +2303,6 @@ html[data-motion="reduced"] *::after {
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
 }
 
 .ai-drawer-messages::-webkit-scrollbar {
@@ -2319,6 +2319,7 @@ html[data-motion="reduced"] *::after {
 }
 
 .ai-drawer-input-area {
+  position: relative;
   border-top: 1px solid var(--border);
   background: var(--surface-2);
   padding: 0.75rem 1rem;
@@ -2350,7 +2351,7 @@ html[data-motion="reduced"] *::after {
   background: transparent;
   color: var(--text-primary);
   font-family: var(--font-body), sans-serif;
-  font-size: 0.875rem;
+  font-size: 1rem;
   line-height: 1.5;
   outline: none;
 }
@@ -2371,8 +2372,8 @@ html[data-motion="reduced"] *::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 50%;
   border: none;
   background: var(--version-color, var(--accent));
@@ -2392,6 +2393,36 @@ html[data-motion="reduced"] *::after {
 .ai-drawer-send-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.ai-scroll-fab {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  box-shadow: 0 2px 12px rgba(2, 6, 20, 0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  cursor: pointer;
+}
+
+.ai-scroll-fab:hover {
+  background: var(--surface-3);
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 4px 16px rgba(2, 6, 20, 0.4);
+}
+
+.ai-scroll-fab:active {
+  transform: translateX(-50%) translateY(0);
 }
 
 @keyframes aiMessageIn {
@@ -2420,6 +2451,299 @@ html[data-motion="reduced"] *::after {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
+}
+
+.ai-message-collapsed {
+  max-height: 300px;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+}
+
+.ai-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.ai-message-bubble:hover .ai-copy-btn,
+.ai-copy-btn:focus-visible {
+  opacity: 1;
+}
+
+@media (max-width: 767px) {
+  .ai-copy-btn {
+    opacity: 0.7;
+  }
+}
+
+.ai-copy-btn:hover {
+  color: var(--text-secondary);
+  background: var(--surface-3);
+  border-color: var(--border);
+}
+
+.ai-show-more-btn {
+  display: block;
+  width: 100%;
+  padding: 0.35rem 0 0.1rem;
+  border: none;
+  background: none;
+  color: var(--version-color, var(--accent));
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+.ai-show-more-btn:hover {
+  opacity: 1;
+}
+
+/* ── Desktop resize handle ───────────────────────────────── */
+
+.ai-resize-handle {
+  position: absolute;
+  left: -3px;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 10;
+  transition: background 0.15s;
+}
+.ai-resize-handle::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 32px;
+  border-radius: 1px;
+  background: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.ai-resize-handle:hover::after,
+.ai-resize-handle:active::after {
+  opacity: 0.5;
+}
+.ai-resize-handle:active {
+  background: var(--version-color-soft, rgba(218,44,67,0.1));
+}
+
+/* ── Header action buttons ───────────────────────────────── */
+
+.ai-header-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0 6px;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  cursor: pointer;
+}
+.ai-header-btn:hover {
+  background: var(--surface-3, var(--surface-2));
+  color: var(--text-primary);
+}
+.ai-header-btn.is-active {
+  background: var(--version-color-soft, rgba(218,44,67,0.12));
+  border-color: var(--version-color-border, rgba(218,44,67,0.25));
+  color: var(--version-color, var(--accent));
+}
+
+/* ── Search bar input ───────────────────────────────────── */
+
+.ai-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  min-width: 0;
+}
+.ai-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ── Message selected state ──────────────────────────────── */
+
+.ai-message-selected {
+  outline: 2px solid var(--version-color, var(--accent));
+  outline-offset: -1px;
+}
+
+/* ── Keyboard shortcuts tooltip ──────────────────────────── */
+
+.ai-shortcuts-tooltip {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 200px;
+  padding: 0.75rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  animation: fadeIn 0.12s ease-out;
+}
+.ai-shortcuts-tooltip p {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+.ai-shortcuts-tooltip kbd {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.6rem;
+  font-family: var(--font-mono, monospace);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  color: var(--text-muted);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Checkpoint custom dropdown (desktop) ────────────────── */
+
+.ai-checkpoint-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ai-checkpoint-trigger:hover {
+  border-color: var(--version-color-border, rgba(218,44,67,0.35));
+  background: var(--surface-2);
+}
+
+.ai-checkpoint-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 50;
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  animation: checkpointMenuIn 0.12s ease-out;
+}
+
+@keyframes checkpointMenuIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ai-checkpoint-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s, color 0.1s;
+}
+.ai-checkpoint-item:hover {
+  background: var(--surface-3, rgba(255,255,255,0.04));
+  color: var(--text-primary);
+}
+.ai-checkpoint-item.is-selected {
+  background: var(--version-color-soft, rgba(218,44,67,0.1));
+  border-color: var(--version-color-border, rgba(218,44,67,0.2));
+  color: var(--version-color, var(--accent));
+}
+
+.ai-checkpoint-item-sub {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ai-checkpoint-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  padding: 0.05rem 0.3rem;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 0.25rem;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.ai-checkpoint-item.is-selected .ai-checkpoint-tag {
+  background: var(--version-color-soft, rgba(218,44,67,0.15));
+  border-color: var(--version-color-border, rgba(218,44,67,0.3));
+  color: var(--version-color, var(--accent));
+}
+
+/* ── Pin/dock mode — push main content ───────────────────── */
+
+[data-ai-pinned="true"] {
+  overflow-x: hidden;
+}
+@media (min-width: 768px) {
+  [data-ai-pinned="true"] body {
+    margin-right: var(--ai-drawer-width, 416px);
+    transition: margin-right 0.2s ease;
+  }
 }
 
 .ai-message-content h4 {
@@ -2815,12 +3139,25 @@ html[data-motion="reduced"] *::after {
   }
 
   .ai-command-chip {
-    font-size: 0.64rem;
-    padding: 0.24rem 0.52rem;
+    font-size: 0.7rem;
+    padding: 0.44rem 0.68rem;
+    min-height: 2.75rem;
+  }
+
+  .ai-slash-menu {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    margin: 0 0.85rem 0.5rem;
+    max-height: 50dvh;
+    overflow-y: auto;
+    box-shadow: 0 -4px 24px rgba(2, 6, 20, 0.32);
   }
 
   .ai-slash-item {
-    padding: 0.38rem 0.44rem;
+    padding: 0.55rem 0.58rem;
     gap: 0.64rem;
   }
 
@@ -2835,6 +3172,10 @@ html[data-motion="reduced"] *::after {
   .ai-slash-item-kind {
     font-size: 0.54rem;
     padding: 0.14rem 0.34rem;
+  }
+
+  .ai-slash-menu-keys {
+    display: none;
   }
 
   .ai-slash-menu-keys kbd {

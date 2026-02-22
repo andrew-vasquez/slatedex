@@ -4,14 +4,28 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import {
   FiArrowRight,
   FiArrowUp,
+  FiCheck,
+  FiChevronDown,
   FiCompass,
+  FiCopy,
+  FiDownload,
   FiLoader,
   FiMessageCircle,
+  FiSearch,
+  FiSidebar,
   FiSquare,
   FiX,
   FiZap,
 } from "react-icons/fi";
-import { analyzeAiTeam, fetchAiMessages, sendAiChat, type AiMessage } from "@/lib/api";
+import {
+  analyzeAiTeam,
+  fetchAiBossGuidance,
+  fetchAiMessages,
+  sendAiChat,
+  type AiBossGuidanceEntry,
+  type AiMessage,
+  type TeamStoryCheckpoint,
+} from "@/lib/api";
 import { useAnimatedUnmount } from "@/app/game/hooks/useAnimatedUnmount";
 import { TYPE_COLORS } from "@/lib/constants";
 import type { DexMode, Pokemon } from "@/lib/types";
@@ -38,6 +52,7 @@ function PokeballIcon({ className, size = 18 }: { className?: string; size?: num
 interface AiCoachPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  headerOffsetPx?: number;
   isAuthenticated: boolean;
   teamHasPokemon: boolean;
   team: (Pokemon | null)[];
@@ -50,6 +65,9 @@ interface AiCoachPanelProps {
   typeFilter: string[];
   regionalDexName: string | null;
   allowedPokemonNames: string[];
+  versionScopedPokemonPool: Pokemon[];
+  teamCheckpoint: TeamStoryCheckpoint | null;
+  onTeamCheckpointChange: (checkpoint: TeamStoryCheckpoint | null) => Promise<void>;
   activeTeamId: string | null;
   boundTeamId: string | null;
   onBindTeamId: (teamId: string | null) => void;
@@ -90,12 +108,226 @@ const SLASH_COMMANDS: SlashCommandDefinition[] = [
 ];
 
 const CHAT_INPUT_MAX_HEIGHT = 96;
+const AUTO_CHECKPOINT_KEY = "auto";
+const COLLAPSE_HEIGHT_PX = 300;
+const DRAWER_MIN_WIDTH = 352;
+const DRAWER_MAX_WIDTH = 800;
+const DRAWER_DEFAULT_WIDTH = 416;
+const DRAWER_WIDTH_KEY = "ai_coach_drawer_width";
+const DRAWER_PINNED_KEY = "ai_coach_pinned";
+const PSEUDO_LEGENDARY_ROOTS = new Set([
+  "dratini",
+  "larvitar",
+  "bagon",
+  "beldum",
+  "gible",
+  "deino",
+  "goomy",
+  "jangmo-o",
+  "dreepy",
+  "frigibax",
+]);
+
+function haptic(ms = 10) {
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    navigator.vibrate(ms);
+  }
+}
+
+function exportMessagesAsMarkdown(msgs: AiMessage[], gen: number, versionLabel: string): void {
+  const lines = [
+    `# AI Coach — Gen ${gen} · ${versionLabel}`,
+    `> Exported ${new Date().toLocaleString()}`,
+    "",
+  ];
+  for (const msg of msgs) {
+    const role = msg.role === "assistant" ? "**Coach**" : "**You**";
+    const time = msg.createdAt ? ` _${new Date(msg.createdAt).toLocaleString()}_` : "";
+    lines.push(`### ${role}${time}`, "", msg.content, "");
+  }
+  const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `ai-coach-gen${gen}-${versionLabel.toLowerCase().replace(/\s+/g, "-")}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 const POKEMON_TYPE_SET = new Set([
   "normal", "fire", "water", "electric", "grass", "ice", "fighting", "poison",
   "ground", "flying", "psychic", "bug", "rock", "ghost", "dragon", "dark", "steel", "fairy",
 ]);
 const BOSS_SECTION_HEADING_PATTERN = /(boss matchup|boss outlook|gym|elite four|champion)/i;
+
+function relativeTime(iso: string): string {
+  const now = Date.now();
+  const then = new Date(iso).getTime();
+  const diffSec = Math.max(0, Math.floor((now - then) / 1000));
+  if (diffSec < 60) return "just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  return `${diffDay}d ago`;
+}
+
+function checkpointKey(entry: AiBossGuidanceEntry): string {
+  return `${entry.stage}:${entry.gymOrder ?? 0}:${entry.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+}
+
+function checkpointLabel(entry: AiBossGuidanceEntry): string {
+  const stageLabel =
+    entry.stage === "gym"
+      ? `Gym ${entry.gymOrder ?? "?"}`
+      : entry.stage === "elite4"
+        ? "Elite Four"
+        : "Champion";
+  const levelLabel = entry.recommendedPlayerLevelRange ? ` · ${entry.recommendedPlayerLevelRange}` : "";
+  return `${stageLabel} · ${entry.name}${levelLabel}`;
+}
+
+function normalizeSpeciesName(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function getCheckpointEvolutionStageCap(checkpoint: AiBossGuidanceEntry | null): number {
+  if (!checkpoint) return 3;
+  if (checkpoint.stage !== "gym") return 3;
+  const gymOrder = checkpoint.gymOrder ?? 8;
+  if (gymOrder <= 1) return 1;
+  if (gymOrder <= 5) return 2;
+  return 3;
+}
+
+function isLegalAtCheckpoint(pokemon: Pokemon, checkpoint: AiBossGuidanceEntry | null): boolean {
+  if (!checkpoint) return true;
+  if (checkpoint.stage !== "gym") return true;
+
+  const gymOrder = checkpoint.gymOrder ?? 8;
+  if (gymOrder <= 6 && (pokemon.isLegendary || pokemon.isMythical)) return false;
+
+  const stageCap = getCheckpointEvolutionStageCap(checkpoint);
+  const stage = typeof pokemon.evolutionStage === "number" && pokemon.evolutionStage > 0 ? pokemon.evolutionStage : 3;
+  if (gymOrder <= 1) {
+    if (pokemon.isStarterLine) return stage <= 2;
+    if (stage > 1) return false;
+  } else if (stage > stageCap) {
+    return false;
+  }
+
+  const evolutionRoot = Array.isArray(pokemon.evolutionLine) && pokemon.evolutionLine.length > 0
+    ? normalizeSpeciesName(pokemon.evolutionLine[0])
+    : normalizeSpeciesName(pokemon.name);
+  if (gymOrder <= 5 && PSEUDO_LEGENDARY_ROOTS.has(evolutionRoot) && stage > 1) {
+    return false;
+  }
+
+  return true;
+}
+
+type CheckpointLegality = {
+  catchableNames: string[];
+  catchablePoolSize: number;
+  blockedFinalNames: string[];
+  evolutionFallbacks: Array<{ fromName: string; toName: string }>;
+};
+
+function estimateCheckpointCatchables(params: {
+  checkpoint: AiBossGuidanceEntry | null;
+  orderedPokemonPool: Pokemon[];
+}): CheckpointLegality {
+  const { checkpoint, orderedPokemonPool } = params;
+  if (!checkpoint || orderedPokemonPool.length === 0) {
+    return {
+      catchableNames: [],
+      catchablePoolSize: 0,
+      blockedFinalNames: [],
+      evolutionFallbacks: [],
+    };
+  }
+
+  const stageCap = getCheckpointEvolutionStageCap(checkpoint);
+  const legalPool = orderedPokemonPool.filter((pokemon) => isLegalAtCheckpoint(pokemon, checkpoint));
+  if (legalPool.length === 0) {
+    return {
+      catchableNames: [],
+      catchablePoolSize: 0,
+      blockedFinalNames: [],
+      evolutionFallbacks: [],
+    };
+  }
+  const legalNames = new Set(legalPool.map((pokemon) => normalizeSpeciesName(pokemon.name)));
+  const fallbackMap = new Map<string, string>();
+  const blockedFinals = new Set<string>();
+
+  for (const pokemon of orderedPokemonPool) {
+    const pokemonName = normalizeSpeciesName(pokemon.name);
+    const stage = typeof pokemon.evolutionStage === "number" && pokemon.evolutionStage > 0 ? pokemon.evolutionStage : 3;
+    if (pokemon.isFinalEvolution && !legalNames.has(pokemonName)) {
+      blockedFinals.add(pokemonName);
+    }
+    if (stage <= stageCap) continue;
+    const line = Array.isArray(pokemon.evolutionLine)
+      ? pokemon.evolutionLine.map((name) => normalizeSpeciesName(name)).filter(Boolean)
+      : [];
+    if (line.length === 0) continue;
+    const toName = line[Math.max(0, Math.min(stageCap, line.length) - 1)];
+    if (!toName || toName === pokemonName) continue;
+    if (legalNames.has(toName)) {
+      fallbackMap.set(pokemonName, toName);
+    }
+  }
+
+  const total = legalPool.length;
+  let poolCap = total;
+  if (checkpoint.stage === "gym") {
+    const progressByGym: Record<number, number> = {
+      1: 0.14,
+      2: 0.24,
+      3: 0.36,
+      4: 0.5,
+      5: 0.64,
+      6: 0.78,
+      7: 0.9,
+      8: 1,
+    };
+    const ratio = progressByGym[checkpoint.gymOrder ?? 8] ?? 1;
+    poolCap = Math.min(total, Math.max(8, Math.ceil(total * ratio)));
+  }
+
+  const checkpointPool = legalPool.slice(0, poolCap).map((pokemon) => normalizeSpeciesName(pokemon.name));
+  const sampleSize = Math.min(24, checkpointPool.length);
+  if (sampleSize === checkpointPool.length) {
+    return {
+      catchableNames: checkpointPool,
+      catchablePoolSize: checkpointPool.length,
+      blockedFinalNames: Array.from(blockedFinals).slice(0, 120),
+      evolutionFallbacks: Array.from(fallbackMap.entries())
+        .map(([fromName, toName]) => ({ fromName, toName }))
+        .slice(0, 180),
+    };
+  }
+
+  const sampled: string[] = [];
+  const step = checkpointPool.length / sampleSize;
+  for (let index = 0; index < sampleSize; index += 1) {
+    const candidate = checkpointPool[Math.floor(index * step)];
+    if (candidate && !sampled.includes(candidate)) {
+      sampled.push(candidate);
+    }
+  }
+
+  return {
+    catchableNames: sampled,
+    catchablePoolSize: checkpointPool.length,
+    blockedFinalNames: Array.from(blockedFinals).slice(0, 120),
+    evolutionFallbacks: Array.from(fallbackMap.entries())
+      .map(([fromName, toName]) => ({ fromName, toName }))
+      .slice(0, 180),
+  };
+}
 
 function appendUniqueMessages(current: AiMessage[], incoming: AiMessage[]): AiMessage[] {
   const seen = new Set(current.map((message) => message.id));
@@ -143,6 +375,33 @@ function normalizeLookupToken(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9'-]/g, "");
 }
 
+function parseCompoundTypeToken(token: string): string[] | null {
+  if (!/[\/|]/.test(token)) return null;
+
+  const parts = token
+    .split(/[\/|]+/g)
+    .map((part) => part.trim().replace(/-?types?$/i, "").toLowerCase())
+    .filter(Boolean);
+
+  if (parts.length < 2) return null;
+  if (!parts.every((part) => POKEMON_TYPE_SET.has(part))) return null;
+  return parts;
+}
+
+function renderTypePill(type: string, key: string): ReactNode {
+  const bgClass = TYPE_COLORS[type] ?? "bg-stone-500";
+  const displayName = type.charAt(0).toUpperCase() + type.slice(1);
+  return (
+    <span
+      key={key}
+      className={`type-badge inline-flex items-center rounded px-1.5 py-px text-[0.65rem] font-semibold text-white ${bgClass}`}
+      style={{ lineHeight: 1.4 }}
+    >
+      {displayName}
+    </span>
+  );
+}
+
 function splitCoachEntityLine(line: string): { name: string; detail: string } | null {
   const cleaned = line.trim();
   if (!cleaned) return null;
@@ -175,6 +434,21 @@ function renderStyledInlineText(
   return tokens.map((token, tokenIndex) => {
     if (/^\s+$/.test(token) || /^[()[\]{}.,!?;:]+$/.test(token)) return token;
 
+    const compoundTypes = parseCompoundTypeToken(token);
+    if (compoundTypes) {
+      return (
+        <span
+          key={`${keyPrefix}-type-pair-${tokenIndex}`}
+          className="mx-0.5 inline-flex items-center gap-1"
+          style={{ verticalAlign: "-0.05em", lineHeight: 1.4 }}
+        >
+          {compoundTypes.map((type, idx) =>
+            renderTypePill(type, `${keyPrefix}-type-pair-${tokenIndex}-${idx}`)
+          )}
+        </span>
+      );
+    }
+
     const normalized = normalizeLookupToken(token);
     if (!normalized) return token;
 
@@ -182,15 +456,13 @@ function renderStyledInlineText(
       ? normalized.replace(/-?type$/, "")
       : normalized;
     if (POKEMON_TYPE_SET.has(strippedTypeSuffix)) {
-      const bgClass = TYPE_COLORS[strippedTypeSuffix] ?? "bg-stone-500";
-      const displayName = strippedTypeSuffix.charAt(0).toUpperCase() + strippedTypeSuffix.slice(1);
       return (
         <span
           key={`${keyPrefix}-type-${tokenIndex}`}
-          className={`mx-0.5 inline-flex items-center rounded px-1.5 py-px text-[0.65rem] font-semibold text-white ${bgClass}`}
+          className="mx-0.5 inline-flex items-center"
           style={{ verticalAlign: "-0.05em", lineHeight: 1.4 }}
         >
-          {displayName}
+          {renderTypePill(strippedTypeSuffix, `${keyPrefix}-type-pill-${tokenIndex}`)}
         </span>
       );
     }
@@ -323,6 +595,7 @@ function isAbortError(error: unknown): boolean {
 export default function AiCoachPanel({
   isOpen,
   onClose,
+  headerOffsetPx = 0,
   isAuthenticated,
   teamHasPokemon,
   team,
@@ -335,6 +608,9 @@ export default function AiCoachPanel({
   typeFilter,
   regionalDexName,
   allowedPokemonNames,
+  versionScopedPokemonPool,
+  teamCheckpoint,
+  onTeamCheckpointChange,
   activeTeamId,
   boundTeamId,
   onBindTeamId,
@@ -352,6 +628,26 @@ export default function AiCoachPanel({
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
   const [draftBeforeHistoryNav, setDraftBeforeHistoryNav] = useState("");
   const [activeSlashIndex, setActiveSlashIndex] = useState(0);
+  const [bossGuidance, setBossGuidance] = useState<AiBossGuidanceEntry[]>([]);
+  const [bossGuidanceLoading, setBossGuidanceLoading] = useState(false);
+  const [checkpointKeySelection, setCheckpointKeySelection] = useState<string>(AUTO_CHECKPOINT_KEY);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [collapsedMessages, setCollapsedMessages] = useState<Set<string>>(() => new Set());
+  const [drawerWidth, setDrawerWidth] = useState(() => {
+    if (typeof window === "undefined") return DRAWER_DEFAULT_WIDTH;
+    const stored = localStorage.getItem(DRAWER_WIDTH_KEY);
+    return stored ? Math.min(DRAWER_MAX_WIDTH, Math.max(DRAWER_MIN_WIDTH, Number(stored))) : DRAWER_DEFAULT_WIDTH;
+  });
+  const [isPinned, setIsPinned] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(DRAWER_PINNED_KEY) === "true";
+  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(() => new Set());
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [checkpointDropdownOpen, setCheckpointDropdownOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -360,6 +656,15 @@ export default function AiCoachPanel({
   const prefersReducedMotion = useRef(false);
   const shouldFollowMessagesRef = useRef(true);
   const activeRequestAbortRef = useRef<AbortController | null>(null);
+  const resizeStartXRef = useRef<number | null>(null);
+  const resizeStartWidthRef = useRef(DRAWER_DEFAULT_WIDTH);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const checkpointDropdownRef = useRef<HTMLDivElement | null>(null);
+  const swipeTouchStartY = useRef<number | null>(null);
+  const swipeTouchLastY = useRef<number | null>(null);
+  const swipeTouchLastTime = useRef(0);
+  const swipeVelocity = useRef(0);
+  const [swipeDragOffset, setSwipeDragOffset] = useState(0);
 
   const effectiveTeamId = useMemo(() => boundTeamId ?? activeTeamId, [activeTeamId, boundTeamId]);
   const canUseAi = isAuthenticated && teamHasPokemon;
@@ -368,6 +673,28 @@ export default function AiCoachPanel({
   const hasFullParty = filledTeamSize === 6;
   const canAnalyze = canUseAi && hasFullParty;
   const showAllowedPool = dexMode === "regional" || versionFilterEnabled;
+  const checkpointOptions = useMemo(
+    () =>
+      bossGuidance.map((entry) => ({
+        key: checkpointKey(entry),
+        entry,
+        label: checkpointLabel(entry),
+      })),
+    [bossGuidance]
+  );
+  const selectedCheckpoint = useMemo(() => {
+    if (checkpointKeySelection === AUTO_CHECKPOINT_KEY) return null;
+    const match = checkpointOptions.find((option) => option.key === checkpointKeySelection);
+    return match?.entry ?? null;
+  }, [checkpointKeySelection, checkpointOptions]);
+  const checkpointCatchables = useMemo(
+    () =>
+      estimateCheckpointCatchables({
+        checkpoint: selectedCheckpoint,
+        orderedPokemonPool: versionScopedPokemonPool,
+      }),
+    [selectedCheckpoint, versionScopedPokemonPool]
+  );
   const pokemonNameLookup = useMemo(() => {
     const names = new Set<string>();
     team.forEach((member) => {
@@ -382,6 +709,7 @@ export default function AiCoachPanel({
   }, [team, allowedPokemonNames]);
 
   const { shouldRender, isAnimatingOut, onAnimationEnd } = useAnimatedUnmount(isOpen, 340);
+  const safeHeaderOffsetPx = Math.max(0, Math.round(headerOffsetPx));
 
   const quickPrompts = useMemo(
     () => [
@@ -423,6 +751,12 @@ export default function AiCoachPanel({
   }, [slashQuery]);
   const isSlashMenuOpen = canUseAi && filteredSlashCommands.length > 0;
 
+  const searchFilteredMessages = useMemo(() => {
+    if (!searchQuery.trim()) return messages;
+    const q = searchQuery.toLowerCase();
+    return messages.filter((m) => m.content.toLowerCase().includes(q));
+  }, [messages, searchQuery]);
+
   // Detect desktop vs mobile for animation direction
   useEffect(() => {
     const query = window.matchMedia("(min-width: 768px)");
@@ -436,6 +770,56 @@ export default function AiCoachPanel({
 
     return () => query.removeEventListener("change", update);
   }, []);
+
+  useEffect(() => {
+    if (!teamCheckpoint) {
+      setCheckpointKeySelection(AUTO_CHECKPOINT_KEY);
+      return;
+    }
+
+    const normalizedBossName = normalizeSpeciesName(teamCheckpoint.checkpointBossName ?? "");
+    const matchingOption = checkpointOptions.find((option) => {
+      const sameStage = option.entry.stage === teamCheckpoint.checkpointStage;
+      const sameGymOrder = (option.entry.gymOrder ?? null) === (teamCheckpoint.checkpointGymOrder ?? null);
+      const sameName = normalizeSpeciesName(option.entry.name) === normalizedBossName;
+      return sameStage && sameGymOrder && sameName;
+    });
+
+    if (matchingOption) {
+      setCheckpointKeySelection(matchingOption.key);
+      return;
+    }
+
+    setCheckpointKeySelection(AUTO_CHECKPOINT_KEY);
+  }, [checkpointOptions, selectedVersionId, teamCheckpoint]);
+
+  useEffect(() => {
+    if (!isOpen || !isAuthenticated || !selectedVersionId) {
+      setBossGuidance([]);
+      setBossGuidanceLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setBossGuidanceLoading(true);
+
+    fetchAiBossGuidance(selectedVersionId)
+      .then((result) => {
+        if (cancelled) return;
+        setBossGuidance(Array.isArray(result.bossGuidance) ? result.bossGuidance : []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setBossGuidance([]);
+      })
+      .finally(() => {
+        if (!cancelled) setBossGuidanceLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, isOpen, selectedVersionId]);
 
   // Typewriter effect — reveal assistant message word-by-word
   useEffect(() => {
@@ -488,25 +872,121 @@ export default function AiCoachPanel({
     return () => clearInterval(interval);
   }, [typingMessageId, messages]);
 
-  // Lock body scroll when open
+  // Lock body scroll when open (skip in pinned mode)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || isPinned) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [isOpen]);
+  }, [isOpen, isPinned]);
 
-  // Escape key to close
+  // Pin/dock mode — push main content aside via data attribute
+  useEffect(() => {
+    if (isOpen && isPinned && isDesktop) {
+      document.documentElement.dataset.aiPinned = "true";
+      document.documentElement.style.setProperty("--ai-drawer-width", `${drawerWidth}px`);
+    } else {
+      delete document.documentElement.dataset.aiPinned;
+      document.documentElement.style.removeProperty("--ai-drawer-width");
+    }
+    return () => {
+      delete document.documentElement.dataset.aiPinned;
+      document.documentElement.style.removeProperty("--ai-drawer-width");
+    };
+  }, [isOpen, isPinned, isDesktop, drawerWidth]);
+
+  // Persist pin + width preferences
+  useEffect(() => {
+    localStorage.setItem(DRAWER_PINNED_KEY, isPinned ? "true" : "false");
+  }, [isPinned]);
+  useEffect(() => {
+    localStorage.setItem(DRAWER_WIDTH_KEY, String(drawerWidth));
+  }, [drawerWidth]);
+
+  // Resize drawer to match visual viewport on mobile (keyboard open/close)
+  useEffect(() => {
+    if (!isOpen || isDesktop) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const drawer = drawerRef.current;
+    if (!drawer) return;
+
+    const onResize = () => {
+      const top = vv.offsetTop + safeHeaderOffsetPx;
+      const height = Math.max(0, vv.height - safeHeaderOffsetPx);
+      drawer.style.height = `${height}px`;
+      drawer.style.top = `${top}px`;
+      drawer.style.bottom = "auto";
+    };
+
+    vv.addEventListener("resize", onResize);
+    vv.addEventListener("scroll", onResize);
+    onResize();
+
+    return () => {
+      vv.removeEventListener("resize", onResize);
+      vv.removeEventListener("scroll", onResize);
+      if (drawer) {
+        drawer.style.height = "";
+        drawer.style.top = "";
+        drawer.style.bottom = "";
+      }
+    };
+  }, [isOpen, isDesktop, safeHeaderOffsetPx]);
+
+  // Keyboard shortcuts
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      // Esc → close (or close search first)
+      if (e.key === "Escape") {
+        if (isSearchOpen) {
+          setIsSearchOpen(false);
+          setSearchQuery("");
+        } else {
+          onClose();
+        }
+        return;
+      }
+      const isMod = e.metaKey || e.ctrlKey;
+      // Cmd+K → focus input
+      if (isMod && e.key === "k") {
+        e.preventDefault();
+        textareaRef.current?.focus();
+        return;
+      }
+      // Cmd+Shift+A → analyze
+      if (isMod && e.shiftKey && (e.key === "a" || e.key === "A")) {
+        e.preventDefault();
+        if (canAnalyze) void handleAnalyze();
+        return;
+      }
+      // Cmd+F → toggle search
+      if (isMod && e.key === "f") {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+        queueMicrotask(() => searchInputRef.current?.focus());
+        return;
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose]);
+  }, [isOpen, isSearchOpen, onClose, canAnalyze]);
+
+  // Close checkpoint dropdown on click outside
+  useEffect(() => {
+    if (!checkpointDropdownOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (checkpointDropdownRef.current && !checkpointDropdownRef.current.contains(e.target as Node)) {
+        setCheckpointDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [checkpointDropdownOpen]);
 
   // Focus trap
   useEffect(() => {
@@ -544,6 +1024,8 @@ export default function AiCoachPanel({
     if (messages.length === 0 && !isSending && !isAnalyzing) return;
     if (!shouldFollowMessagesRef.current) return;
 
+    setShowScrollToBottom(false);
+
     let raf1 = 0;
     let raf2 = 0;
     raf1 = requestAnimationFrame(() => {
@@ -569,7 +1051,7 @@ export default function AiCoachPanel({
     if (!shouldFollowMessagesRef.current) return;
 
     const frame = requestAnimationFrame(() => {
-      scrollToBottom("auto");
+      scrollToBottom("instant");
     });
     return () => cancelAnimationFrame(frame);
   }, [isOpen, typingMessageId, revealedLength, scrollToBottom]);
@@ -662,6 +1144,25 @@ export default function AiCoachPanel({
               typeFilter,
               regionalDexName,
               allowedPokemonNames: showAllowedPool ? allowedPokemonNames : undefined,
+              checkpointBossName: selectedCheckpoint?.name ?? null,
+              checkpointStage: selectedCheckpoint?.stage ?? null,
+              checkpointGymOrder: selectedCheckpoint?.gymOrder ?? null,
+              checkpointCatchableNames:
+                checkpointCatchables.catchableNames.length > 0
+                  ? checkpointCatchables.catchableNames
+                  : undefined,
+              checkpointCatchablePoolSize:
+                checkpointCatchables.catchablePoolSize > 0
+                  ? checkpointCatchables.catchablePoolSize
+                  : undefined,
+              checkpointBlockedFinalNames:
+                checkpointCatchables.blockedFinalNames.length > 0
+                  ? checkpointCatchables.blockedFinalNames
+                  : undefined,
+              checkpointEvolutionFallbacks:
+                checkpointCatchables.evolutionFallbacks.length > 0
+                  ? checkpointCatchables.evolutionFallbacks
+                  : undefined,
               message: task.message,
             },
             { signal: controller.signal }
@@ -703,6 +1204,25 @@ export default function AiCoachPanel({
             typeFilter,
             regionalDexName,
             allowedPokemonNames: showAllowedPool ? allowedPokemonNames : undefined,
+            checkpointBossName: selectedCheckpoint?.name ?? null,
+            checkpointStage: selectedCheckpoint?.stage ?? null,
+            checkpointGymOrder: selectedCheckpoint?.gymOrder ?? null,
+            checkpointCatchableNames:
+              checkpointCatchables.catchableNames.length > 0
+                ? checkpointCatchables.catchableNames
+                : undefined,
+            checkpointCatchablePoolSize:
+              checkpointCatchables.catchablePoolSize > 0
+                ? checkpointCatchables.catchablePoolSize
+                : undefined,
+            checkpointBlockedFinalNames:
+              checkpointCatchables.blockedFinalNames.length > 0
+                ? checkpointCatchables.blockedFinalNames
+                : undefined,
+            checkpointEvolutionFallbacks:
+              checkpointCatchables.evolutionFallbacks.length > 0
+                ? checkpointCatchables.evolutionFallbacks
+                : undefined,
           },
           { signal: controller.signal }
         );
@@ -740,6 +1260,8 @@ export default function AiCoachPanel({
       regionalDexName,
       showAllowedPool,
       allowedPokemonNames,
+      selectedCheckpoint,
+      checkpointCatchables,
       onBindTeamId,
     ]
   );
@@ -793,6 +1315,7 @@ export default function AiCoachPanel({
   async function handleSend(messageOverride?: string) {
     const message = (messageOverride ?? input).trim();
     if (!message || !canUseAi) return;
+    haptic();
 
     const slashMatch = message.match(/^\/([a-z-]+)\s*$/i);
     if (slashMatch) {
@@ -878,8 +1401,167 @@ export default function AiCoachPanel({
   }, []);
 
   const handleQuickCommand = (commandId: string) => {
+    haptic();
     void executeSlashCommand(commandId);
   };
+
+  const handleCheckpointSelection = useCallback(
+    async (nextKey: string) => {
+      try {
+        setCheckpointKeySelection(nextKey);
+        if (nextKey === AUTO_CHECKPOINT_KEY) {
+          await onTeamCheckpointChange(null);
+          return;
+        }
+
+        const selected = checkpointOptions.find((option) => option.key === nextKey);
+        if (!selected) {
+          await onTeamCheckpointChange(null);
+          return;
+        }
+
+        await onTeamCheckpointChange({
+          checkpointBossName: selected.entry.name,
+          checkpointStage: selected.entry.stage,
+          checkpointGymOrder: selected.entry.gymOrder ?? null,
+        });
+      } catch {
+        setError("Could not save checkpoint right now.");
+      }
+    },
+    [checkpointOptions, onTeamCheckpointChange]
+  );
+
+  const handleCopyMessage = useCallback(async (messageId: string, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      haptic(6);
+      setCopiedMessageId(messageId);
+      setTimeout(() => setCopiedMessageId((prev) => (prev === messageId ? null : prev)), 1800);
+    } catch {
+      // Clipboard API may fail in some contexts
+    }
+  }, []);
+
+  const toggleCollapse = useCallback((messageId: string) => {
+    setCollapsedMessages((prev) => {
+      const next = new Set(prev);
+      if (next.has(messageId)) {
+        next.delete(messageId);
+      } else {
+        next.add(messageId);
+      }
+      return next;
+    });
+  }, []);
+
+  // Swipe-to-dismiss handlers (mobile only)
+  const handleSwipeTouchStart = useCallback((e: React.TouchEvent) => {
+    if (isDesktop) return;
+    swipeTouchStartY.current = e.touches[0].clientY;
+    swipeTouchLastY.current = e.touches[0].clientY;
+    swipeTouchLastTime.current = Date.now();
+    swipeVelocity.current = 0;
+  }, [isDesktop]);
+
+  const handleSwipeTouchMove = useCallback((e: React.TouchEvent) => {
+    if (isDesktop || swipeTouchStartY.current === null) return;
+    const currentY = e.touches[0].clientY;
+    const delta = currentY - swipeTouchStartY.current;
+
+    // Only track downward swipes
+    if (delta < 0) {
+      setSwipeDragOffset(0);
+      return;
+    }
+
+    // Track velocity
+    const now = Date.now();
+    const dt = now - swipeTouchLastTime.current;
+    if (dt > 0 && swipeTouchLastY.current !== null) {
+      swipeVelocity.current = (currentY - swipeTouchLastY.current) / dt;
+    }
+    swipeTouchLastY.current = currentY;
+    swipeTouchLastTime.current = now;
+
+    setSwipeDragOffset(delta);
+  }, [isDesktop]);
+
+  const handleSwipeTouchEnd = useCallback(() => {
+    if (isDesktop) return;
+    const velocity = swipeVelocity.current;
+    const shouldClose = swipeDragOffset > 100 || velocity > 0.5;
+
+    swipeTouchStartY.current = null;
+    swipeTouchLastY.current = null;
+    swipeVelocity.current = 0;
+    setSwipeDragOffset(0);
+
+    if (shouldClose) {
+      haptic(12);
+      onClose();
+    }
+  }, [isDesktop, swipeDragOffset, onClose]);
+
+  // Resize handle drag (desktop only)
+  const handleResizePointerDown = useCallback((e: React.PointerEvent) => {
+    if (!isDesktop) return;
+    e.preventDefault();
+    resizeStartXRef.current = e.clientX;
+    resizeStartWidthRef.current = drawerWidth;
+
+    const onMove = (ev: PointerEvent) => {
+      if (resizeStartXRef.current === null) return;
+      const delta = resizeStartXRef.current - ev.clientX;
+      const next = Math.min(DRAWER_MAX_WIDTH, Math.max(DRAWER_MIN_WIDTH, resizeStartWidthRef.current + delta));
+      setDrawerWidth(next);
+    };
+    const onUp = () => {
+      resizeStartXRef.current = null;
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  }, [isDesktop, drawerWidth]);
+
+  const handleMessageClick = useCallback((messageId: string, e: React.MouseEvent) => {
+    if (!e.shiftKey) {
+      setSelectedMessageIds(new Set());
+      return;
+    }
+    e.preventDefault();
+    setSelectedMessageIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(messageId)) {
+        next.delete(messageId);
+      } else {
+        next.add(messageId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleCopySelected = useCallback(async () => {
+    if (selectedMessageIds.size === 0) return;
+    const selected = messages.filter((m) => selectedMessageIds.has(m.id));
+    const text = selected
+      .map((m) => `${m.role === "assistant" ? "Coach" : "You"}: ${m.content}`)
+      .join("\n\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      haptic(6);
+      setSelectedMessageIds(new Set());
+    } catch {
+      // Clipboard API may fail
+    }
+  }, [messages, selectedMessageIds]);
+
+  const handleExport = useCallback(() => {
+    if (messages.length === 0) return;
+    exportMessagesAsMarkdown(messages, generation, selectedVersionLabel);
+    haptic(6);
+  }, [messages, generation, selectedVersionLabel]);
 
   const renderAssistantBlock = useCallback(
     (
@@ -1077,11 +1759,13 @@ export default function AiCoachPanel({
   };
 
   const handleMessagesScroll = useCallback(() => {
+    if (typingMessageId) return;
     const container = messagesContainerRef.current;
     if (!container) return;
     const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-    shouldFollowMessagesRef.current = distanceFromBottom <= 72;
-  }, []);
+    shouldFollowMessagesRef.current = distanceFromBottom <= 150;
+    setShowScrollToBottom(distanceFromBottom > 200);
+  }, [typingMessageId]);
 
   if (!shouldRender) return null;
 
@@ -1095,37 +1779,80 @@ export default function AiCoachPanel({
     ? "Sign in to use AI Coach chat and team analysis."
     : "Add at least one Pokemon to your team before using AI Coach.";
 
+  const displayMessages = isSearchOpen && searchQuery.trim() ? searchFilteredMessages : messages;
+
   return (
-    <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-label="AI Coach">
-      {/* Backdrop */}
-      <button
-        type="button"
-        onClick={onClose}
-        className="fixed inset-0"
-        style={{
-          background: "rgba(2, 5, 16, 0.55)",
-          backdropFilter: "blur(4px)",
-          WebkitBackdropFilter: "blur(4px)",
-          animation: isAnimatingOut ? "backdropFadeOut 200ms ease-in both" : "backdropFadeIn 220ms ease-out both",
-        }}
-        aria-label="Close AI Coach"
-      />
+    <div
+      className={`fixed inset-0 z-[100]${isPinned && isDesktop ? " pointer-events-none" : ""}`}
+      role="dialog"
+      aria-modal={!isPinned}
+      aria-label="AI Coach"
+    >
+      {/* Backdrop — hidden when pinned */}
+      {!(isPinned && isDesktop) && (
+        <button
+          type="button"
+          onClick={onClose}
+          className="fixed inset-0"
+          style={{
+            background: "rgba(2, 5, 16, 0.55)",
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
+            animation: isAnimatingOut ? "backdropFadeOut 200ms ease-in both" : "backdropFadeIn 220ms ease-out both",
+          }}
+          aria-label="Close AI Coach"
+        />
+      )}
 
       {/* Drawer */}
       <section
         ref={drawerRef}
         tabIndex={-1}
-        className={`ai-drawer ${animClass} fixed ${
+        className={`ai-drawer ${animClass} pointer-events-auto fixed ${
           isDesktop
-            ? "right-0 top-0 bottom-0 w-full max-w-[26rem]"
+            ? "right-0 bottom-0"
             : "inset-0"
         }`}
         onAnimationEnd={onAnimationEnd}
+        style={{
+          top: `${safeHeaderOffsetPx}px`,
+          ...(isDesktop ? { width: `${drawerWidth}px`, maxWidth: "none" } : {}),
+          ...(swipeDragOffset > 0 ? {
+            transform: `translateY(${swipeDragOffset}px)`,
+            transition: "none",
+            opacity: Math.max(0.4, 1 - swipeDragOffset / 300),
+          } : {}),
+        }}
       >
+        {/* Desktop resize handle */}
+        {isDesktop && (
+          <div
+            className="ai-resize-handle"
+            onPointerDown={handleResizePointerDown}
+          />
+        )}
+
+        {/* ── Mobile swipe handle ── */}
+        {!isDesktop && (
+          <div
+            className="flex justify-center py-2"
+            onTouchStart={handleSwipeTouchStart}
+            onTouchMove={handleSwipeTouchMove}
+            onTouchEnd={handleSwipeTouchEnd}
+          >
+            <div
+              className="h-1 w-9 rounded-full"
+              style={{ background: "var(--text-muted)", opacity: 0.35 }}
+            />
+          </div>
+        )}
         {/* ── Header ── */}
         <div
-          className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5"
+          className="flex items-center justify-between gap-2 px-4 py-3 sm:px-5"
           style={{ borderBottom: "1px solid var(--border)" }}
+          onTouchStart={handleSwipeTouchStart}
+          onTouchMove={handleSwipeTouchMove}
+          onTouchEnd={handleSwipeTouchEnd}
         >
           <div className="flex items-center gap-2.5">
             <div
@@ -1157,20 +1884,144 @@ export default function AiCoachPanel({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
-            style={{
-              border: "1px solid var(--border)",
-              background: "var(--surface-2)",
-              color: "var(--text-secondary)",
-            }}
-            aria-label="Close"
-          >
-            <FiX size={15} />
-          </button>
+          <div className="flex items-center gap-1">
+            {/* Search toggle */}
+            {isDesktop && messages.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSearchOpen((prev) => !prev);
+                  queueMicrotask(() => searchInputRef.current?.focus());
+                }}
+                className="ai-header-btn"
+                aria-label="Search messages"
+                title="Search (⌘F)"
+              >
+                <FiSearch size={14} />
+              </button>
+            )}
+
+            {/* Export */}
+            {isDesktop && messages.length > 0 && (
+              <button
+                type="button"
+                onClick={handleExport}
+                className="ai-header-btn"
+                aria-label="Export chat as markdown"
+                title="Export (.md)"
+              >
+                <FiDownload size={14} />
+              </button>
+            )}
+
+            {/* Pin/dock toggle */}
+            {isDesktop && (
+              <button
+                type="button"
+                onClick={() => setIsPinned((prev) => !prev)}
+                className={`ai-header-btn${isPinned ? " is-active" : ""}`}
+                aria-label={isPinned ? "Unpin panel" : "Pin panel"}
+                title={isPinned ? "Unpin (overlay)" : "Pin (dock)"}
+              >
+                <FiSidebar size={14} />
+              </button>
+            )}
+
+            {/* Shortcuts tooltip */}
+            {isDesktop && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowShortcuts((prev) => !prev)}
+                  onBlur={() => setTimeout(() => setShowShortcuts(false), 150)}
+                  className="ai-header-btn"
+                  aria-label="Keyboard shortcuts"
+                  title="Shortcuts"
+                >
+                  <span className="text-[0.65rem] font-bold leading-none">?</span>
+                </button>
+                {showShortcuts && (
+                  <div className="ai-shortcuts-tooltip">
+                    <p><kbd>⌘K</kbd> Focus input</p>
+                    <p><kbd>⌘⇧A</kbd> Analyze team</p>
+                    <p><kbd>⌘F</kbd> Search messages</p>
+                    <p><kbd>Esc</kbd> Close panel</p>
+                    <p><kbd>Shift+Click</kbd> Multi-select</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Close */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="ai-header-btn"
+              aria-label="Close"
+            >
+              <FiX size={15} />
+            </button>
+          </div>
         </div>
+
+        {/* Search bar */}
+        {isSearchOpen && (
+          <div className="flex items-center gap-2 border-b px-4 py-2 sm:px-5" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+            <FiSearch size={13} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search messages..."
+              className="ai-search-input"
+            />
+            {searchQuery && (
+              <span className="text-[0.64rem] whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
+                {searchFilteredMessages.length}/{messages.length}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => { setIsSearchOpen(false); setSearchQuery(""); }}
+              className="ai-header-btn"
+              aria-label="Close search"
+            >
+              <FiX size={13} />
+            </button>
+          </div>
+        )}
+
+        {/* Multi-select bar */}
+        {selectedMessageIds.size > 0 && (
+          <div
+            className="flex items-center justify-between gap-2 border-b px-4 py-2 sm:px-5"
+            style={{ borderColor: "var(--border)", background: "var(--version-color-soft, rgba(218,44,67,0.08))" }}
+          >
+            <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
+              {selectedMessageIds.size} selected
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => void handleCopySelected()}
+                className="ai-header-btn"
+                aria-label="Copy selected messages"
+              >
+                <FiCopy size={13} />
+                <span className="text-[0.64rem]">Copy</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedMessageIds(new Set())}
+                className="ai-header-btn"
+                aria-label="Clear selection"
+              >
+                <FiX size={13} />
+              </button>
+            </div>
+          </div>
+        )}
 
         {showGate ? (
           /* ── Gate: not authenticated or no team ── */
@@ -1193,11 +2044,12 @@ export default function AiCoachPanel({
         ) : (
           <>
             {/* ── Messages area ── */}
-            <div
-              ref={messagesContainerRef}
-              className="ai-drawer-messages min-h-0 px-4 py-4 sm:px-5"
-              onScroll={handleMessagesScroll}
-            >
+            <div className="relative flex min-h-0 flex-1 flex-col">
+              <div
+                ref={messagesContainerRef}
+                className="ai-drawer-messages min-h-0 px-4 py-4 sm:px-5"
+                onScroll={handleMessagesScroll}
+              >
               {isLoadingHistory ? (
                 <div className="flex items-center justify-center py-12">
                   <FiLoader size={18} className="animate-spin" style={{ color: "var(--text-muted)" }} />
@@ -1244,9 +2096,12 @@ export default function AiCoachPanel({
               ) : (
                 /* ── Message list ── */
                 <div className="space-y-3">
-                  {messages.map((message) => {
+                  {(() => {
+                    const lastAssistantId = [...displayMessages].reverse().find((m) => m.role === "assistant")?.id;
+                    return displayMessages.map((message) => {
                     const isAssistant = message.role === "assistant";
                     const isTyping = message.id === typingMessageId;
+                    const isLatestAssistant = message.id === lastAssistantId;
                     const displayContent = isTyping
                       ? message.content.slice(0, revealedLength)
                       : message.content;
@@ -1255,33 +2110,65 @@ export default function AiCoachPanel({
                     const assistantSections = hasSectionHeadings
                       ? groupAssistantBlocks(assistantBlocks)
                       : [];
+                    const isSelected = selectedMessageIds.has(message.id);
 
                     return (
                       <div
                         key={message.id}
                         className={`ai-message-enter flex ${isAssistant ? "justify-start" : "justify-end"}`}
+                        onClick={(e) => handleMessageClick(message.id, e)}
                       >
                         <article
-                          className={`ai-message-bubble rounded-2xl ${
+                          className={`ai-message-bubble group relative rounded-2xl ${
                             isAssistant ? "rounded-tl-md" : "rounded-tr-md"
-                          }`}
+                          }${isSelected ? " ai-message-selected" : ""}`}
                           style={{
-                            background: isAssistant ? "var(--surface-2)" : "var(--version-color-soft, rgba(218,44,67,0.12))",
-                            border: `1px solid ${isAssistant ? "var(--border)" : "var(--version-color-border, rgba(218,44,67,0.22))"}`,
+                            background: isSelected
+                              ? "var(--version-color-soft, rgba(218,44,67,0.18))"
+                              : isAssistant ? "var(--surface-2)" : "var(--version-color-soft, rgba(218,44,67,0.12))",
+                            border: `1px solid ${isSelected ? "var(--version-color, var(--accent))" : isAssistant ? "var(--border)" : "var(--version-color-border, rgba(218,44,67,0.22))"}`,
                             color: "var(--text-primary)",
                           }}
                         >
                           {isAssistant && (
-                            <p
-                              className="mb-1 flex items-center gap-1 text-[0.62rem] font-semibold uppercase tracking-[0.08em]"
-                              style={{ color: "var(--version-color, var(--accent))" }}
-                            >
-                              <FiMessageCircle size={9} />
-                              Coach
-                            </p>
+                            <div className="mb-1 flex items-center justify-between">
+                              <p
+                                className="flex items-center gap-1 text-[0.62rem] font-semibold uppercase tracking-[0.08em]"
+                                style={{ color: "var(--version-color, var(--accent))" }}
+                              >
+                                <FiMessageCircle size={9} />
+                                Coach
+                              </p>
+                              {!isTyping && (
+                                <button
+                                  type="button"
+                                  onClick={() => void handleCopyMessage(message.id, message.content)}
+                                  className="ai-copy-btn"
+                                  aria-label={copiedMessageId === message.id ? "Copied" : "Copy message"}
+                                >
+                                  {copiedMessageId === message.id
+                                    ? <FiCheck size={11} strokeWidth={3} />
+                                    : <FiCopy size={11} />}
+                                </button>
+                              )}
+                            </div>
                           )}
                           {isAssistant ? (
-                            <div className={`ai-message-content${isTyping ? " ai-typing-cursor" : ""}`}>
+                            <div
+                              className={`ai-message-content${isTyping ? " ai-typing-cursor" : ""}${
+                                !isTyping && collapsedMessages.has(message.id) ? " ai-message-collapsed" : ""
+                              }`}
+                              ref={(el) => {
+                                if (!el || isTyping || isLatestAssistant) return;
+                                if (el.scrollHeight > COLLAPSE_HEIGHT_PX && !collapsedMessages.has(message.id)) {
+                                  // Auto-collapse older messages on first render if tall
+                                  if (!el.dataset.measured) {
+                                    el.dataset.measured = "1";
+                                    setCollapsedMessages((prev) => new Set(prev).add(message.id));
+                                  }
+                                }
+                              }}
+                            >
                               {hasSectionHeadings
                                 ? assistantSections.map((section, sectionIndex) => (
                                     <details
@@ -1318,10 +2205,39 @@ export default function AiCoachPanel({
                               {displayContent}
                             </p>
                           )}
+                          {/* Show more / Show less toggle */}
+                          {isAssistant && !isTyping && collapsedMessages.has(message.id) && (
+                            <button
+                              type="button"
+                              onClick={() => toggleCollapse(message.id)}
+                              className="ai-show-more-btn"
+                            >
+                              Show more
+                            </button>
+                          )}
+                          {isAssistant && !isTyping && !collapsedMessages.has(message.id) && message.content.length > 600 && (
+                            <button
+                              type="button"
+                              onClick={() => toggleCollapse(message.id)}
+                              className="ai-show-more-btn"
+                            >
+                              Show less
+                            </button>
+                          )}
                         </article>
+                        {!isTyping && message.createdAt && (
+                          <time
+                            dateTime={message.createdAt}
+                            className="mt-0.5 block text-[0.58rem]"
+                            style={{ color: "var(--text-muted)", opacity: 0.7 }}
+                          >
+                            {relativeTime(message.createdAt)}
+                          </time>
+                        )}
                       </div>
                     );
-                  })}
+                  });
+                  })()}
 
                   {/* Thinking indicator */}
                   {(isSending || isAnalyzing) && (
@@ -1354,6 +2270,23 @@ export default function AiCoachPanel({
 
                   <div ref={messagesEndRef} />
                 </div>
+              )}
+            </div>
+
+              {/* Scroll-to-bottom FAB */}
+              {showScrollToBottom && messages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    shouldFollowMessagesRef.current = true;
+                    setShowScrollToBottom(false);
+                    scrollToBottom("smooth");
+                  }}
+                  className="ai-scroll-fab"
+                  aria-label="Scroll to latest message"
+                >
+                  <FiChevronDown size={18} strokeWidth={2.5} />
+                </button>
               )}
             </div>
 
@@ -1432,7 +2365,157 @@ export default function AiCoachPanel({
                 </p>
               )}
 
-              <div className="mb-2 flex flex-wrap gap-1.5">
+              <div
+                className="mb-2.5 rounded-xl px-2.5 py-2"
+                style={{
+                  border: "1px solid var(--border)",
+                  background: "var(--surface-2)",
+                  overflow: "visible",
+                  position: "relative",
+                }}
+              >
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <p
+                    className="text-[0.66rem] font-semibold uppercase tracking-[0.08em]"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Story Checkpoint
+                  </p>
+                  {bossGuidanceLoading && (
+                    <span className="text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
+                      Loading...
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-1.5 overflow-x-auto pb-1 sm:hidden">
+                  <button
+                    type="button"
+                    onClick={() => void handleCheckpointSelection(AUTO_CHECKPOINT_KEY)}
+                    className="shrink-0 rounded-full border px-2.5 py-1 text-[0.66rem] font-semibold transition-colors"
+                    style={{
+                      borderColor:
+                        checkpointKeySelection === AUTO_CHECKPOINT_KEY
+                          ? "var(--version-color-border, rgba(218,44,67,0.35))"
+                          : "var(--border)",
+                      background:
+                        checkpointKeySelection === AUTO_CHECKPOINT_KEY
+                          ? "var(--version-color-soft, rgba(218,44,67,0.12))"
+                          : "var(--surface-1)",
+                      color:
+                        checkpointKeySelection === AUTO_CHECKPOINT_KEY
+                          ? "var(--version-color, var(--accent))"
+                          : "var(--text-secondary)",
+                    }}
+                  >
+                    Auto
+                  </button>
+                  {checkpointOptions.map((option) => {
+                    const isSelected = checkpointKeySelection === option.key;
+                    return (
+                      <button
+                        key={option.key}
+                        type="button"
+                        onClick={() => void handleCheckpointSelection(option.key)}
+                        className="shrink-0 rounded-full border px-2.5 py-1 text-[0.66rem] font-semibold transition-colors"
+                        title={option.label}
+                        style={{
+                          borderColor: isSelected
+                            ? "var(--version-color-border, rgba(218,44,67,0.35))"
+                            : "var(--border)",
+                          background: isSelected
+                            ? "var(--version-color-soft, rgba(218,44,67,0.12))"
+                            : "var(--surface-1)",
+                          color: isSelected
+                            ? "var(--version-color, var(--accent))"
+                            : "var(--text-secondary)",
+                        }}
+                      >
+                        {option.entry.stage === "gym"
+                          ? `G${option.entry.gymOrder ?? "?"} ${option.entry.name}`
+                          : option.entry.stage === "elite4"
+                            ? `E4 ${option.entry.name}`
+                            : `Champ ${option.entry.name}`}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Desktop: custom dropdown */}
+                <div className="hidden sm:block" style={{ position: "relative" }} ref={checkpointDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setCheckpointDropdownOpen((prev) => !prev)}
+                    className="ai-checkpoint-trigger"
+                  >
+                    <span className="truncate">
+                      {checkpointKeySelection === AUTO_CHECKPOINT_KEY
+                        ? "Auto"
+                        : (() => {
+                            const match = checkpointOptions.find((o) => o.key === checkpointKeySelection);
+                            return match ? checkpointLabel(match.entry) : "Auto";
+                          })()}
+                    </span>
+                    <FiChevronDown
+                      size={13}
+                      className={`shrink-0 transition-transform duration-150${checkpointDropdownOpen ? " rotate-180" : ""}`}
+                    />
+                  </button>
+                  {checkpointDropdownOpen && (
+                    <div className="ai-checkpoint-menu">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleCheckpointSelection(AUTO_CHECKPOINT_KEY);
+                          setCheckpointDropdownOpen(false);
+                        }}
+                        className={`ai-checkpoint-item${checkpointKeySelection === AUTO_CHECKPOINT_KEY ? " is-selected" : ""}`}
+                      >
+                        <span className="font-semibold">Auto</span>
+                        <span className="ai-checkpoint-item-sub">Uses boss names from your prompt</span>
+                      </button>
+                      {checkpointOptions.map((option) => {
+                        const isSelected = checkpointKeySelection === option.key;
+                        const stageTag =
+                          option.entry.stage === "gym"
+                            ? `G${option.entry.gymOrder ?? "?"}`
+                            : option.entry.stage === "elite4"
+                              ? "E4"
+                              : "CH";
+                        return (
+                          <button
+                            key={option.key}
+                            type="button"
+                            onClick={() => {
+                              void handleCheckpointSelection(option.key);
+                              setCheckpointDropdownOpen(false);
+                            }}
+                            className={`ai-checkpoint-item${isSelected ? " is-selected" : ""}`}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <span className="ai-checkpoint-tag">{stageTag}</span>
+                              <span className="font-semibold">{option.entry.name}</span>
+                            </span>
+                            {option.entry.recommendedPlayerLevelRange && (
+                              <span className="ai-checkpoint-item-sub">
+                                Lv. {option.entry.recommendedPlayerLevelRange}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <p className="mt-1.5 text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
+                  {selectedCheckpoint
+                    ? checkpointCatchables.catchablePoolSize > 0
+                      ? `Checkpoint pool: ~${checkpointCatchables.catchablePoolSize} legal species, ${checkpointCatchables.evolutionFallbacks.length} evolution fallback rules applied.`
+                      : "Checkpoint selected. Catch pool sample unavailable, so the coach will keep encounter timing conservative."
+                    : "Auto mode uses boss names or gym numbering from your prompt."}
+                </p>
+              </div>
+
+              <div className="mb-2 flex flex-wrap gap-2 sm:gap-1.5">
                 {quickCommandChips.map((chip) => (
                   <button
                     key={chip.id}
@@ -1510,9 +2593,9 @@ export default function AiCoachPanel({
               <p className="mt-2 text-center text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
                 {isBusy
                   ? "Press Enter to queue your next prompt while Coach is working."
-                  : "Suggestions follow your active filters and gen rules. Press Enter to send, or type / for commands."}
+                  : "Suggestions follow your active filters and gen rules. Tap Send or type / for commands."}
               </p>
-              <p className="mt-1 text-center text-[0.6rem]" style={{ color: "var(--text-muted)", opacity: 0.85 }}>
+              <p className="mt-1 hidden text-center text-[0.6rem] sm:block" style={{ color: "var(--text-muted)", opacity: 0.85 }}>
                 Use ↑/↓ for prompt history. While / menu is open, ↑/↓ + Enter selects a command.
               </p>
             </div>

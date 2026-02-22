@@ -103,6 +103,9 @@ model Team {
   generation        Int
   gameId            Int
   selectedVersionId String?
+  checkpointBossName String?
+  checkpointStage    String?
+  checkpointGymOrder Int?
   pokemon           Json
   userId            String
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
