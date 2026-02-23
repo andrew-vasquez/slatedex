@@ -181,6 +181,7 @@ export default function MobileTeamSheet({
       if (prev) emitHaptic("light");
       return false;
     });
+    setDragOffset(0);
   }, [emitHaptic]);
   const useTransition = !isDragging.current;
 
@@ -222,6 +223,8 @@ export default function MobileTeamSheet({
           transition: useTransition ? "transform 0.38s cubic-bezier(0.32, 0.72, 0, 1)" : "none",
           maxHeight: "85dvh",
           willChange: "transform",
+          borderRadius: "20px 20px 0 0",
+          overflow: "hidden",
         }}
         role="dialog"
         aria-modal={isOpen}

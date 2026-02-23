@@ -27,6 +27,8 @@ interface UseAiCheckpointOptions {
   onTeamCheckpointChange: (checkpoint: TeamStoryCheckpoint | null) => Promise<void>;
   versionScopedPokemonPool: Pokemon[];
   onError: (message: string) => void;
+  /** When false, do not clear checkpoint when no boss-guidance match (e.g. Battle Planner local-only mode) */
+  persistCheckpoint?: boolean;
 }
 
 export interface UseAiCheckpointReturn {
@@ -51,6 +53,7 @@ export function useAiCheckpoint({
   onTeamCheckpointChange,
   versionScopedPokemonPool,
   onError,
+  persistCheckpoint = true,
 }: UseAiCheckpointOptions): UseAiCheckpointReturn {
   const [bossGuidance, setBossGuidance] = useState<AiBossGuidanceEntry[]>([]);
   const [bossGuidanceLoading, setBossGuidanceLoading] = useState(false);
@@ -161,11 +164,12 @@ export function useAiCheckpoint({
     // No match — clear stale checkpoint. Only clear when we actually have boss data
     // loaded; if checkpointOptions is empty the panel is closed/unfetched and calling
     // onTeamCheckpointChange(null) would destroy a valid checkpoint in localStorage.
+    // When persistCheckpoint is false (e.g. Battle Planner), do not clear so local preset stays.
     setCheckpointKeySelection(AUTO_CHECKPOINT_KEY);
-    if (checkpointOptions.length > 0) {
+    if (checkpointOptions.length > 0 && persistCheckpoint) {
       void onTeamCheckpointChange(null);
     }
-  }, [checkpointOptions, selectedVersionId, teamCheckpoint, bossGuidanceLoading, onTeamCheckpointChange]);
+  }, [checkpointOptions, selectedVersionId, teamCheckpoint, bossGuidanceLoading, onTeamCheckpointChange, persistCheckpoint]);
 
   const handleCheckpointSelection = useCallback(
     async (nextKey: string) => {

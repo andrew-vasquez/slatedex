@@ -202,7 +202,7 @@ const TeamSlot = ({
         <button
           type="button"
           onClick={onSelectForReplace}
-          className={`absolute bottom-1.5 left-1/2 z-20 -translate-x-1/2 rounded-full border px-2 py-0.5 text-[0.52rem] font-semibold uppercase tracking-[0.08em] ${replacePulse ? "animate-confirm-pulse" : ""}`}
+          className={`absolute bottom-1.5 left-1/2 z-20 -translate-x-1/2 inline-flex min-h-[32px] items-center rounded-full border px-3 text-[0.62rem] font-semibold uppercase tracking-[0.08em] ${replacePulse ? "animate-confirm-pulse" : ""}`}
           style={{
             background: isReplaceTarget ? "rgba(59, 130, 246, 0.22)" : "var(--surface-1)",
             borderColor: isReplaceTarget ? "rgba(59, 130, 246, 0.45)" : "var(--border)",

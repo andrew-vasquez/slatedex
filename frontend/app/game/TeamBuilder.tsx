@@ -875,11 +875,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     executeGameSwitch(gameId);
   }, [executeGameSwitch, games, hasPokemonInParty, hasUnsavedTeam, selectedGame.region, selectedGameId]);
 
-  useEffect(() => {
-    if (pendingGameSwitch === null) return;
-    if (hasPokemonInParty) return;
-    executeGameSwitch(pendingGameSwitch);
-  }, [executeGameSwitch, hasPokemonInParty, pendingGameSwitch]);
+  // Intentionally removed auto-execute: if the team empties while the switch dialog is open
+  // (e.g. via undo), we keep the dialog up so the user always confirms or cancels explicitly.
 
   const handleGameSwitchKeepTeam = useCallback(() => {
     if (pendingGameSwitch === null) return;
@@ -1729,6 +1726,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           onSettingsVersionThemingChange={(value) => updateSetting("versionTheming", value)}
           onSettingsMobileHapticsChange={(value) => updateSetting("mobileHaptics", value)}
           onSettingsReset={resetSettings}
+          isAiCoachOpen={isAiCoachOpen}
         />
 
         <main id="main-content" className="mx-auto max-w-screen-xl px-4 pb-24 pt-4 sm:px-6 lg:pb-8 lg:pt-28" role="main">
@@ -1890,7 +1888,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
               {/* Mobile-only compact action bar */}
               <div className="lg:hidden">
                 <section className="panel p-3 sm:p-4" aria-label="Team controls">
-                  <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-1.5">
                     <button
                       type="button"
                       onClick={handleUndo}
@@ -1912,7 +1910,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                     <button
                       type="button"
                       onClick={() => { setReplaceMode((prev) => !prev); setReplaceTargetSlot(null); }}
-                      className="btn-secondary action-btn w-full sm:col-span-2"
+                      className="btn-secondary action-btn col-span-2 w-full"
                       style={{
                         borderColor: replaceMode ? "rgba(59, 130, 246, 0.34)" : "var(--border)",
                         background: replaceMode ? "rgba(59, 130, 246, 0.14)" : undefined,
@@ -1925,13 +1923,13 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                     <button
                       type="button"
                       onClick={openAiCoach}
-                      className="ai-coach-trigger action-btn col-span-3 w-full sm:col-span-2"
+                      className="ai-coach-trigger action-btn col-span-2 w-full"
                     >
                       <FiMessageCircle size={13} />
                       AI Coach
                     </button>
                     <div
-                      className="col-span-3 rounded-xl border px-3 py-1.5 text-[0.72rem] sm:py-2 sm:text-[0.78rem]"
+                      className="col-span-2 rounded-xl border px-3 py-1.5 text-[0.72rem] sm:py-2 sm:text-[0.78rem]"
                       style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}
                     >
                       {replaceMode
@@ -2131,6 +2129,13 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           gameVersions={selectedGame.versions}
           selectedVersionId={selectedVersionId}
           hapticsEnabled={settings.mobileHaptics}
+          myTeam={team}
+          generation={selectedGame.generation}
+          gameId={selectedGame.id}
+          pokemonPool={dexMode === "regional" && pokemonPools.regional.length > 0 ? pokemonPools.regional : pokemonPools.national}
+          allPokemonPool={pokemonPools.national}
+          teamCheckpoint={teamCheckpoint}
+          onTeamCheckpointChange={setTeamCheckpoint}
         />
       )}
 
@@ -2139,6 +2144,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           isOpen={isAiCoachOpen}
           onClose={closeAiCoach}
           headerOffsetPx={headerOffsetPx}
+          versionCssVars={versionCssVars}
           isAuthenticated={isAuthenticated}
           teamHasPokemon={currentTeam.length > 0}
           team={team}
@@ -2197,7 +2203,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
       {shouldMountOnboardingTour && <OnboardingTour userId={user?.id} />}
 
-      {!isDesktopScreen && (
+      {!isDesktopScreen && !isAiCoachOpen && (
         <MobileTeamSheet
           team={team}
           currentTeamLength={currentTeam.length}

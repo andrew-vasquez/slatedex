@@ -40,6 +40,7 @@ function PokeballIcon({ className, size = 18 }: { className?: string; size?: num
 }
 
 interface AiMessageListProps {
+  hideContent: boolean;
   displayMessages: AiMessage[];
   messages: AiMessage[];
   pokemonNameLookup: Set<string>;
@@ -67,6 +68,7 @@ interface AiMessageListProps {
 }
 
 export default function AiMessageList({
+  hideContent,
   displayMessages,
   messages,
   pokemonNameLookup,
@@ -170,6 +172,7 @@ export default function AiMessageList({
         ref={messagesContainerRef}
         className="ai-drawer-messages min-h-0 px-4 py-4 sm:px-5"
         onScroll={handleMessagesScroll}
+        style={hideContent ? { visibility: "hidden" } : undefined}
       >
         {isLoadingHistory ? (
           <div className="flex items-center justify-center py-12">

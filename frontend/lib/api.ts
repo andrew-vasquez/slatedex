@@ -1,4 +1,11 @@
-import type { DexMode, Pokemon } from "./types";
+import type {
+  BattleCheckpoint,
+  BattlePlannerResult,
+  BattleRealismMode,
+  BossPreset,
+  DexMode,
+  Pokemon,
+} from "./types";
 import { authClient } from "./auth-client";
 
 function getApiUrl(): string {
@@ -479,6 +486,99 @@ export function analyzeAiTeam(
     method: "POST",
     body: JSON.stringify(payload),
     signal: options?.signal,
+  });
+}
+
+// ── Battle Planner API ───────────────────────────────────────────────────────
+
+export interface SavedOpponentTeam {
+  id: string;
+  name: string;
+  generation: number;
+  gameId: number;
+  selectedVersionId: string | null;
+  source: "MANUAL" | "PRESET";
+  presetBossKey: string | null;
+  pokemon: (Pokemon | null)[];
+  notes: string | null;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function fetchBattlePresets(
+  gameId: number,
+  selectedVersionId?: string | null
+): Promise<{ supported: boolean; presets: BossPreset[] }> {
+  const params = new URLSearchParams({ gameId: String(gameId) });
+  if (selectedVersionId) params.set("selectedVersionId", selectedVersionId);
+  return apiFetch(`/api/battle/presets?${params.toString()}`);
+}
+
+export function analyzeBattleMatchups(payload: {
+  myTeam: (Pokemon | null)[];
+  opponentTeam: (Pokemon | null)[];
+  checkpoint?: BattleCheckpoint | null;
+  realismMode?: BattleRealismMode;
+  gameId?: number;
+  selectedVersionId?: string | null;
+  presetBossKey?: string | null;
+}): Promise<BattlePlannerResult> {
+  return apiFetch("/api/battle/matchups/analyze", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchOpponentTeams(
+  gameId?: number,
+  generation?: number
+): Promise<SavedOpponentTeam[]> {
+  const params = new URLSearchParams();
+  if (gameId != null) params.set("gameId", String(gameId));
+  if (generation != null) params.set("generation", String(generation));
+  const qs = params.toString();
+  return apiFetch(`/api/battle/opponent-teams${qs ? `?${qs}` : ""}`);
+}
+
+export function createOpponentTeam(data: {
+  name: string;
+  generation: number;
+  gameId: number;
+  pokemon: (Pokemon | null)[];
+  selectedVersionId?: string | null;
+  source?: "MANUAL" | "PRESET";
+  presetBossKey?: string | null;
+  notes?: string | null;
+  checkpoint?: BattleCheckpoint | null;
+  realismMode?: BattleRealismMode;
+}): Promise<SavedOpponentTeam> {
+  return apiFetch("/api/battle/opponent-teams", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateOpponentTeam(
+  id: string,
+  data: {
+    name?: string;
+    pokemon?: (Pokemon | null)[];
+    notes?: string | null;
+    selectedVersionId?: string | null;
+    checkpoint?: BattleCheckpoint | null;
+    realismMode?: BattleRealismMode;
+  }
+): Promise<SavedOpponentTeam> {
+  return apiFetch(`/api/battle/opponent-teams/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteOpponentTeam(id: string): Promise<{ success: boolean }> {
+  return apiFetch(`/api/battle/opponent-teams/${id}`, {
+    method: "DELETE",
   });
 }
 

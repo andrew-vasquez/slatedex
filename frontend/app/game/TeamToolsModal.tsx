@@ -1,15 +1,22 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FiCopy, FiFolder, FiLink, FiShare2, FiUploadCloud, FiX } from "react-icons/fi";
+import dynamic from "next/dynamic";
+import { FiCopy, FiFolder, FiLink, FiShare2, FiTarget, FiUploadCloud, FiX } from "react-icons/fi";
 import SavedTeamsPanel from "./SavedTeamsPanel";
 import { encodeSharedTeamPayload, parseSharedTeamInput, type SharedTeamPayload } from "@/lib/teamShare";
 import { useAnimatedUnmount } from "@/app/game/hooks/useAnimatedUnmount";
 import { useToastContext } from "@/app/game/hooks/useToast";
 import { triggerHaptic } from "@/lib/haptics";
-import type { SavedTeam } from "@/lib/api";
+import type { SavedTeam, TeamStoryCheckpoint } from "@/lib/api";
+import type { Pokemon } from "@/lib/types";
 
-type TeamToolsTab = "saved" | "share";
+const BattlePlannerTab = dynamic(
+  () => import("./battle/BattlePlannerTab"),
+  { ssr: false, loading: () => <div className="py-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>Loading…</div> }
+);
+
+type TeamToolsTab = "saved" | "share" | "battle";
 
 interface VersionOption {
   id: string;
@@ -36,6 +43,14 @@ interface TeamToolsModalProps {
   selectedVersionId?: string | null;
   initialTab?: TeamToolsTab;
   hapticsEnabled?: boolean;
+  // Battle Planner context
+  myTeam?: (Pokemon | null)[];
+  generation?: number;
+  gameId?: number;
+  pokemonPool?: Pokemon[];
+  allPokemonPool?: Pokemon[];
+  teamCheckpoint?: TeamStoryCheckpoint | null;
+  onTeamCheckpointChange?: (checkpoint: TeamStoryCheckpoint | null) => Promise<void>;
 }
 
 const TeamToolsModal = ({
@@ -58,8 +73,16 @@ const TeamToolsModal = ({
   selectedVersionId,
   initialTab = "saved",
   hapticsEnabled = true,
+  myTeam = [],
+  generation = 1,
+  gameId = 1,
+  pokemonPool = [],
+  allPokemonPool = [],
+  teamCheckpoint = null,
+  onTeamCheckpointChange,
 }: TeamToolsModalProps) => {
   const [activeTab, setActiveTab] = useState<TeamToolsTab>("saved");
+  const [battleMounted, setBattleMounted] = useState(false);
   const [importInput, setImportInput] = useState("");
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [tabTransitionKey, setTabTransitionKey] = useState(0);
@@ -208,7 +231,7 @@ const TeamToolsModal = ({
   if (!shouldRender) return null;
 
   return (
-    <div className="fixed inset-0 z-[95] grid place-items-center overflow-hidden p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="team-tools-modal-title">
+    <div className="fixed inset-0 z-[95] grid place-items-center overflow-hidden p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="team-tools-modal-title">
       <button
         type="button"
         onClick={onClose}
@@ -220,46 +243,51 @@ const TeamToolsModal = ({
       <section
         ref={modalRef}
         tabIndex={-1}
-        className={`panel relative w-full max-w-3xl overflow-hidden p-5 max-h-[min(88dvh,52rem)] ${isAnimatingOut ? "animate-scale-out" : "animate-scale-in"}`}
+        className={`panel relative flex flex-col w-full max-w-3xl min-w-0 max-h-[min(88dvh,52rem)] overflow-hidden p-4 sm:p-5 ${isAnimatingOut ? "animate-scale-out" : "animate-scale-in"}`}
         onAnimationEnd={onAnimationEnd}
         aria-labelledby="team-tools-modal-title"
       >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 id="team-tools-modal-title" className="font-display text-lg" style={{ color: "var(--text-primary)" }}>
+        <div className="flex items-start justify-between gap-3 min-w-0">
+          <div className="min-w-0 flex-1">
+            <h3 id="team-tools-modal-title" className="font-display text-lg truncate" style={{ color: "var(--text-primary)" }}>
               Team Tools
             </h3>
-            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-              Manage saved teams or share/import your current team.
+            <p className="mt-1 text-sm line-clamp-2" style={{ color: "var(--text-muted)" }}>
+              {activeTab === "battle"
+                ? "Analyze your team against a gym leader or custom opponent."
+                : "Manage saved teams or share/import your current team."}
             </p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="btn-secondary !px-2 !py-1.5"
+            className="btn-secondary !px-2 !py-1.5 shrink-0"
             aria-label="Close team tools dialog"
           >
             <FiX size={14} />
           </button>
         </div>
 
-        <div className="mt-4 inline-flex rounded-xl border p-1" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+        <div
+          className="mt-4 grid w-full min-w-0 grid-cols-3 gap-1 rounded-xl border p-1"
+          style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
+        >
           <button
             type="button"
             onClick={() => {
               setActiveTab("saved");
               triggerHaptic("light", { enabled: hapticsEnabled, mobileOnly: true });
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[0.78rem] font-semibold transition-colors duration-200"
+            className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[0.72rem] sm:text-[0.78rem] font-semibold transition-colors duration-200"
             style={{
-              background: activeTab === "saved" ? "var(--accent-soft)" : "transparent",
-              border: activeTab === "saved" ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
+              background: activeTab === "saved" ? "var(--version-color-soft, var(--accent-soft))" : "transparent",
+              border: activeTab === "saved" ? "1px solid var(--version-color-border, rgba(218, 44, 67, 0.34))" : "1px solid transparent",
               color: activeTab === "saved" ? "var(--text-primary)" : "var(--text-muted)",
             }}
           >
             <FiFolder size={12} />
-            Saved Teams
+            <span className="text-center leading-tight">Saved Teams</span>
           </button>
           <button
             type="button"
@@ -267,19 +295,36 @@ const TeamToolsModal = ({
               setActiveTab("share");
               triggerHaptic("light", { enabled: hapticsEnabled, mobileOnly: true });
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[0.78rem] font-semibold transition-colors duration-200"
+            className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[0.72rem] sm:text-[0.78rem] font-semibold transition-colors duration-200"
             style={{
-              background: activeTab === "share" ? "var(--accent-soft)" : "transparent",
-              border: activeTab === "share" ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
+              background: activeTab === "share" ? "var(--version-color-soft, var(--accent-soft))" : "transparent",
+              border: activeTab === "share" ? "1px solid var(--version-color-border, rgba(218, 44, 67, 0.34))" : "1px solid transparent",
               color: activeTab === "share" ? "var(--text-primary)" : "var(--text-muted)",
             }}
           >
             <FiShare2 size={12} />
-            Share/Import
+            <span className="text-center leading-tight">Share/Import</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("battle");
+              setBattleMounted(true);
+              triggerHaptic("light", { enabled: hapticsEnabled, mobileOnly: true });
+            }}
+            className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[0.72rem] sm:text-[0.78rem] font-semibold transition-colors duration-200"
+            style={{
+              background: activeTab === "battle" ? "var(--version-color-soft, var(--accent-soft))" : "transparent",
+              border: activeTab === "battle" ? "1px solid var(--version-color-border, rgba(218, 44, 67, 0.34))" : "1px solid transparent",
+              color: activeTab === "battle" ? "var(--text-primary)" : "var(--text-muted)",
+            }}
+          >
+            <FiTarget size={12} />
+            <span className="text-center leading-tight">Battle Planner</span>
           </button>
         </div>
 
-        <div key={tabTransitionKey} className="mt-4 animate-accordion-down max-h-[min(68dvh,36rem)] overflow-y-auto pr-1 custom-scrollbar">
+        <div key={tabTransitionKey} className="mt-4 animate-accordion-down flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden pr-1 custom-scrollbar">
           {activeTab === "saved" ? (
             isAuthenticated ? (
               <SavedTeamsPanel
@@ -302,8 +347,22 @@ const TeamToolsModal = ({
                 Sign in to save and manage teams.
               </p>
             )
+          ) : activeTab === "battle" ? (
+            battleMounted ? (
+              <BattlePlannerTab
+                myTeam={myTeam}
+                generation={generation}
+                gameId={gameId}
+                selectedVersionId={selectedVersionId ?? null}
+                isAuthenticated={isAuthenticated}
+                pokemonPool={pokemonPool}
+                allPokemonPool={allPokemonPool}
+                teamCheckpoint={teamCheckpoint}
+                onTeamCheckpointChange={undefined}
+              />
+            ) : null
           ) : (
-            <div>
+            <div className="min-w-0">
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button type="button" onClick={copyShareLink} className="btn-secondary !justify-start !py-2">
                   <FiLink size={13} />
