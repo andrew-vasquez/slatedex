@@ -16,7 +16,12 @@ import {
 import { useToastContext } from "@/app/game/hooks/useToast";
 import { pokemonSpriteSrc } from "@/lib/image";
 import { getPokemonFirstGym } from "@/lib/pokemonAvailability";
-import { getMaxStageForLevel, getEvolutionLevelCapForGym } from "@/lib/evolutionLevels";
+import {
+  getMaxStageForLevel,
+  getEvolutionLevelCapForGym,
+  getMaxStageForCheckpointWithStones,
+} from "@/lib/evolutionLevels";
+import InfoTooltip from "@/components/ui/InfoTooltip";
 import OpponentSourceSwitch, { type OpponentSourceMode } from "./OpponentSourceSwitch";
 import BossPresetPicker from "./BossPresetPicker";
 import OpponentTeamEditor from "./OpponentTeamEditor";
@@ -63,13 +68,15 @@ function getCheckpointMaxEvolutionStage(checkpoint: BattleCheckpoint | null): nu
 
 /**
  * Per-Pokemon max evolution stage at a checkpoint.
- * Uses level-aware evolution data when available; otherwise falls back to stage-based heuristics.
+ * Uses level-aware evolution data when available; for RSE, also considers stone availability
+ * (e.g. Ludicolo/Shiftry only when Water/Leaf Stone is obtainable).
  * Uses conservative level (range min) so we don't assume player has max-level Pokemon.
  */
 function getMaxStageForCheckpoint(
   pokemon: Pokemon,
   checkpoint: BattleCheckpoint | null,
-  lookupPool: Pokemon[]
+  lookupPool: Pokemon[],
+  gameId: number
 ): number {
   const fallback = getCheckpointMaxEvolutionStage(checkpoint);
   if (!checkpoint?.stage || checkpoint.stage === "elite4" || checkpoint.stage === "champion") {
@@ -80,6 +87,9 @@ function getMaxStageForCheckpoint(
   const line = resolveEvolutionLine(pokemon, lookupPool);
   const baseName = line[0];
   if (!baseName) return fallback;
+  // Stone-aware logic for RSE (gameId 3)
+  const stoneBased = getMaxStageForCheckpointWithStones(baseName, levelCap, gameId, order);
+  if (stoneBased !== null) return stoneBased;
   const levelBased = getMaxStageForLevel(baseName, levelCap);
   return levelBased ?? fallback;
 }
@@ -127,10 +137,11 @@ type CoercedStatus =
 function coercePokemonToCheckpointForm(
   pokemon: Pokemon | null,
   checkpoint: BattleCheckpoint | null,
-  lookupPool: Pokemon[]
+  lookupPool: Pokemon[],
+  gameId: number
 ): Pokemon | null {
   if (!pokemon) return null;
-  const maxStage = getMaxStageForCheckpoint(pokemon, checkpoint, lookupPool);
+  const maxStage = getMaxStageForCheckpoint(pokemon, checkpoint, lookupPool, gameId);
   const line = resolveEvolutionLine(pokemon, lookupPool);
 
   if (line.length === 0) return withNormalizedEvolutionStage(pokemon);
@@ -279,8 +290,10 @@ export default function BattlePlannerTab({
   // ── Coerced my-team preview (what your team looks like at this story point) ──
   const coercedMyTeam = useMemo((): (Pokemon | null)[] => {
     if (!activeCheckpoint) return myTeam;
-    return myTeam.map((slot) => coercePokemonToCheckpointForm(slot, activeCheckpoint, lookupPool));
-  }, [myTeam, activeCheckpoint, lookupPool]);
+    return myTeam.map((slot) =>
+      coercePokemonToCheckpointForm(slot, activeCheckpoint, lookupPool, gameId)
+    );
+  }, [myTeam, activeCheckpoint, lookupPool, gameId]);
 
   // Richer per-slot coercion status: ok / downgraded / unavailable
   const coercedStatuses = useMemo((): (CoercedStatus | null)[] => {
@@ -289,7 +302,7 @@ export default function BattlePlannerTab({
 
     return myTeam.map((original, i) => {
       if (!original) return null;
-      const maxStage = getMaxStageForCheckpoint(original, activeCheckpoint, lookupPool);
+      const maxStage = getMaxStageForCheckpoint(original, activeCheckpoint, lookupPool, gameId);
       const coerced = coercedMyTeam[i];
       const line = resolveEvolutionLine(original, lookupPool);
       const currentName = normalizeSpeciesName(original.name);
@@ -320,7 +333,7 @@ export default function BattlePlannerTab({
       }
       return { status: "downgraded", from: original.name, to: coerced.name };
     });
-  }, [myTeam, coercedMyTeam, activeCheckpoint, lookupPool, selectedVersionId]);
+  }, [myTeam, coercedMyTeam, activeCheckpoint, lookupPool, selectedVersionId, gameId]);
 
   const hasAnyCoercion = coercedStatuses.some((s) => s && s.status !== "ok");
 
@@ -448,7 +461,7 @@ export default function BattlePlannerTab({
     const normalizedMyTeam =
       realismMode === "strict" && activeCheckpoint
         ? myTeam.map((slot) => {
-            const coerced = coercePokemonToCheckpointForm(slot, activeCheckpoint, lookupPool);
+            const coerced = coercePokemonToCheckpointForm(slot, activeCheckpoint, lookupPool, gameId);
             if (!coerced) return null;
             // Exclude Pokémon unavailable at this gym checkpoint for the selected version
             const gymOrder = activeCheckpoint.gymOrder;
@@ -611,16 +624,19 @@ export default function BattlePlannerTab({
 
             {/* Manual checkpoint picker */}
             <div>
-              <p className="mb-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
-                Story point (optional)
-              </p>
+              <div className="mb-1.5 flex items-center gap-1.5">
+                <InfoTooltip
+                  label={<span className="text-[0.68rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>Story point (optional)</span>}
+                  description="When in the game the battle would occur (e.g. Gym 4, Elite Four). Affects level caps and evolution stages in Strict mode."
+                />
+              </div>
               <div className="flex flex-wrap gap-1.5">
                 {(["none", "elite4", "champion"] as ManualStage[]).map((stage) => (
                   <button
                     key={stage}
                     type="button"
                     onClick={() => setManualStage(stage)}
-                    className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold transition-colors duration-150"
+                    className="rounded-full px-3 py-2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-[0.65rem] sm:text-[0.68rem] font-semibold transition-colors duration-150"
                     style={{
                       background: manualStage === stage ? "var(--version-color-soft, var(--accent-soft))" : "var(--surface-3)",
                       border: manualStage === stage ? "1px solid var(--version-color-border, rgba(218,44,67,0.34))" : "1px solid var(--border)",
@@ -635,7 +651,7 @@ export default function BattlePlannerTab({
                     key={n}
                     type="button"
                     onClick={() => { setManualStage("gym"); setManualGymOrder(n); }}
-                    className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold transition-colors duration-150"
+                    className="rounded-full px-3 py-2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-[0.65rem] sm:text-[0.68rem] font-semibold transition-colors duration-150"
                     style={{
                       background: manualStage === "gym" && manualGymOrder === n ? "var(--version-color-soft, var(--accent-soft))" : "var(--surface-3)",
                       border: manualStage === "gym" && manualGymOrder === n ? "1px solid var(--version-color-border, rgba(218,44,67,0.34))" : "1px solid var(--border)",
@@ -671,9 +687,12 @@ export default function BattlePlannerTab({
           {/* Realism mode */}
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
-                Realism
-              </p>
+              <div className="flex items-center gap-1.5">
+                <InfoTooltip
+                  label={<span className="text-[0.7rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>Realism</span>}
+                  description="Sandbox: all forms allowed, no story constraints. Strict: forces your team to match the story checkpoint (level caps, evolution stages)."
+                />
+              </div>
               <p className="text-[0.65rem] mt-0.5" style={{ color: "var(--text-muted)", opacity: 0.75 }}>
                 {realismMode === "strict"
                   ? activeCheckpoint
@@ -688,7 +707,7 @@ export default function BattlePlannerTab({
                   key={mode}
                   type="button"
                   onClick={() => setRealismMode(mode)}
-                  className="rounded-lg px-2.5 py-1 text-[0.68rem] font-semibold capitalize transition-colors duration-150"
+                  className="rounded-lg px-3 py-2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-[0.68rem] font-semibold capitalize transition-colors duration-150"
                   style={{
                     background: realismMode === mode ? "var(--version-color-soft, var(--accent-soft))" : "transparent",
                     border: realismMode === mode ? "1px solid var(--version-color-border, rgba(218,44,67,0.34))" : "1px solid transparent",
@@ -796,10 +815,10 @@ export default function BattlePlannerTab({
             <button
               type="button"
               onClick={handleAnalyze}
-              disabled={!canAnalyze}
-              className="btn-secondary !py-2 !px-4 flex-1 !justify-center min-h-[44px] font-semibold"
-              style={canAnalyze ? { background: "var(--version-color-soft, var(--accent-soft))", borderColor: "var(--version-color-border, rgba(218,44,67,0.34))" } : {}}
-              aria-label="Run battle analysis"
+              disabled={!canAnalyze || analyzing}
+              className="btn-secondary !py-2 !px-4 flex-1 !justify-center min-h-[44px] font-semibold disabled:opacity-70"
+              aria-label={analyzing ? "Analyzing matchups" : "Run battle analysis"}
+              style={canAnalyze && !analyzing ? { background: "var(--version-color-soft, var(--accent-soft))", borderColor: "var(--version-color-border, rgba(218,44,67,0.34))" } : {}}
             >
               <FiPlay size={13} />
               {analyzing ? "Analyzing…" : "Run Matchups"}
@@ -840,7 +859,7 @@ export default function BattlePlannerTab({
                   type="button"
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="btn-secondary !py-1.5 !px-3"
+                  className="btn-secondary !py-2 !px-4 min-h-[44px]"
                 >
                   {isSaving ? "Saving…" : "Save"}
                 </button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { FiChevronDown, FiSearch, FiX } from "react-icons/fi";
+import InfoTooltip from "@/components/ui/InfoTooltip";
 import { type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import PokemonCard from "@/app/game/PokemonCard";
@@ -472,7 +473,7 @@ const PokemonSelection = ({
                           role="radio"
                           aria-checked={isSelected}
                           onClick={() => onGameChange?.(game.id)}
-                          className="min-w-[8.2rem] rounded-lg px-2.5 py-2 text-[0.78rem] font-semibold leading-tight"
+                          className="min-w-[8.2rem] min-h-[44px] rounded-lg px-2.5 py-2 text-[0.78rem] font-semibold leading-tight inline-flex flex-col items-center justify-center"
                           style={{
                             background: isSelected ? "var(--version-color-soft)" : "transparent",
                             color: isSelected ? "var(--text-primary)" : "var(--text-muted)",
@@ -517,7 +518,7 @@ const PokemonSelection = ({
                           role="radio"
                           aria-checked={isSelected}
                           onClick={() => onVersionChange(version.id)}
-                          className="rounded-lg px-3 py-1.5 text-[0.78rem] font-semibold"
+                          className="rounded-lg px-3 py-2 min-h-[44px] inline-flex items-center justify-center text-[0.78rem] font-semibold"
                           style={{
                             background: isSelected ? "var(--version-color-soft)" : "transparent",
                             color: isSelected ? "var(--version-color)" : "var(--text-muted)",
@@ -534,10 +535,16 @@ const PokemonSelection = ({
                     <div className="mx-1 h-5 w-px" style={{ background: "var(--border)" }} />
 
                     {/* Filter toggle pill */}
-                    <button
-                      type="button"
-                      onClick={() => onVersionFilterChange(!versionFilterEnabled)}
-                      className="rounded-lg px-2.5 py-1.5 text-[0.72rem] font-semibold transition-all duration-150"
+                    <div className="inline-flex items-center gap-1">
+                      <InfoTooltip
+                        iconOnly
+                        triggerLabel="Version filter"
+                        description="Version-only: only Pokémon obtainable in the selected version (e.g. Red). All: includes version exclusives from other versions (e.g. Blue)."
+                      />
+                      <button
+                        type="button"
+                        onClick={() => onVersionFilterChange(!versionFilterEnabled)}
+                        className="rounded-lg px-3 py-2.5 min-h-[44px] inline-flex items-center justify-center text-[0.72rem] font-semibold transition-all duration-150"
                       style={{
                         background: versionFilterEnabled
                           ? "var(--version-color-soft)"
@@ -554,6 +561,7 @@ const PokemonSelection = ({
                     >
                       {versionFilterEnabled ? "Version Only ✓" : "Show All"}
                     </button>
+                    </div>
                   </div>
                 </div>
                 {/* Scroll-right affordance — only visible on mobile where the row can overflow */}
@@ -591,16 +599,19 @@ const PokemonSelection = ({
               >
                 <div className="space-y-2.5 pb-0.5">
                   <div>
-                    <p className="mb-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
-                      Dex Mode
-                    </p>
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                      <InfoTooltip
+                        label={<span className="text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>Dex Mode</span>}
+                        description="Regional: Pokémon in this game's regional Pokédex (what you can catch during the main story). National: full Pokédex for that generation."
+                      />
+                    </div>
                     <div className="inline-flex w-full rounded-xl border p-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
                       <button
                         type="button"
                         onClick={() => onDexModeChange("regional")}
                         disabled={!regionalAvailable}
                         aria-pressed={dexMode === "regional"}
-                        className="flex-1 rounded-lg px-2 py-1.5 text-[0.78rem] font-semibold uppercase tracking-[0.06em] disabled:pointer-events-none disabled:opacity-45"
+                        className="flex-1 min-h-[44px] rounded-lg px-2 py-2 text-[0.78rem] font-semibold uppercase tracking-[0.06em] disabled:pointer-events-none disabled:opacity-45"
                         style={{
                           background: dexMode === "regional" ? "var(--accent-soft)" : "transparent",
                           color: dexMode === "regional" ? "var(--text-primary)" : "var(--text-muted)",
@@ -613,7 +624,7 @@ const PokemonSelection = ({
                         type="button"
                         onClick={() => onDexModeChange("national")}
                         aria-pressed={dexMode === "national"}
-                        className="flex-1 rounded-lg px-2 py-1.5 text-[0.78rem] font-semibold uppercase tracking-[0.06em]"
+                        className="flex-1 min-h-[44px] rounded-lg px-2 py-2 text-[0.78rem] font-semibold uppercase tracking-[0.06em]"
                         style={{
                           background: dexMode === "national" ? "var(--accent-soft)" : "transparent",
                           color: dexMode === "national" ? "var(--text-primary)" : "var(--text-muted)",

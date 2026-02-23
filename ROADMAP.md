@@ -25,7 +25,7 @@
 
 | Feature | Status |
 |---|---|
-| Gen 1-5 team building (6 slots) | Done |
+| Gen 1-9 team building (6 slots) | Done |
 | Drag-and-drop reordering (desktop) | Done |
 | Defensive type coverage heatmap | Done |
 | Offensive type coverage heatmap | Done |
@@ -46,7 +46,7 @@
 
 | Feature | Priority |
 |---|---|
-| Gen 6-9 support | Critical |
+| Gen 6-9 support | Done |
 | Password reset flow | Critical |
 | Email verification | Critical |
 | Google + Discord OAuth | High |
@@ -82,7 +82,7 @@
 ## Pricing Tiers
 
 ### Free (Guest — No Account)
-- Gen 1-5 team building
+- Gen 1-9 team building
 - Defensive + offensive type coverage
 - Rule-based Smart Picks
 - Team sharing via URL
@@ -209,7 +209,7 @@ These must all be complete before launching any paid tier.
 Do not ship subscriptions until every box is checked.
 
 ```
-[ ] 1. Gen 6-9 support (Kalos, Alola, Galar, Paldea) + Fairy type
+[x] 1. Gen 6-9 support (Kalos, Alola, Galar, Paldea) + Fairy type — DONE
 [ ] 2. Password reset flow via email (Resend)
 [ ] 3. Email verification on signup
 [ ] 4. Google + Discord OAuth (Better Auth supports this natively)
@@ -225,7 +225,7 @@ Do not ship subscriptions until every box is checked.
 
 | Item | Why It Blocks Launch |
 |---|---|
-| Gen 6-9 | 60%+ of players are on Gen 6+ games. Missing gens = immediate churn |
+| Gen 6-9 | ~~60%+ of players are on Gen 6+ games. Missing gens = immediate churn~~ — DONE |
 | Password reset | Users who forget passwords lose all saved teams permanently |
 | Email verification | Required for trust and to prevent throwaway account abuse |
 | OAuth | Email-only signup has high drop-off. Discord is where this community lives |
@@ -247,7 +247,7 @@ Do not ship subscriptions until every box is checked.
 **Goal: Fill all baseline gaps. No payments, no AI yet.**
 
 #### Deliverables
-- Gen 6-9 + Fairy type (Kalos, Alola, Galar, Paldea)
+- ~~Gen 6-9 + Fairy type (Kalos, Alola, Galar, Paldea)~~ — DONE
 - Password reset + email verification via Resend
 - Google + Discord OAuth via Better Auth
 - Mobile layout — touch-friendly team slots, bottom sheet drawer
@@ -274,11 +274,11 @@ Do not ship subscriptions until every box is checked.
 - Stripe integration (monthly + annual subscriptions, billing portal)
 - Feature gating middleware in backend (tier checks on every protected route)
 - Free tier limits enforced at API level
-- Plus tier: Gen 6-9 unlock, unlimited saves, Showdown export, team image card
+- Plus tier: unlimited saves, Showdown export, team image card (Gen 1-9 already supported)
 - Pro tier: VGC/Smogon filtering, EV optimizer, competitive formats, API key
 - Upgrade prompts at natural friction points:
   - Hitting 5-team limit → "Upgrade to Plus for unlimited teams"
-  - Trying to access Gen 7 → "Gen 7+ is a Plus feature"
+  - (Gen 1-9 already supported; no feature gate for generations)
 - Annual plan with ~35-37% discount
 - Referral link system (shareable link gives referrer 1 month free)
 - Billing portal for managing/canceling subscriptions
@@ -502,7 +502,7 @@ anything freely available in this niche. That is your moat.
 
 The path to monetization is straightforward:
 
-1. Close the Gen 6-9 gap and auth gaps first (Phase 1)
+1. Close auth gaps first (Phase 1); Gen 1-9 already supported
 2. Ship payments with clear feature gates (Phase 2)
 3. Add AI as the Pro differentiator (Phase 3)
 4. Let community sharing drive organic growth (Phase 4)

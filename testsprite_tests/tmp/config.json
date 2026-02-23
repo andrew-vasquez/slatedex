@@ -1,0 +1,17 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "executionArgs": {
+    "projectName": "poke-builder",
+    "projectPath": "/Users/andrewvasquez/repos/Side Project Repos/poke-builder",
+    "testIds": [],
+    "additionalInstruction": "",
+    "envs": {
+      "API_KEY": "sk-user-tP0IknABFFDD2-61d5eyYy5DOW1CdVkSnrm356T1gTtcDmVmnFpLR0gSV6ZXsCGCaxBWAys2BEu1o63SFQ-PcEjXjQDzephoEbp8PWV7AncZ9qSMlo9ppum6fHyh5Oj5z0Q"
+    }
+  },
+  "serverPort": 56980,
+  "proxy": "http://d9cbbbe9-cd38-45f8-8fe1-ef6c6ab0182c:Bs1E9EesRkye8s3g286nSyZ4H992uDRr@tun.testsprite.com:8080"
+}

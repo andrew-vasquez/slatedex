@@ -1,5 +1,9 @@
 # Repository Guidelines
 
+## Scope
+
+Pokémon team builder supporting **Generations 1–9** and **all Pokémon**. Games from Red/Blue/Yellow through Scarlet/Violet. PokeAPI provides species data; some features (Battle Planner presets, version exclusives) have curated data for earlier gens with fallbacks for newer ones.
+
 ## Project Structure & Module Organization
 
 Monorepo with two top-level directories:

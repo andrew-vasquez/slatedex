@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { GENERATION_META } from "@/lib/pokemon";
+import { GENERATION_META, getGenerationSlug } from "@/lib/pokemon";
 import { SITE_URL } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -21,7 +21,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
 
   const generationPages: MetadataRoute.Sitemap = GENERATION_META.map((gen) => ({
-    url: `${SITE_URL}/game/${gen.generation}`,
+    url: `${SITE_URL}/game/${getGenerationSlug(gen.generation)}`,
     lastModified,
     changeFrequency: "weekly",
     priority: 0.8,

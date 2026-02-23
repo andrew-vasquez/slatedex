@@ -14,10 +14,10 @@ No test framework is configured.
 
 ## Architecture
 
-Next.js 16 App Router (TypeScript) with React Server Components:
+Pokémon team builder supporting **Gen 1–9** and **all Pokémon** (Red/Blue through Scarlet/Violet). Next.js 16 App Router (TypeScript) with React Server Components:
 
 - `/` — `app/page.tsx` (RSC) → renders `GameSelector` (client component, game picker)
-- `/game/[gameId]` — `app/game/[gameId]/page.tsx` (RSC) → fetches Pokémon data server-side via PokeAPI, renders `TeamBuilder` (client component)
+- `/game/[generation]` — `app/game/[generation]/page.tsx` (RSC) → slug format gen1–gen9; fetches Pokémon data server-side via PokeAPI, renders `TeamBuilder` (client component)
 
 ### Data Flow
 

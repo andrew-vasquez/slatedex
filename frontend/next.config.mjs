@@ -55,6 +55,19 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      { source: "/game/1", destination: "/game/gen1", permanent: true },
+      { source: "/game/2", destination: "/game/gen2", permanent: true },
+      { source: "/game/3", destination: "/game/gen3", permanent: true },
+      { source: "/game/4", destination: "/game/gen4", permanent: true },
+      { source: "/game/5", destination: "/game/gen5", permanent: true },
+      { source: "/game/6", destination: "/game/gen6", permanent: true },
+      { source: "/game/7", destination: "/game/gen7", permanent: true },
+      { source: "/game/8", destination: "/game/gen8", permanent: true },
+      { source: "/game/9", destination: "/game/gen9", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

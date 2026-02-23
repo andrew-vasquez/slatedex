@@ -341,7 +341,7 @@ const GameSelector = () => {
                       return (
                         <Link
                           key={game.id}
-                          href={`/game/${gen.generation}`}
+                          href={`/game/gen${gen.generation}`}
                           onClick={() => handleGameClick(gen.generation, game.id)}
                           className="group animate-fade-in-up relative block h-full overflow-hidden rounded-2xl cursor-pointer"
                           style={{ animationDelay: `${game.animDelay}ms` }}
@@ -502,7 +502,7 @@ const GameSelector = () => {
 
                     return (
                       <Link
-                        href={`/game/${gen.generation}`}
+                        href={`/game/gen${gen.generation}`}
                         onClick={() => handleGameClick(gen.generation, game.id)}
                         className="group animate-fade-in-up relative block overflow-hidden rounded-2xl cursor-pointer"
                         style={{ animationDelay: `${game.animDelay}ms` }}

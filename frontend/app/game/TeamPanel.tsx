@@ -1,6 +1,7 @@
 "use client";
 
 import { FiTool } from "react-icons/fi";
+import InfoTooltip from "@/components/ui/InfoTooltip";
 import TeamSlot from "./TeamSlot";
 import PokemonCard from "@/app/game/PokemonCard";
 import type { Pokemon } from "@/lib/types";
@@ -42,9 +43,16 @@ const TeamPanel = ({
     <section className="panel p-3.5 sm:p-5" aria-labelledby="team-heading">
       <div className="mb-2.5 flex items-start justify-between gap-3 sm:mb-5 sm:items-center">
         <div className="min-w-0">
-          <h2 id="team-heading" className="font-display text-base leading-tight sm:text-lg" style={{ color: "var(--text-primary)" }}>
-            Your Team
-          </h2>
+          <div className="flex items-center gap-1.5">
+            <h2 id="team-heading" className="font-display text-base leading-tight sm:text-lg" style={{ color: "var(--text-primary)" }}>
+              Your Team
+            </h2>
+            <InfoTooltip
+              iconOnly
+              triggerLabel="Locked slots"
+              description="Locked slots are protected from Smart Picks replacements and drag-to-replace. Use when a slot is finalized. Tap the lock icon on any slot to toggle."
+            />
+          </div>
           <p className="mt-1 text-xs leading-tight sm:mt-0.5 sm:text-sm" style={{ color: "var(--text-muted)" }}>
             Fill all 6 slots to unlock full analysis.
           </p>
