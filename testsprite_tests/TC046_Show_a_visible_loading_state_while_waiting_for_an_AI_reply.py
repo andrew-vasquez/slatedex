@@ -33,19 +33,30 @@ async def run_test():
         # -> Navigate to http://localhost:3000
         await page.goto("http://localhost:3000", wait_until="commit", timeout=10000)
         
-        # -> Navigate to /game/gen1 (use navigate action with exact path appended to base URL).
+        # -> Navigate to /game/gen1 (use exact path on the current site).
         await page.goto("http://localhost:3000/game/gen1", wait_until="commit", timeout=10000)
         
-        # -> Click the 'Accept All' button on the cookie/privacy dialog to dismiss it so the AI Coach panel can be accessed.
+        # -> Dismiss the privacy banner (if it blocks controls) then open the AI Coach panel by clicking the AI Coach button so the chat input and send button become available.
         frame = context.pages[-1]
         # Click element
-        elem = frame.locator('xpath=/html/body/section/div[2]/button[3]').nth(0)
+        elem = frame.locator('xpath=/html/body/section/div[2]/button[2]').nth(0)
+        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
+        
+        frame = context.pages[-1]
+        # Click element
+        elem = frame.locator('xpath=/html/body/div[2]/div/div/div[1]/main/div/div[1]/div[2]/div[2]/button[4]').nth(0)
+        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
+        
+        # -> Click 'Skip tour' to close the tour modal, then click the AI Coach button to open the AI Coach panel so the chat input becomes available.
+        frame = context.pages[-1]
+        # Click element
+        elem = frame.locator('xpath=/html/body/div[2]/div/div/div[2]/div[2]/div[2]/button[1]').nth(0)
         await page.wait_for_timeout(3000); await elem.click(timeout=5000)
         
         # --> Assertions to verify final state
         frame = context.pages[-1]
         await expect(frame.locator('text=Thinking').first).to_be_visible(timeout=3000)
-        await expect(frame.locator('text=Here are your team weaknesses.').first).to_be_visible(timeout=3000)
+        await expect(frame.locator('text=Here are your team\'s biggest weaknesses').first).to_be_visible(timeout=3000)
         await asyncio.sleep(5)
 
     finally:

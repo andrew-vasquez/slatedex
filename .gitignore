@@ -26,3 +26,10 @@ package-lock.json
 *.njsproj
 *.sln
 *.sw?
+
+# TestSprite generated output and secrets
+testsprite_tests/tmp/
+backend/testsprite_tests/tmp/
+**/testsprite**/config.json
+testsprite_tests/*-report.*
+backend/testsprite_tests/*-report.*

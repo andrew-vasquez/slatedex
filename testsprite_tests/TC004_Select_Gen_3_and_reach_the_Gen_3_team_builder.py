@@ -33,24 +33,36 @@ async def run_test():
         # -> Navigate to http://localhost:3000
         await page.goto("http://localhost:3000", wait_until="commit", timeout=10000)
         
-        # -> Navigate to /play as the test step requires a direct navigation to that path.
+        # -> Navigate to /play (use navigate action to http://localhost:3000/play).
         await page.goto("http://localhost:3000/play", wait_until="commit", timeout=10000)
         
-        # -> Find/scroll to the Gen 3 heading and verify the text is visible, then click the Gen 3 game card.
+        # -> Click the Gen 3 game card for Ruby/Sapphire/Emerald (anchor element index 691) to navigate to the game team builder page.
         frame = context.pages[-1]
         # Click element
         elem = frame.locator('xpath=/html/body/div[2]/div/main/div[3]/section[3]/div[2]/a[1]').nth(0)
         await page.wait_for_timeout(3000); await elem.click(timeout=5000)
         
+        # -> Click the Gen 3 game card inner article (element index 692) to attempt navigation to the Gen 3 team builder page.
+        frame = context.pages[-1]
+        # Click element
+        elem = frame.locator('xpath=/html/body/div[3]/div/main/div[3]/section[3]/div[2]/a[1]/article').nth(0)
+        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
+        
         # --> Assertions to verify final state
         frame = context.pages[-1]
-        # Verify the "Gen 3" heading/text is visible
-        assert await frame.locator('xpath=/html/body/div[3]/div/main/div/section/div[1]/div[1]/div[2]/div[2]').is_visible()
-        gen3_text = await frame.locator('xpath=/html/body/div[3]/div/main/div/section/div[1]/div[1]/div[2]/div[2]').inner_text()
-        assert "Gen 3" in gen3_text, f'Expected "Gen 3" in element text, got: {gen3_text}'
+        # Assert the Gen 3 game card (anchor) is visible and contains text "Gen 3"
+        await frame.locator('xpath=/html/body/div[2]/div/main/div[3]/section[3]/div[2]/a[1]').wait_for(state='visible', timeout=5000)
+        text = await frame.locator('xpath=/html/body/div[2]/div/main/div[3]/section[3]/div[2]/a[1]').inner_text()
+        assert 'Gen 3' in text, f"Expected 'Gen 3' in element text: {text}"
         
-        # Cannot proceed to click a Gen 3 game card because there is no specific <a> or <button> xpath for the game card in the available elements.
-        raise AssertionError("Clickable Gen 3 game card element not found on the page (no anchor/button xpath available). Cannot perform navigation to team builder. Task marked as done.")
+        # URL assertions for navigation to the game team builder page
+        assert "/game/" in frame.url
+        assert "gen3" in frame.url
+        
+        # Assert the Gen 3 team builder page shows "Team Builder"
+        await frame.locator('xpath=/html/body/div[3]/div/main/div[3]/section[3]/div[2]/a[1]/article').wait_for(state='visible', timeout=5000)
+        text2 = await frame.locator('xpath=/html/body/div[3]/div/main/div[3]/section[3]/div[2]/a[1]/article').inner_text()
+        assert 'Team Builder' in text2, f"Expected 'Team Builder' in element text: {text2}"
         await asyncio.sleep(5)
 
     finally:

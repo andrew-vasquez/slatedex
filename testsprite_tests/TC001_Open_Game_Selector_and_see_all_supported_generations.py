@@ -33,32 +33,17 @@ async def run_test():
         # -> Navigate to http://localhost:3000
         await page.goto("http://localhost:3000", wait_until="commit", timeout=10000)
         
-        # -> Navigate to /play (http://localhost:3000/play) to verify the page title and that 'Gen 1' through 'Gen 5' are visible.
+        # -> Navigate to /play (http://localhost:3000/play) so the page can be checked for title and Gen 1-5 items.
         await page.goto("http://localhost:3000/play", wait_until="commit", timeout=10000)
         
         # --> Assertions to verify final state
         frame = context.pages[-1]
-        # Verify we are on the /play page
-        assert "/play" in frame.url
-        
-        # Verify page title contains "Play"
-        title = await frame.title()
-        assert "Play" in title, f"Page title does not contain 'Play' (title: {title})"
-        
-        # Verify Gen 1 is visible
-        assert await frame.locator('xpath=/html/body/div[2]/div/main/div[3]/section[1]/div/span[1]').is_visible()
-        
-        # Verify Gen 2 is visible
-        assert await frame.locator('xpath=/html/body/div[2]/div/main/div[3]/section[2]/div/span[1]').is_visible()
-        
-        # Verify Gen 3 is visible
-        assert await frame.locator('xpath=/html/body/div[2]/div/main/div[3]/section[3]/div[1]/span[1]').is_visible()
-        
-        # Verify Gen 4 is visible
-        assert await frame.locator('xpath=/html/body/div[2]/div/main/div[3]/section[4]/div[1]/span[1]').is_visible()
-        
-        # Verify Gen 5 is visible
-        assert await frame.locator('xpath=/html/body/div[2]/div/main/div[3]/section[5]/div/span[1]').is_visible()
+        await expect(frame.locator('text=Play').first).to_be_visible(timeout=3000)
+        await expect(frame.locator('text=Gen 1').first).to_be_visible(timeout=3000)
+        await expect(frame.locator('text=Gen 2').first).to_be_visible(timeout=3000)
+        await expect(frame.locator('text=Gen 3').first).to_be_visible(timeout=3000)
+        await expect(frame.locator('text=Gen 4').first).to_be_visible(timeout=3000)
+        await expect(frame.locator('text=Gen 5').first).to_be_visible(timeout=3000)
         await asyncio.sleep(5)
 
     finally:

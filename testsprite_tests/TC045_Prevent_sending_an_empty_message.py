@@ -33,8 +33,20 @@ async def run_test():
         # -> Navigate to http://localhost:3000
         await page.goto("http://localhost:3000", wait_until="commit", timeout=10000)
         
-        # -> Navigate to /game/gen1 (use site base URL + path).
+        # -> Navigate to /game/gen1
         await page.goto("http://localhost:3000/game/gen1", wait_until="commit", timeout=10000)
+        
+        # -> Click on the 'AI Coach' button to open the AI Coach panel (use element index 920).
+        frame = context.pages[-1]
+        # Click element
+        elem = frame.locator('xpath=/html/body/div[2]/div/div/div[1]/main/div/div[1]/div[2]/div[2]/button[4]').nth(0)
+        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
+        
+        # -> Dismiss the tour modal by clicking 'Skip tour' so the AI Coach panel and message input become accessible.
+        frame = context.pages[-1]
+        # Click element
+        elem = frame.locator('xpath=/html/body/div[2]/div/div/div[2]/div[2]/div[2]/button[1]').nth(0)
+        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
         
         # --> Assertions to verify final state
         frame = context.pages[-1]

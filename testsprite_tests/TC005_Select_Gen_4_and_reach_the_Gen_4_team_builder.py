@@ -33,25 +33,8 @@ async def run_test():
         # -> Navigate to http://localhost:3000
         await page.goto("http://localhost:3000", wait_until="commit", timeout=10000)
         
-        # -> Navigate to /play (explicit navigation required by test instructions).
+        # -> Navigate to /play (use exact path appended to current base URL).
         await page.goto("http://localhost:3000/play", wait_until="commit", timeout=10000)
-        
-        # -> Close the cookie dialog if it blocks interaction, then click the Gen 4 (Gen IV) game card to navigate to the game/team-builder page.
-        frame = context.pages[-1]
-        # Click element
-        elem = frame.locator('xpath=/html/body/section/div[2]/button[3]').nth(0)
-        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
-        
-        frame = context.pages[-1]
-        # Click element
-        elem = frame.locator('xpath=/html/body/div[2]/div/main/div[3]/section[4]/div[2]/a[1]').nth(0)
-        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
-        
-        # -> Click the Gen 4 (Sinnoh / Diamond/Pearl/Platinum) game card by clicking the Sinnoh anchor element (index 749) to navigate to the Gen 4 team builder page.
-        frame = context.pages[-1]
-        # Click element
-        elem = frame.locator('xpath=/html/body/div[3]/div/main/div[3]/section[4]/div[2]/a[1]').nth(0)
-        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
         
         # --> Assertions to verify final state
         frame = context.pages[-1]

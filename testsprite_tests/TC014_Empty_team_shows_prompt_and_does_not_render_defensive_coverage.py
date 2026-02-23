@@ -36,13 +36,13 @@ async def run_test():
         # -> Navigate to /play
         await page.goto("http://localhost:3000/play", wait_until="commit", timeout=10000)
         
-        # -> Click on the Generation 1 (Gen 1) game option (element [589]) to open the game page.
+        # -> Click the Generation 1 (Red/Blue/Yellow) game option to open the game page.
         frame = context.pages[-1]
         # Click element
         elem = frame.locator('xpath=/html/body/div[2]/div/main/div[3]/section[1]/a').nth(0)
         await page.wait_for_timeout(3000); await elem.click(timeout=5000)
         
-        # -> Click on the Generation 1 game card using a different interactive element to try to open the game page and expose the prompt/heatmap area.
+        # -> Click the Generation 1 (Red/Blue/Yellow) game option to open the game page (click element index 613), then verify the URL and page content.
         frame = context.pages[-1]
         # Click element
         elem = frame.locator('xpath=/html/body/div[3]/div/main/div[3]/section[1]/a/article/div[2]').nth(0)
@@ -50,15 +50,9 @@ async def run_test():
         
         # --> Assertions to verify final state
         frame = context.pages[-1]
-        assert "/game/" in frame.url, f"URL does not contain /game/: {frame.url}"
-        page_html = await frame.content()
-        prompt = "Add a Pokemon to view defensive coverage"
-        # If the specific prompt text/feature does not exist on the page, report and stop (task done)
-        if prompt not in page_html:
-            raise AssertionError("Feature missing: prompt text 'Add a Pokemon to view defensive coverage' not found on page. Marking task done.")
-        # Verify that the heatmap/header 'Defensive Coverage' is not visible for an empty team
-        if "Defensive Coverage" in page_html:
-            raise AssertionError("'Defensive Coverage' is visible but expected to be hidden when team is empty.")
+        assert '/game/' in frame.url
+        await expect(frame.locator('text=Add a Pokemon to view defensive coverage').first).to_be_visible(timeout=3000)
+        await expect(frame.locator('text=Defensive Coverage').first).to_be_hidden(timeout=3000)
         await asyncio.sleep(5)
 
     finally:
