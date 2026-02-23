@@ -92,3 +92,94 @@ export interface GenerationMeta {
   starters: string[];
   legendaries: string[];
 }
+
+// ── Battle Planner types ─────────────────────────────────────────────────────
+
+export type MatchupPrediction = "win" | "lean-win" | "even" | "lean-loss" | "loss";
+export type OpponentTeamSource = "manual" | "preset";
+export type BattleCheckpointStage = "gym" | "elite4" | "champion";
+export type BattleRealismMode = "strict" | "sandbox";
+
+export interface BattleCheckpoint {
+  bossName: string | null;
+  stage: BattleCheckpointStage | null;
+  gymOrder: number | null;
+}
+
+export interface OpponentTeam {
+  id?: string;
+  name: string;
+  generation: number;
+  gameId: number;
+  selectedVersionId: string | null;
+  source: OpponentTeamSource;
+  presetBossKey?: string | null;
+  slots: (Pokemon | null)[];
+  notes?: string | null;
+}
+
+export interface MatchupMatrixCell {
+  mySlotIndex: number;
+  opponentSlotIndex: number;
+  myPokemonId: number;
+  opponentPokemonId: number;
+  score: number;
+  prediction: MatchupPrediction;
+  reasons: string[];
+}
+
+export interface RecommendedAssignment {
+  mySlotIndex: number;
+  opponentSlotIndex: number;
+  myPokemonId: number;
+  opponentPokemonId: number;
+  score: number;
+  prediction: MatchupPrediction;
+}
+
+export interface BattlePlannerResult {
+  matrix: MatchupMatrixCell[];
+  assignments: RecommendedAssignment[];
+  totalScore: number;
+  effectiveTotalScore: number;
+  realism: {
+    mode: BattleRealismMode;
+    checkpoint: BattleCheckpoint | null;
+    rules: {
+      label: string;
+      levelMin: number;
+      levelMax: number;
+      maxEvolutionStage: number;
+    } | null;
+    warnings: Array<{
+      team: "myTeam" | "opponentTeam";
+      slotIndex: number;
+      pokemonName: string;
+      code: string;
+      message: string;
+      penalty: number;
+      severity: "warning" | "violation";
+    }>;
+    violations: Array<{
+      team: "myTeam" | "opponentTeam";
+      slotIndex: number;
+      pokemonName: string;
+      code: string;
+      message: string;
+      penalty: number;
+      severity: "warning" | "violation";
+    }>;
+    penaltyTotal: number;
+    realismScore: number;
+  };
+}
+
+export interface BossPreset {
+  key: string;
+  name: string;
+  stage: "gym" | "elite4" | "champion";
+  gymOrder?: number;
+  versionIds: string[];
+  rosterPokemonIds: number[];
+  rosterLevels?: number[];
+}

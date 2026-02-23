@@ -26,6 +26,7 @@ interface TeamBuilderHeaderProps {
   onSettingsVersionThemingChange: (value: boolean) => void;
   onSettingsMobileHapticsChange: (value: boolean) => void;
   onSettingsReset: () => void;
+  isAiCoachOpen?: boolean;
 }
 
 const GENERATION_MENU_ANIMATION_MS = 260;
@@ -57,7 +58,19 @@ const TeamBuilderHeader = ({
   onSettingsVersionThemingChange,
   onSettingsMobileHapticsChange,
   onSettingsReset,
+  isAiCoachOpen = false,
 }: TeamBuilderHeaderProps) => {
+  // Delay restoring the header on mobile so it doesn't pop in during the AI panel's
+  // 260ms exit animation. Hides instantly when AI opens, restores 280ms after it closes.
+  const [isHiddenForAi, setIsHiddenForAi] = useState(isAiCoachOpen);
+  useEffect(() => {
+    if (isAiCoachOpen) {
+      setIsHiddenForAi(true);
+    } else {
+      const timer = window.setTimeout(() => setIsHiddenForAi(false), 280);
+      return () => window.clearTimeout(timer);
+    }
+  }, [isAiCoachOpen]);
   const completion = Math.round((teamLength / 6) * 100);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isGenerationMenuOpen, setIsGenerationMenuOpen] = useState(false);
@@ -353,7 +366,7 @@ const TeamBuilderHeader = ({
   return (
     <header
       id="team-builder-header"
-      className="glass sticky top-0 z-40 border-b lg:fixed lg:left-0 lg:right-0"
+      className={`glass sticky top-0 z-40 border-b lg:fixed lg:left-0 lg:right-0${isHiddenForAi ? " max-lg:hidden" : ""}`}
       style={{ borderColor: "var(--border)" }}
       role="banner"
     >
@@ -414,7 +427,7 @@ const TeamBuilderHeader = ({
 
                       {shouldRenderGenerationMenu && (
                         <div
-                          className={`absolute left-0 top-[calc(100%+0.35rem)] z-[85] w-64 rounded-xl border p-1.5 origin-top transform-gpu transition-[opacity,transform] max-h-[70vh] overflow-y-auto custom-scrollbar ${generationMenuAnimationClass}`}
+                          className={`absolute left-0 top-[calc(100%+0.35rem)] z-[85] w-64 max-w-[calc(100vw-1.5rem)] rounded-xl border p-1.5 origin-top transform-gpu transition-[opacity,transform] max-h-[70vh] overflow-y-auto custom-scrollbar ${generationMenuAnimationClass}`}
                           style={{
                             borderColor: "var(--border)",
                             background: "var(--surface-1)",

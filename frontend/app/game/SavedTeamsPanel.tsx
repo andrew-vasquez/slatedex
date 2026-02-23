@@ -171,7 +171,7 @@ const SavedTeamsPanel = ({
     return team.pokemon.filter((p) => p !== null).length;
   };
 
-  const wrapperClassName = variant === "panel" ? "panel p-4" : "";
+  const wrapperClassName = variant === "panel" ? "panel p-4 min-w-0" : "min-w-0";
 
   return (
     <section className={wrapperClassName} aria-label="Saved teams">
@@ -232,8 +232,8 @@ const SavedTeamsPanel = ({
                 onClick={() => handleVersionSave([selectedVersionId!])}
                 className="flex-1 rounded-lg border px-3 py-2.5 text-center text-[0.68rem] font-semibold transition-all active:scale-[0.97] disabled:opacity-50"
                 style={{
-                  background: "var(--accent-soft)",
-                  borderColor: "rgba(218,44,67,0.3)",
+                  background: "var(--version-color-soft, var(--accent-soft))",
+                  borderColor: "var(--version-color-border, rgba(218,44,67,0.3))",
                   color: "var(--text-primary)",
                 }}
               >
@@ -302,7 +302,7 @@ const SavedTeamsPanel = ({
                   paddingTop: isDeleting ? "0px" : undefined,
                   paddingBottom: isDeleting ? "0px" : undefined,
                   overflow: "hidden",
-                  background: isActive ? "var(--accent-soft)" : "var(--surface-2)",
+                  background: isActive ? "var(--version-color-soft, var(--accent-soft))" : "var(--surface-2)",
                   border: `1px solid ${isActive ? "rgba(218, 44, 67, 0.3)" : "var(--border)"}`,
                 }}
               >
@@ -318,8 +318,8 @@ const SavedTeamsPanel = ({
                         disabled={isSaving}
                         className="rounded-lg border px-3 py-1.5 text-[0.68rem] font-semibold transition-colors disabled:opacity-50"
                         style={{
-                          background: "var(--accent-soft)",
-                          borderColor: "rgba(218,44,67,0.3)",
+                          background: "var(--version-color-soft, var(--accent-soft))",
+                          borderColor: "var(--version-color-border, rgba(218,44,67,0.3))",
                           color: "var(--text-primary)",
                         }}
                       >

@@ -66,7 +66,7 @@ export function getCheckpointEvolutionStageCap(checkpoint: AiBossGuidanceEntry |
   if (!checkpoint) return 3;
   if (checkpoint.stage !== "gym") return 3;
   const gymOrder = checkpoint.gymOrder ?? 8;
-  if (gymOrder <= 1) return 1;
+  if (gymOrder <= 1) return 2;
   if (gymOrder <= 5) return 2;
   return 3;
 }

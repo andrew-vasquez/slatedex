@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   FiArrowUp,
+  FiChevronDown,
   FiCompass,
   FiCopy,
   FiDownload,
@@ -24,7 +26,9 @@ import {
   type AiUsageSnapshot,
   type TeamStoryCheckpoint,
 } from "@/lib/api";
+import Image from "next/image";
 import { triggerHaptic } from "@/lib/haptics";
+import { pokemonSpriteSrc } from "@/lib/image";
 import { useAnimatedUnmount } from "@/app/game/hooks/useAnimatedUnmount";
 import type { DexMode, Pokemon } from "@/lib/types";
 import { normalizeLookupToken } from "./ai/aiMessageParser";
@@ -55,6 +59,7 @@ interface AiCoachPanelProps {
   boundTeamId: string | null;
   onBindTeamId: (teamId: string | null) => void;
   hapticsEnabled?: boolean;
+  versionCssVars?: React.CSSProperties;
 }
 
 type QueuedAiTask =
@@ -173,6 +178,7 @@ export default function AiCoachPanel({
   boundTeamId,
   onBindTeamId,
   hapticsEnabled = true,
+  versionCssVars,
 }: AiCoachPanelProps) {
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [input, setInput] = useState("");
@@ -181,7 +187,9 @@ export default function AiCoachPanel({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [queuedTasks, setQueuedTasks] = useState<QueuedAiTask[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isDesktop, setIsDesktop] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 768px)").matches : false
+  );
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
   const [revealedLength, setRevealedLength] = useState(0);
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
@@ -201,11 +209,18 @@ export default function AiCoachPanel({
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(() => new Set());
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [usageSnapshot, setUsageSnapshot] = useState<AiUsageSnapshot | null>(null);
   const [usageLoading, setUsageLoading] = useState(false);
   const [swipeDragOffset, setSwipeDragOffset] = useState(0);
+  const [hideMessagesDuringOpenJump, setHideMessagesDuringOpenJump] = useState(false);
+  const {
+    shouldRender: shouldRenderToolbar,
+    isAnimatingOut: isToolbarAnimatingOut,
+    onAnimationEnd: onToolbarAnimationEnd,
+  } = useAnimatedUnmount(isToolbarExpanded, 320);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -221,6 +236,8 @@ export default function AiCoachPanel({
   const swipeTouchLastY = useRef<number | null>(null);
   const swipeTouchLastTime = useRef(0);
   const swipeVelocity = useRef(0);
+  const mobileScrollLockYRef = useRef<number | null>(null);
+  const isReopeningToLatestRef = useRef(false);
 
   const emitHaptic = useCallback(
     (tone: Parameters<typeof triggerHaptic>[0] = "light") => {
@@ -413,15 +430,48 @@ export default function AiCoachPanel({
     return () => clearInterval(interval);
   }, [typingMessageId, messages]);
 
-  // Lock body scroll when open (skip in pinned mode)
+  // Lock body scroll while drawer is mounted (skip in pinned mode).
+  // On mobile, use fixed-position locking to prevent visible page jump on close.
   useEffect(() => {
-    if (!isOpen || isPinned) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (!shouldRender || isPinned) return;
+    const body = document.body;
+    const prevOverflow = body.style.overflow;
+    const prevPosition = body.style.position;
+    const prevTop = body.style.top;
+    const prevLeft = body.style.left;
+    const prevRight = body.style.right;
+    const prevWidth = body.style.width;
+
+    if (isDesktop) {
+      body.style.overflow = "hidden";
+    } else {
+      const scrollY = window.scrollY;
+      mobileScrollLockYRef.current = scrollY;
+      body.style.overflow = "hidden";
+      body.style.position = "fixed";
+      body.style.top = `-${scrollY}px`;
+      body.style.left = "0";
+      body.style.right = "0";
+      body.style.width = "100%";
+    }
+
     return () => {
-      document.body.style.overflow = prev;
+      body.style.overflow = prevOverflow;
+      body.style.position = prevPosition;
+      body.style.top = prevTop;
+      body.style.left = prevLeft;
+      body.style.right = prevRight;
+      body.style.width = prevWidth;
+
+      if (!isDesktop && mobileScrollLockYRef.current !== null) {
+        const restoreY = mobileScrollLockYRef.current;
+        mobileScrollLockYRef.current = null;
+        requestAnimationFrame(() => {
+          window.scrollTo(0, restoreY);
+        });
+      }
     };
-  }, [isOpen, isPinned]);
+  }, [shouldRender, isPinned, isDesktop]);
 
   // Pin/dock mode — push main content aside via data attribute
   useEffect(() => {
@@ -448,7 +498,7 @@ export default function AiCoachPanel({
 
   // Resize drawer to match visual viewport on mobile (keyboard open/close)
   useEffect(() => {
-    if (!isOpen || isDesktop) return;
+    if (!shouldRender || isDesktop) return;
     const vv = window.visualViewport;
     if (!vv) return;
 
@@ -456,8 +506,8 @@ export default function AiCoachPanel({
     if (!drawer) return;
 
     const onResize = () => {
-      const top = vv.offsetTop + safeHeaderOffsetPx;
-      const height = Math.max(0, vv.height - safeHeaderOffsetPx);
+      const top = vv.offsetTop;
+      const height = Math.max(0, vv.height);
       drawer.style.height = `${height}px`;
       drawer.style.top = `${top}px`;
       drawer.style.bottom = "auto";
@@ -476,7 +526,7 @@ export default function AiCoachPanel({
         drawer.style.bottom = "";
       }
     };
-  }, [isOpen, isDesktop, safeHeaderOffsetPx]);
+  }, [shouldRender, isDesktop, safeHeaderOffsetPx]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -540,31 +590,57 @@ export default function AiCoachPanel({
   );
 
   useEffect(() => {
+    if (!isOpen) {
+      isReopeningToLatestRef.current = false;
+      setHideMessagesDuringOpenJump(false);
+      return;
+    }
+    isReopeningToLatestRef.current = true;
+    setHideMessagesDuringOpenJump(true);
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!isOpen || isLoadingHistory) return;
     if (messages.length === 0 && !isSending && !isAnalyzing) return;
     if (!shouldFollowMessagesRef.current) return;
 
     setShowScrollToBottom(false);
+    const reopening = isReopeningToLatestRef.current;
+    const behavior: ScrollBehavior = reopening ? "instant" : "smooth";
 
     let raf1 = 0;
     let raf2 = 0;
     raf1 = requestAnimationFrame(() => {
-      scrollToBottom();
+      scrollToBottom(behavior);
       raf2 = requestAnimationFrame(() => {
-        scrollToBottom();
+        scrollToBottom(behavior);
+        if (reopening) {
+          isReopeningToLatestRef.current = false;
+          setHideMessagesDuringOpenJump(false);
+        }
       });
     });
 
-    const timeout = window.setTimeout(() => {
-      scrollToBottom();
-    }, 220);
+    const timeout = reopening
+      ? null
+      : window.setTimeout(() => {
+          scrollToBottom("smooth");
+        }, 220);
 
     return () => {
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
-      window.clearTimeout(timeout);
+      if (timeout !== null) {
+        window.clearTimeout(timeout);
+      }
     };
   }, [autoScrollKey, scrollToBottom]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!isLoadingHistory) return;
+    setHideMessagesDuringOpenJump(false);
+  }, [isOpen, isLoadingHistory]);
 
   useEffect(() => {
     if (!isOpen || !typingMessageId) return;
@@ -1192,6 +1268,7 @@ export default function AiCoachPanel({
   }, [typingMessageId]);
 
   if (!shouldRender) return null;
+  if (typeof document === "undefined") return null;
 
   const animClass = isDesktop
     ? isAnimatingOut ? "ai-drawer-desktop-out" : "ai-drawer-desktop-in"
@@ -1204,9 +1281,10 @@ export default function AiCoachPanel({
 
   const displayMessages = isSearchOpen && searchQuery.trim() ? searchFilteredMessages : messages;
 
-  return (
+  return createPortal(
+    <div style={{ ...versionCssVars, display: "contents" }}>
     <div
-      className={`fixed inset-0 z-[100]${isPinned && isDesktop ? " pointer-events-none" : ""}`}
+      className={`fixed inset-0 z-[9999]${isPinned && isDesktop ? " pointer-events-none" : ""}`}
       role="dialog"
       aria-modal={!isPinned}
       aria-label="AI Coach"
@@ -1236,7 +1314,7 @@ export default function AiCoachPanel({
         }`}
         onAnimationEnd={onAnimationEnd}
         style={{
-          top: `${safeHeaderOffsetPx}px`,
+          top: isDesktop ? `${safeHeaderOffsetPx}px` : "0",
           ...(isDesktop ? { width: `${drawerWidth}px`, maxWidth: "none" } : {}),
           ...(swipeDragOffset > 0 ? {
             transform: `translateY(${swipeDragOffset}px)`,
@@ -1381,6 +1459,48 @@ export default function AiCoachPanel({
           </div>
         </div>
 
+        {/* Mobile-only mini team strip — replaces the hidden MobileTeamSheet */}
+        {!isDesktop && (
+          <div
+            className="flex items-center gap-1 overflow-x-auto px-4 py-1.5"
+            style={{ borderBottom: "1px solid var(--border)", background: "var(--surface-2)" }}
+            aria-label="Current team"
+          >
+            {team.map((pokemon, i) => (
+              <div
+                key={i}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                style={{
+                  background: pokemon ? "var(--version-color-soft, rgba(218,44,67,0.1))" : "rgba(148,163,184,0.06)",
+                  border: pokemon
+                    ? "1px solid var(--version-color-border, rgba(218,44,67,0.3))"
+                    : "1px dashed rgba(148,163,184,0.2)",
+                }}
+                aria-label={pokemon ? pokemon.name : `Empty slot ${i + 1}`}
+              >
+                {pokemon ? (
+                  <Image
+                    src={pokemonSpriteSrc(pokemon.sprite, pokemon.id)}
+                    alt={pokemon.name}
+                    width={28}
+                    height={28}
+                    sizes="28px"
+                    className="object-contain"
+                    style={{ imageRendering: "pixelated" }}
+                    unoptimized
+                  />
+                ) : (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: "var(--text-muted)", opacity: 0.3 }}>
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                    <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="2" />
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Search bar */}
         {isSearchOpen && (
           <div className="flex items-center gap-2 border-b px-4 py-2 sm:px-5" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
@@ -1462,6 +1582,7 @@ export default function AiCoachPanel({
           <>
             {/* Messages area */}
             <AiMessageList
+              hideContent={hideMessagesDuringOpenJump}
               displayMessages={displayMessages}
               messages={messages}
               pokemonNameLookup={pokemonNameLookup}
@@ -1506,17 +1627,194 @@ export default function AiCoachPanel({
 
             {/* Input area */}
             <div className="ai-drawer-input-area">
-              {canUseAi && (
-                <div className="mb-2 rounded-lg border px-2.5 py-1.5" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
-                  <p className="text-[0.64rem]" style={{ color: "var(--text-muted)" }}>
-                    {usageLoading
-                      ? "Checking monthly AI limits..."
-                      : usageSnapshot
-                        ? `Chat: ${usageSnapshot.chat.used}/${usageSnapshot.chat.limit ?? "∞"} • Analyze: ${usageSnapshot.analyze.used}/${usageSnapshot.analyze.limit ?? "∞"} • Resets ${formatResetDate(usageSnapshot.resetsAt)}`
-                        : "Monthly AI limits unavailable right now."}
-                  </p>
+              {/* ── Mobile compact toolbar ──────────────────────────────── */}
+              {!isDesktop && (
+                <div className="relative mb-2">
+                  {/* Always-visible compact row: Analyze + More toggle */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => void handleAnalyze()}
+                      disabled={!canAnalyze}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-[0.72rem] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{
+                        background: canAnalyze
+                          ? "linear-gradient(135deg, var(--version-color-soft, rgba(218,44,67,0.15)) 0%, transparent 100%)"
+                          : "rgba(107,114,128,0.1)",
+                        border: canAnalyze
+                          ? "1px solid var(--version-color-border, rgba(218,44,67,0.25))"
+                          : "1px solid rgba(107,114,128,0.22)",
+                        color: canAnalyze ? "var(--text-secondary)" : "var(--text-muted)",
+                      }}
+                    >
+                      {isAnalyzing ? (
+                        <FiLoader size={12} className="animate-spin" />
+                      ) : (
+                        <FiZap size={12} style={{ color: canAnalyze ? "var(--version-color, var(--accent))" : "var(--text-muted)" }} />
+                      )}
+                      {isAnalyzing ? "Analyzing…" : isBusy ? "Queue Analyze" : "Analyze"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsToolbarExpanded((prev) => !prev)}
+                      className="ai-coach-more-btn flex shrink-0 items-center gap-1 rounded-lg px-3 py-1.5 text-[0.72rem] font-semibold"
+                      style={{
+                        background: isToolbarExpanded ? "var(--surface-2)" : "transparent",
+                        border: "1px solid var(--border)",
+                        color: isToolbarExpanded ? "var(--text-secondary)" : "var(--text-muted)",
+                      }}
+                      data-expanded={isToolbarExpanded}
+                      aria-expanded={isToolbarExpanded}
+                      aria-label="Toggle checkpoint and quick commands"
+                    >
+                      More
+                      <FiChevronDown
+                        size={11}
+                        aria-hidden="true"
+                        style={{
+                          transform: isToolbarExpanded ? "rotate(180deg)" : "none",
+                          transition: "transform 0.2s ease",
+                        }}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Expandable section */}
+                  {shouldRenderToolbar && (
+                    <div
+                      className="ai-coach-more-panel"
+                      data-state={isToolbarExpanded && !isToolbarAnimatingOut ? "open" : "closed"}
+                      aria-hidden={!isToolbarExpanded}
+                      onTransitionEnd={(event) => {
+                        if (event.propertyName === "max-height") onToolbarAnimationEnd();
+                      }}
+                    >
+                    <div className="ai-coach-more-panel-inner space-y-2">
+                      {canUseAi && (
+                        <div className="rounded-lg border px-2.5 py-1.5" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+                          <p className="text-[0.64rem]" style={{ color: "var(--text-muted)" }}>
+                            {usageLoading
+                              ? "Checking monthly AI limits..."
+                              : usageSnapshot
+                                ? `Chat: ${usageSnapshot.chat.used}/${usageSnapshot.chat.limit ?? "∞"} • Analyze: ${usageSnapshot.analyze.used}/${usageSnapshot.analyze.limit ?? "∞"} • Resets ${formatResetDate(usageSnapshot.resetsAt)}`
+                                : "Monthly AI limits unavailable right now."}
+                          </p>
+                        </div>
+                      )}
+                      {!hasFullParty && (
+                        <p className="text-center text-[0.68rem]" style={{ color: "var(--text-muted)" }}>
+                          Add 6 party members to use Analyze ({filledTeamSize}/6).
+                        </p>
+                      )}
+                      <AiCheckpointSelector
+                        bossGuidanceLoading={bossGuidanceLoading}
+                        checkpointOptions={checkpointOptions}
+                        selectedCheckpoint={selectedCheckpoint}
+                        checkpointPendingLabel={checkpointPendingLabel}
+                        checkpointKeySelection={checkpointKeySelection}
+                        checkpointDropdownOpen={checkpointDropdownOpen}
+                        checkpointDropdownRef={checkpointDropdownRef}
+                        setCheckpointDropdownOpen={setCheckpointDropdownOpen}
+                        handleCheckpointSelection={handleCheckpointSelection}
+                        checkpointCatchables={checkpointCatchables}
+                      />
+                      {/* Quick commands — single scrollable row on mobile */}
+                      <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+                        {quickCommandChips.map((chip) => (
+                          <button
+                            key={chip.id}
+                            type="button"
+                            onClick={() => handleQuickCommand(chip.id)}
+                            disabled={chip.id === "analyze" ? !canAnalyze : !canSendChat}
+                            className="ai-command-chip shrink-0"
+                            title={chip.description}
+                            aria-label={chip.description}
+                          >
+                            {chip.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* ── Desktop: full tools, always visible ─────────────────── */}
+              {isDesktop && (
+                <>
+                  {canUseAi && (
+                    <div className="mb-2 rounded-lg border px-2.5 py-1.5" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+                      <p className="text-[0.64rem]" style={{ color: "var(--text-muted)" }}>
+                        {usageLoading
+                          ? "Checking monthly AI limits..."
+                          : usageSnapshot
+                            ? `Chat: ${usageSnapshot.chat.used}/${usageSnapshot.chat.limit ?? "∞"} • Analyze: ${usageSnapshot.analyze.used}/${usageSnapshot.analyze.limit ?? "∞"} • Resets ${formatResetDate(usageSnapshot.resetsAt)}`
+                            : "Monthly AI limits unavailable right now."}
+                      </p>
+                    </div>
+                  )}
+                  {/* Analyze button */}
+                  <button
+                    type="button"
+                    onClick={() => void handleAnalyze()}
+                    disabled={!canAnalyze}
+                    className="mb-2.5 flex w-full items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{
+                      background: canAnalyze
+                        ? "linear-gradient(135deg, var(--version-color-soft, rgba(218,44,67,0.15)) 0%, transparent 100%)"
+                        : "linear-gradient(135deg, rgba(107,114,128,0.18) 0%, rgba(107,114,128,0.08) 100%)",
+                      border: canAnalyze
+                        ? "1px solid var(--version-color-border, rgba(218,44,67,0.25))"
+                        : "1px solid rgba(107,114,128,0.28)",
+                      color: canAnalyze ? "var(--text-secondary)" : "var(--text-muted)",
+                    }}
+                  >
+                    {isAnalyzing ? (
+                      <FiLoader size={13} className="animate-spin" />
+                    ) : (
+                      <FiZap size={13} style={{ color: canAnalyze ? "var(--version-color, var(--accent))" : "var(--text-muted)" }} />
+                    )}
+                    {isAnalyzing ? "Analyzing..." : isBusy ? "Queue Analyze" : "Analyze My Team"}
+                  </button>
+                  {!hasFullParty && (
+                    <p className="mb-2.5 text-center text-[0.68rem]" style={{ color: "var(--text-muted)" }}>
+                      Add 6 party members to use Analyze My Team ({filledTeamSize}/6).
+                    </p>
+                  )}
+                  <AiCheckpointSelector
+                    bossGuidanceLoading={bossGuidanceLoading}
+                    checkpointOptions={checkpointOptions}
+                    selectedCheckpoint={selectedCheckpoint}
+                    checkpointPendingLabel={checkpointPendingLabel}
+                    checkpointKeySelection={checkpointKeySelection}
+                    checkpointDropdownOpen={checkpointDropdownOpen}
+                    checkpointDropdownRef={checkpointDropdownRef}
+                    setCheckpointDropdownOpen={setCheckpointDropdownOpen}
+                    handleCheckpointSelection={handleCheckpointSelection}
+                    checkpointCatchables={checkpointCatchables}
+                  />
+                  {/* Quick command chips */}
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {quickCommandChips.map((chip) => (
+                      <button
+                        key={chip.id}
+                        type="button"
+                        onClick={() => handleQuickCommand(chip.id)}
+                        disabled={chip.id === "analyze" ? !canAnalyze : !canSendChat}
+                        className="ai-command-chip"
+                        title={chip.description}
+                        aria-label={chip.description}
+                      >
+                        {chip.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* ── Busy indicator (both mobile + desktop) ───────────────── */}
               {(isBusy || queuedTasks.length > 0) && (
                 <div className="mb-2.5 flex items-center justify-between gap-2">
                   <p className="text-[0.68rem]" style={{ color: "var(--text-muted)" }}>
@@ -1540,70 +1838,6 @@ export default function AiCoachPanel({
                   )}
                 </div>
               )}
-
-              {/* Analyze button */}
-              <button
-                type="button"
-                onClick={() => void handleAnalyze()}
-                disabled={!canAnalyze}
-                className="mb-2.5 flex w-full items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{
-                  background: canAnalyze
-                    ? "linear-gradient(135deg, var(--version-color-soft, rgba(218,44,67,0.15)) 0%, transparent 100%)"
-                    : "linear-gradient(135deg, rgba(107,114,128,0.18) 0%, rgba(107,114,128,0.08) 100%)",
-                  border: canAnalyze
-                    ? "1px solid var(--version-color-border, rgba(218,44,67,0.25))"
-                    : "1px solid rgba(107,114,128,0.28)",
-                  color: canAnalyze ? "var(--text-secondary)" : "var(--text-muted)",
-                }}
-              >
-                {isAnalyzing ? (
-                  <FiLoader size={13} className="animate-spin" />
-                ) : (
-                  <FiZap size={13} style={{ color: canAnalyze ? "var(--version-color, var(--accent))" : "var(--text-muted)" }} />
-                )}
-                {isAnalyzing
-                  ? "Analyzing..."
-                  : isBusy
-                    ? "Queue Analyze"
-                    : "Analyze My Team"}
-              </button>
-              {!hasFullParty && (
-                <p className="mb-2.5 text-center text-[0.68rem]" style={{ color: "var(--text-muted)" }}>
-                  Add 6 party members to use Analyze My Team ({filledTeamSize}/6).
-                </p>
-              )}
-
-              {/* Story Checkpoint */}
-              <AiCheckpointSelector
-                bossGuidanceLoading={bossGuidanceLoading}
-                checkpointOptions={checkpointOptions}
-                selectedCheckpoint={selectedCheckpoint}
-                checkpointPendingLabel={checkpointPendingLabel}
-                checkpointKeySelection={checkpointKeySelection}
-                checkpointDropdownOpen={checkpointDropdownOpen}
-                checkpointDropdownRef={checkpointDropdownRef}
-                setCheckpointDropdownOpen={setCheckpointDropdownOpen}
-                handleCheckpointSelection={handleCheckpointSelection}
-                checkpointCatchables={checkpointCatchables}
-              />
-
-              {/* Quick command chips */}
-              <div className="mb-2 flex flex-wrap gap-2 sm:gap-1.5">
-                {quickCommandChips.map((chip) => (
-                  <button
-                    key={chip.id}
-                    type="button"
-                    onClick={() => handleQuickCommand(chip.id)}
-                    disabled={chip.id === "analyze" ? !canAnalyze : !canSendChat}
-                    className="ai-command-chip"
-                    title={chip.description}
-                    aria-label={chip.description}
-                  >
-                    {chip.label}
-                  </button>
-                ))}
-              </div>
 
               {/* Slash command menu */}
               {isSlashMenuOpen && (
@@ -1682,5 +1916,7 @@ export default function AiCoachPanel({
         )}
       </section>
     </div>
+    </div>,
+    document.body
   );
 }

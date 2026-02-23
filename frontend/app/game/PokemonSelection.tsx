@@ -82,28 +82,40 @@ const PokemonSelection = ({
   const SEARCH_HISTORY_KEY = `pokemon_search_history_gen${generation}`;
   const MAX_HISTORY = 5;
 
-  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
-    if (typeof window === "undefined") return [];
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+
+  useEffect(() => {
     try {
       const stored = localStorage.getItem(SEARCH_HISTORY_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch { return []; }
-  });
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) setSearchHistory(parsed);
+      }
+    } catch { /* ignore */ }
+  }, [SEARCH_HISTORY_KEY]);
 
   const addToSearchHistory = useCallback((term: string) => {
     const trimmed = term.trim().toLowerCase();
     if (!trimmed || trimmed.length < 2) return;
-    setSearchHistory((prev) => {
-      const next = [trimmed, ...prev.filter((h) => h !== trimmed)].slice(0, MAX_HISTORY);
-      localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(next));
-      return next;
-    });
-  }, [SEARCH_HISTORY_KEY]);
+    setSearchHistory((prev) =>
+      [trimmed, ...prev.filter((h) => h !== trimmed)].slice(0, MAX_HISTORY)
+    );
+  }, []);
 
   const clearSearchHistory = useCallback(() => {
     setSearchHistory([]);
-    localStorage.removeItem(SEARCH_HISTORY_KEY);
+    try {
+      localStorage.removeItem(SEARCH_HISTORY_KEY);
+    } catch {}
   }, [SEARCH_HISTORY_KEY]);
+
+  // Persist search history whenever it changes (kept outside setState updater to avoid
+  // React StrictMode double-invocation writing stale data).
+  useEffect(() => {
+    try {
+      localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(searchHistory));
+    } catch {}
+  }, [SEARCH_HISTORY_KEY, searchHistory]);
 
   // Compare mode
   const [isCompareMode, setIsCompareMode] = useState(false);
@@ -488,7 +500,8 @@ const PokemonSelection = ({
                 <p className="mb-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
                   Version
                 </p>
-                <div className="custom-scrollbar -mx-0.5 overflow-x-auto pb-1">
+                <div className="relative -mx-0.5">
+                <div className="custom-scrollbar overflow-x-auto pb-1">
                   <div
                     className="inline-flex min-w-max items-center rounded-xl border p-1"
                     style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
@@ -543,6 +556,13 @@ const PokemonSelection = ({
                     </button>
                   </div>
                 </div>
+                {/* Scroll-right affordance — only visible on mobile where the row can overflow */}
+                <div
+                  className="pointer-events-none absolute inset-y-0 right-0 w-8 sm:hidden"
+                  aria-hidden="true"
+                  style={{ background: "linear-gradient(to right, transparent, var(--surface-1))" }}
+                />
+              </div>
               </div>
             )}
 
@@ -566,7 +586,7 @@ const PokemonSelection = ({
                 id="advanced-filters-panel"
                 aria-hidden={!isAdvancedOpen}
                 className={`overflow-hidden transition-[max-height,opacity,transform,margin-top] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                  isAdvancedOpen ? "mt-2 max-h-[580px] translate-y-0 opacity-100" : "mt-0 max-h-0 -translate-y-1 opacity-0 pointer-events-none"
+                  isAdvancedOpen ? "mt-2 max-h-[min(580px,70dvh)] translate-y-0 opacity-100" : "mt-0 max-h-0 -translate-y-1 opacity-0 pointer-events-none"
                 }`}
               >
                 <div className="space-y-2.5 pb-0.5">
@@ -697,7 +717,7 @@ const PokemonSelection = ({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar sm:max-h-[calc(100vh-330px)]"
+        className="max-h-[60dvh] overflow-y-auto pr-1 custom-scrollbar sm:max-h-[calc(100dvh-330px)]"
         role="list"
         aria-label="Available Pokémon"
       >

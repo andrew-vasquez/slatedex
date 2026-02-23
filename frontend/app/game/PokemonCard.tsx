@@ -294,7 +294,7 @@ const PokemonCard = ({
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onInspect(pokemon); }}
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full opacity-0 transition-opacity duration-150 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
             style={{ background: "rgba(59,130,246,0.12)", color: "#3b82f6", border: "1px solid rgba(59,130,246,0.25)" }}
             aria-label={`View details for ${pokemon.name}`}
           >
