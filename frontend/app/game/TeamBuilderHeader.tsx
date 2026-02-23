@@ -108,7 +108,7 @@ const TeamBuilderHeader = ({
     return (
       <Link
         key={gameEntry.id}
-        href={`/game/${meta.generation}`}
+        href={`/game/gen${meta.generation}`}
         onClick={(e) => {
           try {
             localStorage.setItem(getSelectedGameStorageKey(meta.generation), String(gameEntry.id));

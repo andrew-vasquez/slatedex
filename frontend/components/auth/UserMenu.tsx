@@ -88,6 +88,8 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarFrame, setAvatarFrame] = useState<AvatarFrameKey>("classic");
   const [viewerRole, setViewerRole] = useState<UserRoleValue | null>(null);
+  const [avatarImageLoaded, setAvatarImageLoaded] = useState(false);
+  const [avatarImageError, setAvatarImageError] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
 
@@ -176,6 +178,12 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
     };
   }, [isAuthenticated, user?.image]);
 
+  // Reset image load state when avatar URL changes (e.g. user picks new avatar)
+  useEffect(() => {
+    setAvatarImageLoaded(false);
+    setAvatarImageError(false);
+  }, [avatarUrl, user?.image]);
+
   const toggleTheme = () => {
     const next: Theme = theme === "dark" ? "light" : "dark";
     applyTheme(next);
@@ -243,18 +251,29 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
               aria-expanded={isOpen}
               aria-controls={menuId}
               aria-label="Open user menu"
+              aria-busy={!!(effectiveAvatarUrl && !avatarImageError && !avatarImageLoaded)}
               onClick={() => setIsOpen((prev) => !prev)}
             >
-              {effectiveAvatarUrl ? (
-                <Image
-                  src={effectiveAvatarUrl}
-                  alt={user?.name ? `${user.name} avatar` : "User avatar"}
-                  width={40}
-                  height={40}
-                  sizes="40px"
-                  unoptimized
-                  className="h-full w-full rounded-full object-cover"
-                />
+              {effectiveAvatarUrl && !avatarImageError ? (
+                <span className="relative block h-full w-full overflow-hidden rounded-full">
+                  {/* Skeleton placeholder until custom avatar loads */}
+                  <span
+                    className="skeleton absolute inset-0 rounded-full transition-opacity duration-200"
+                    style={{ opacity: avatarImageLoaded ? 0 : 1 }}
+                    aria-hidden
+                  />
+                  <Image
+                    src={effectiveAvatarUrl}
+                    alt={user?.name ? `${user.name} avatar` : "User avatar"}
+                    width={40}
+                    height={40}
+                    sizes="40px"
+                    unoptimized
+                    className="h-full w-full rounded-full object-cover"
+                    onLoad={() => setAvatarImageLoaded(true)}
+                    onError={() => setAvatarImageError(true)}
+                  />
+                </span>
               ) : (
                 getInitials(user?.name ?? "?")
               )}

@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { GENERATION_META, getGenerationMeta } from "@/lib/pokemon";
+import { GENERATION_META, getGenerationMeta, getGenerationSlug, parseGenerationSlug } from "@/lib/pokemon";
 import { getPokemonPoolsForGame } from "@/lib/pokeapi";
 import TeamBuilder from "@/app/game/TeamBuilder";
 
 export async function generateStaticParams() {
   return GENERATION_META.map((gen) => ({
-    generation: String(gen.generation),
+    generation: getGenerationSlug(gen.generation),
   }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ generation: string }> }): Promise<Metadata> {
-  const { generation: genStr } = await params;
-  const generation = Number.parseInt(genStr, 10);
-  if (!Number.isInteger(generation)) return {};
+  const { generation: slug } = await params;
+  const generation = parseGenerationSlug(slug);
+  if (generation === null) return {};
   const gen = getGenerationMeta(generation);
   if (!gen) return {};
 
@@ -24,9 +24,9 @@ export async function generateMetadata({ params }: { params: Promise<{ generatio
 }
 
 export default async function GenerationPage({ params }: { params: Promise<{ generation: string }> }) {
-  const { generation: genStr } = await params;
-  const generation = Number.parseInt(genStr, 10);
-  if (!Number.isInteger(generation)) {
+  const { generation: slug } = await params;
+  const generation = parseGenerationSlug(slug);
+  if (generation === null) {
     notFound();
   }
   const gen = getGenerationMeta(generation);

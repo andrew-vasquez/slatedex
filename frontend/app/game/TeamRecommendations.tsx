@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useState } from "react";
 import type { Dispatch, KeyboardEvent, SetStateAction } from "react";
 import { FiChevronDown, FiSliders } from "react-icons/fi";
+import InfoTooltip from "@/components/ui/InfoTooltip";
 import { pokemonSpriteSrc } from "@/lib/image";
 import type { Pokemon } from "@/lib/types";
 
@@ -88,9 +89,16 @@ const TeamRecommendations = ({
     <section className="animate-section-reveal panel mb-4 p-4 sm:mb-5 sm:p-5" aria-labelledby="smart-picks-heading">
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 id="smart-picks-heading" className="font-display text-base sm:text-lg" style={{ color: "var(--text-primary)" }}>
-            Smart Picks
-          </h2>
+          <div className="flex items-center gap-1.5">
+            <h2 id="smart-picks-heading" className="font-display text-base sm:text-lg" style={{ color: "var(--text-primary)" }}>
+              Smart Picks
+            </h2>
+            <InfoTooltip
+              iconOnly
+              triggerLabel="Smart Picks"
+              description="Suggestions ranked by how well each option patches your team's weaknesses. Uses type coverage and defensive gaps to suggest strong additions."
+            />
+          </div>
           <p className="mt-1 text-xs leading-tight sm:mt-0.5 sm:text-sm" style={{ color: "var(--text-muted)" }}>
             Suggestions ranked by how well each option patches your current weaknesses.
           </p>
@@ -174,7 +182,14 @@ const TeamRecommendations = ({
               className="inline-flex w-full items-center justify-between gap-3 rounded-lg border px-2.5 py-2 md:hover:cursor-pointer text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
               style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}
             >
-              Include Postgame Pokemon
+              <span className="inline-flex items-center gap-1.5">
+                Include Postgame Pokemon
+                <InfoTooltip
+                  iconOnly
+                  triggerLabel="Postgame Pokemon"
+                  description="Pokémon only obtainable after the main story (e.g. after beating the Elite Four). Excluded by default for in-game team building."
+                />
+              </span>
               <input
                 type="checkbox"
                 checked={allowPostgameRecommendations}
@@ -206,9 +221,12 @@ const TeamRecommendations = ({
       )}
 
       <div className="mt-3">
-        <p className="mb-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
-          Role Filter
-        </p>
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <InfoTooltip
+            label={<span className="text-[0.68rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>Role Filter</span>}
+            description="Filter suggestions by battle role: Bulky (tanky), Fast (speed), Physical/Special (attack type)."
+          />
+        </div>
         <div className="flex flex-wrap gap-1.5">
           {([
             { id: "all", label: "All" },
@@ -223,7 +241,7 @@ const TeamRecommendations = ({
                 key={entry.id}
                 type="button"
                 onClick={() => onRoleChange(entry.id)}
-                className="rounded-full px-2.5 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.06em]"
+                className="rounded-full px-3 py-2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-[0.7rem] sm:text-[0.72rem] font-semibold uppercase tracking-[0.06em]"
                 style={{
                   border: isActive ? "1px solid rgba(218, 44, 67, 0.36)" : "1px solid var(--border)",
                   background: isActive ? "var(--accent-soft)" : "var(--surface-2)",

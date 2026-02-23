@@ -143,7 +143,11 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
             Coverage Gaps
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5" onPointerLeave={clearPreview}>
-            {gaps.length > 0 ? (
+            {strengths.length === 0 ? (
+              <span className="text-[0.7rem]" style={{ color: "var(--text-muted)" }}>
+                Add Pokémon to show offensive coverage.
+              </span>
+            ) : gaps.length > 0 ? (
               gaps.map((item) => {
                 const isActive = item.type === activeType;
                 return (

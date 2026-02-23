@@ -115,7 +115,7 @@ function TeamCard({
       }
       localStorage.setItem(LAST_VISITED_GENERATION_KEY, String(team.generation));
     } catch {}
-    router.push(`/game/${team.generation}`);
+    router.push(`/game/gen${team.generation}`);
   };
 
   return (

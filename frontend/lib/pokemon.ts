@@ -308,6 +308,19 @@ export const GENERATION_META: GenerationMeta[] = [
 /** Flat list of all games across all generations, for backward compatibility. */
 export const ALL_GAMES: Game[] = GENERATION_META.flatMap((gen) => gen.games);
 
+/** URL slug for a generation (e.g. gen1, gen2, … gen9). */
+export function getGenerationSlug(generation: number): string {
+  return `gen${generation}`;
+}
+
+/** Parse generation from URL slug. Returns null if invalid. */
+export function parseGenerationSlug(slug: string): number | null {
+  const match = /^gen([1-9])$/.exec(slug?.toLowerCase() ?? "");
+  if (!match) return null;
+  const n = Number.parseInt(match[1], 10);
+  return Number.isInteger(n) && n >= 1 && n <= 9 ? n : null;
+}
+
 /** @deprecated Use GENERATION_META or ALL_GAMES instead. */
 export const MAINLINE_GAMES: Game[] = ALL_GAMES;
 

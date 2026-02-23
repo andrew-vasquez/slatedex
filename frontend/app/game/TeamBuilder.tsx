@@ -15,6 +15,7 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { FiCornerDownLeft, FiCornerDownRight, FiMessageCircle, FiRepeat } from "react-icons/fi";
+import InfoTooltip from "@/components/ui/InfoTooltip";
 import PokemonDragPreview from "@/app/game/PokemonDragPreview";
 import AnimatedNumber from "@/app/game/AnimatedNumber";
 import TeamBuilderHeader from "./TeamBuilderHeader";
@@ -1733,30 +1734,34 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           <section className="panel-soft mb-4 border px-3.5 py-3 sm:px-4 sm:py-3.5" style={{ borderColor: "var(--border)" }} aria-label="Team health summary">
             <div className="flex flex-wrap items-center justify-between gap-2.5">
               <div>
-                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                <p className="text-xs sm:text-[0.62rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
                   Team Health
                 </p>
-                <p className="text-[0.76rem]" style={{ color: "var(--text-secondary)" }}>
+                <p className="text-sm sm:text-[0.76rem]" style={{ color: "var(--text-secondary)" }}>
                   Quick read on overlap, speed curve, and hazard posture.
                 </p>
               </div>
               {hasTeam ? (
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="rounded-full border px-2 py-1 text-[0.64rem] font-semibold" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>
-                    Type overlap: {teamHealth.overlappingTypes}
-                  </span>
-                  <span className="rounded-full border px-2 py-1 text-[0.64rem] font-semibold" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>
-                    Speed: {teamHealth.speedCurveLabel} ({teamHealth.averageSpeed} avg)
-                  </span>
-                  <span className="rounded-full border px-2 py-1 text-[0.64rem] font-semibold" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>
-                    Fast mons: {teamHealth.fastCount}
-                  </span>
-                  <span className="rounded-full border px-2 py-1 text-[0.64rem] font-semibold" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>
-                    Hazards: {teamHealth.hazardPlanLabel}
-                  </span>
+                  <InfoTooltip
+                    label={<span className="rounded-full border px-2.5 py-1.5 text-xs sm:text-[0.64rem] font-semibold inline-flex items-center gap-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>Type overlap: {teamHealth.overlappingTypes}</span>}
+                    description="Number of types shared by multiple team members. High overlap can leave gaps in coverage."
+                  />
+                  <InfoTooltip
+                    label={<span className="rounded-full border px-2.5 py-1.5 text-xs sm:text-[0.64rem] font-semibold inline-flex items-center gap-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>Speed: {teamHealth.speedCurveLabel} ({teamHealth.averageSpeed} avg)</span>}
+                    description="Your team's speed distribution. Balanced curves help with matchup flexibility."
+                  />
+                  <InfoTooltip
+                    label={<span className="rounded-full border px-2.5 py-1.5 text-xs sm:text-[0.64rem] font-semibold inline-flex items-center gap-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>Fast mons: {teamHealth.fastCount}</span>}
+                    description="Pokémon with Speed above 100. Useful for outspeeding threats."
+                  />
+                  <InfoTooltip
+                    label={<span className="rounded-full border px-2.5 py-1.5 text-xs sm:text-[0.64rem] font-semibold inline-flex items-center gap-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>Hazards: {teamHealth.hazardPlanLabel}</span>}
+                    description="Whether your team can set or remove entry hazards (Stealth Rock, Spikes, etc.)."
+                  />
                 </div>
               ) : (
-                <span className="rounded-full border px-2 py-1 text-[0.64rem] font-semibold" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-muted)" }}>
+                <span className="rounded-full border px-2.5 py-1.5 text-xs sm:text-[0.64rem] font-semibold" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-muted)" }}>
                   Add at least one Pokemon to compute health
                 </span>
               )}
@@ -1791,7 +1796,10 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                 <div className="mb-2.5 flex items-center gap-2.5">
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 flex items-baseline justify-between">
-                      <span className="text-[0.68rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>Slots</span>
+                      <InfoTooltip
+                        label={<span className="text-[0.68rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>Slots</span>}
+                        description="Your 6 team positions. Fill all slots to unlock full coverage analysis and recommendations."
+                      />
                       <AnimatedNumber value={`${currentTeam.length}/6`} className="font-display text-base" style={{ color: "var(--accent)" }} />
                     </div>
                     <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--stat-track)" }}>
@@ -1808,11 +1816,17 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                   {hasTeam && (
                     <>
                       <div className="shrink-0 rounded-lg border px-2 py-1.5 text-center" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
-                        <p className="text-[0.6rem] font-semibold uppercase" style={{ color: "var(--text-muted)" }}>Risks</p>
+                        <InfoTooltip
+                          label={<span className="text-[0.6rem] font-semibold uppercase" style={{ color: "var(--text-muted)" }}>Risks</span>}
+                          description="Types that hit your team super-effectively. More Pokémon weak to a type than resist it = exposed. Lower is better."
+                        />
                         <AnimatedNumber value={exposedTypes} className="font-display text-base leading-none" style={{ color: exposedTypes > 0 ? "#b91c1c" : "#136f3a", transition: "color 0.3s ease" }} />
                       </div>
                       <div className="shrink-0 rounded-lg border px-2 py-1.5 text-center" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
-                        <p className="text-[0.6rem] font-semibold uppercase" style={{ color: "var(--text-muted)" }}>Stable</p>
+                        <InfoTooltip
+                          label={<span className="text-[0.6rem] font-semibold uppercase" style={{ color: "var(--text-muted)" }}>Stable</span>}
+                          description="Types your team handles well—at least as many resistances as weaknesses. Higher is better for defensive coverage."
+                        />
                         <AnimatedNumber value={stableTypes} className="font-display text-base leading-none" style={{ color: "var(--accent-blue)" }} />
                       </div>
                     </>

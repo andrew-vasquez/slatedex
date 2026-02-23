@@ -126,8 +126,8 @@ export const EVOLUTION_LEVELS: Record<string, number[]> = {
   poochyena: [18],
   zigzagoon: [20],
   wurmple: [7],
-  lotad: [14, 25], // Lombre at 14; Ludicolo via Water Stone (25 = typical mid-game availability)
-  seedot: [14, 25], // Nuzleaf at 14; Shiftry via Leaf Stone
+  lotad: [14], // Lombre at 14; Ludicolo via Water Stone only (no level-up)
+  seedot: [14], // Nuzleaf at 14; Shiftry via Leaf Stone only (no level-up)
   taillow: [22],
   wingull: [25],
   ralts: [20, 30], // Kirlia at 20, Gardevoir at 30
@@ -148,7 +148,8 @@ export const EVOLUTION_LEVELS: Record<string, number[]> = {
   minun: [36],
   volbeat: [36],
   illumise: [36],
-  roselia: [36],
+  budew: [18],   // → Roselia (friendship); Roserade via Shiny Stone
+  roselia: [36], // standalone in Gen 3; in Gen 4+ line is budew→roselia→roserade
   gulpin: [26],
   carvanha: [30],
   wailmer: [40],
@@ -334,4 +335,143 @@ export function getEvolutionLevelCapForGym(gymOrder: number): number {
   const range = GYM_LEVEL_RANGES[gymOrder];
   if (!range) return 30;
   return gymOrder <= 4 ? range.min : range.max;
+}
+
+// ── Stone evolutions ───────────────────────────────────────────────────────────
+
+/** Stone types used for evolution (Gen 1–5). */
+export type StoneType =
+  | "water"
+  | "leaf"
+  | "fire"
+  | "thunder"
+  | "moon"
+  | "sun"
+  | "dawn"
+  | "dusk"
+  | "shiny";
+
+/** Single stone or multiple (any one unlocks the evolution). */
+export type StoneEvolutionEntry =
+  | { stone: StoneType; preEvoStage: number }
+  | { stones: StoneType[]; preEvoStage: number };
+
+/**
+ * Stone evolutions: base species -> stone(s) required for final form.
+ * preEvoStage = stage that must be reachable by level before stone can be used.
+ * Use `stones` when multiple stones lead to the same or equivalent final stage (e.g. Eevee).
+ */
+export const STONE_EVOLUTIONS: Record<string, StoneEvolutionEntry> = {
+  // Gen 1
+  pikachu: { stone: "thunder", preEvoStage: 1 },      // → Raichu
+  nidoranf: { stone: "moon", preEvoStage: 2 },        // Nidorina → Nidoqueen
+  nidoranm: { stone: "moon", preEvoStage: 2 },        // Nidorino → Nidoking
+  clefairy: { stone: "moon", preEvoStage: 1 },        // → Clefable
+  vulpix: { stone: "fire", preEvoStage: 1 },           // → Ninetales
+  jigglypuff: { stone: "moon", preEvoStage: 1 },     // → Wigglytuff
+  oddish: { stones: ["leaf", "sun"], preEvoStage: 2 }, // Gloom → Vileplume (Leaf) or Bellossom (Sun)
+  growlithe: { stone: "fire", preEvoStage: 1 },       // → Arcanine
+  poliwag: { stone: "water", preEvoStage: 2 },        // Poliwhirl → Poliwrath
+  bellsprout: { stone: "leaf", preEvoStage: 2 },     // Weepinbell → Victreebel
+  shellder: { stone: "water", preEvoStage: 1 },       // → Cloyster
+  exeggcute: { stone: "leaf", preEvoStage: 1 },      // → Exeggutor
+  staryu: { stone: "water", preEvoStage: 1 },        // → Starmie
+  eevee: { stones: ["water", "thunder", "fire"], preEvoStage: 1 }, // → Vaporeon/Jolteon/Flareon
+
+  // Gen 2
+  togepi: { stone: "shiny", preEvoStage: 2 },       // Togetic → Togekiss (Gen 4)
+  sunkern: { stone: "sun", preEvoStage: 1 },         // → Sunflora
+  murkrow: { stone: "dusk", preEvoStage: 1 },        // → Honchkrow (Gen 4)
+  misdreavus: { stone: "dusk", preEvoStage: 1 },    // → Mismagius (Gen 4)
+
+  // Gen 3
+  lotad: { stone: "water", preEvoStage: 2 },         // Lombre → Ludicolo
+  seedot: { stone: "leaf", preEvoStage: 2 },         // Nuzleaf → Shiftry
+  ralts: { stone: "dawn", preEvoStage: 2 },         // Kirlia (male) → Gallade (Gen 4)
+  skitty: { stone: "moon", preEvoStage: 1 },         // → Delcatty
+  snorunt: { stone: "dawn", preEvoStage: 1 },        // → Froslass (female, Gen 4)
+  budew: { stone: "shiny", preEvoStage: 2 },       // Roselia → Roserade (Gen 4)
+
+  // Gen 5
+  pansage: { stone: "leaf", preEvoStage: 1 },        // → Simisage
+  pansear: { stone: "fire", preEvoStage: 1 },        // → Simisear
+  panpour: { stone: "water", preEvoStage: 1 },       // → Simipour
+  munna: { stone: "moon", preEvoStage: 1 },         // → Musharna
+  cottonee: { stone: "sun", preEvoStage: 1 },       // → Whimsicott
+  petilil: { stone: "sun", preEvoStage: 1 },        // → Lilligant
+  minccino: { stone: "shiny", preEvoStage: 1 },     // → Cinccino
+  litwick: { stone: "dusk", preEvoStage: 2 },       // Lampent → Chandelure
+  tynamo: { stone: "thunder", preEvoStage: 2 },     // Eelektrik → Eelektross
+};
+
+/**
+ * Earliest gym order when each stone is first obtainable, per game.
+ * Add entries as battle planner rolls out to each game.
+ * gameId 1=RBY, 2=GSC, 3=RSE, 4=DPPt, 5=BW, 12=FRLG, 13=HGSS, etc.
+ */
+const STONE_AVAILABILITY: Record<number, Partial<Record<StoneType, number>>> = {
+  3: {
+    water: 7,   // Abandoned Ship (Surf + Dive); Dive from Mossdeep post-gym 7
+    leaf: 5,    // Route 119 (before Fortree)
+    fire: 5,    // Fiery Path (Route 112)
+    thunder: 5, // New Mauville (Basement Key)
+    moon: 6,    // Meteor Falls (Surf)
+    sun: 7,     // Desert Underpass (Strength)
+    dawn: 8,    // Mt. Coronet / Victory Road
+    dusk: 8,
+    shiny: 8,
+  },
+  // 1, 2, 4, 5, 12, 13: add when rolling out battle planner
+};
+
+/**
+ * Earliest gym order when a stone is first available. Returns null if unknown or not in map.
+ */
+export function getStoneEarliestGym(gameId: number, stone: StoneType): number | null {
+  const byGame = STONE_AVAILABILITY[gameId];
+  if (!byGame) return null;
+  const gym = byGame[stone];
+  return gym ?? null;
+}
+
+function isStoneAvailableAtCheckpoint(
+  gameId: number,
+  stoneOrStones: StoneType | StoneType[],
+  gymOrder: number
+): boolean {
+  const stones = Array.isArray(stoneOrStones) ? stoneOrStones : [stoneOrStones];
+  for (const stone of stones) {
+    const earliest = getStoneEarliestGym(gameId, stone);
+    if (earliest !== null && gymOrder >= earliest) return true;
+  }
+  return false;
+}
+
+/**
+ * Max evolution stage at a checkpoint, considering both level-up and stone evolutions.
+ * For stone evos: allows final form only if (1) stone is available at checkpoint and
+ * (2) pre-evolution stage is reachable by level.
+ * Returns null if caller should use fallback (e.g. level-based or heuristic).
+ */
+export function getMaxStageForCheckpointWithStones(
+  baseName: string,
+  levelCap: number,
+  gameId: number,
+  gymOrder: number
+): number | null {
+  const base = baseName.toLowerCase();
+  const levelBased = getMaxStageForLevel(base, levelCap);
+  if (levelBased === null) return null;
+
+  const stoneInfo = STONE_EVOLUTIONS[base];
+  if (!stoneInfo) return levelBased;
+
+  // Pre-evo must be reachable by level before stone can matter
+  if (levelBased < stoneInfo.preEvoStage) return levelBased;
+
+  const stoneOrStones = "stone" in stoneInfo ? stoneInfo.stone : stoneInfo.stones;
+  if (!isStoneAvailableAtCheckpoint(gameId, stoneOrStones, gymOrder)) return levelBased;
+
+  // Stone available: allow final form (preEvoStage + 1)
+  return Math.max(levelBased, stoneInfo.preEvoStage + 1);
 }
