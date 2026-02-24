@@ -98,6 +98,7 @@ const PokemonDetailDrawer = ({ pokemon, onClose, onAdd, canAdd }: PokemonDetailD
               alt={activePokemon.name}
               width={72}
               height={72}
+              unoptimized
               className="h-16 w-16 object-contain drop-shadow-md"
             />
           </div>

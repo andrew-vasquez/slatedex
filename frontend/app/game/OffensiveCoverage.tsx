@@ -335,6 +335,7 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
                           alt={pokemon.name}
                           width={30}
                           height={30}
+                          unoptimized
                           className="rounded border"
                           style={{ borderColor: "rgba(74, 222, 128, 0.35)", background: "rgba(74, 222, 128, 0.14)" }}
                           title={`${pokemon.name} — STAB super-effective`}
