@@ -450,6 +450,7 @@ const SavedTeamsPanel = ({
                                 alt={mon.name}
                                 width={22}
                                 height={22}
+                                unoptimized
                                 className="h-[22px] w-[22px] object-contain"
                               />
                             ) : (

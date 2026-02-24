@@ -835,6 +835,7 @@ const PokemonSelection = ({
                   alt={p.name}
                   width={40}
                   height={40}
+                  unoptimized
                   className="mx-auto h-10 w-10 object-contain drop-shadow-md"
                 />
                 <p className="mt-0.5 text-[0.68rem] font-semibold" style={{ color: "var(--text-primary)" }}>{p.name}</p>

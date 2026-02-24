@@ -486,7 +486,7 @@ const TeamCaptureGuide = ({
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border"
                         style={{ borderColor: "var(--border)", background: "rgba(8, 15, 34, 0.55)" }}
                       >
-                        <Image src={pokemonSpriteSrc(pokemon.sprite, pokemon.id)} alt={pokemon.name} width={32} height={32} className="h-8 w-8 object-contain" />
+                        <Image src={pokemonSpriteSrc(pokemon.sprite, pokemon.id)} alt={pokemon.name} width={32} height={32} unoptimized className="h-8 w-8 object-contain" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>

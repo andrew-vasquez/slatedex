@@ -276,7 +276,7 @@ const TeamRecommendations = ({
                   className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg"
                   style={{ background: "var(--surface-1)", border: "1px solid var(--border)" }}
                 >
-                  <Image src={pokemonSpriteSrc(pokemon.sprite, pokemon.id)} alt={pokemon.name} width={40} height={40} className="h-9 w-9 object-contain" />
+                  <Image src={pokemonSpriteSrc(pokemon.sprite, pokemon.id)} alt={pokemon.name} width={40} height={40} unoptimized className="h-9 w-9 object-contain" />
                 </div>
 
                 <div className="min-w-0 flex-1">

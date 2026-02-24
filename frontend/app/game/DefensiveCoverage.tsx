@@ -388,6 +388,7 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
                         alt={pokemon.name}
                         width={30}
                         height={30}
+                        unoptimized
                         className="rounded border"
                         style={{ borderColor: "rgba(248, 113, 113, 0.35)", background: "rgba(248, 113, 113, 0.16)" }}
                         title={`${pokemon.name} (${pokemon.effectiveness}x)`}
@@ -418,6 +419,7 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
                         alt={pokemon.name}
                         width={30}
                         height={30}
+                        unoptimized
                         className="rounded border"
                         style={{ borderColor: "rgba(74, 222, 128, 0.35)", background: "rgba(74, 222, 128, 0.14)" }}
                         title={`${pokemon.name} (${pokemon.effectiveness}x)`}
