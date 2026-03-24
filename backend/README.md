@@ -2,10 +2,12 @@
 
 ## Required Environment Variables
 
-- `DATABASE_URL`: Prisma runtime database URL. Supports either `postgresql://...` (Railway) or `prisma://...` (Prisma Accelerate).
-- `DIRECT_URL` (optional): Direct database URL for Prisma migrations (`prisma migrate deploy`). If omitted, migrations fall back to `DATABASE_URL`.
-- `FRONTEND_URL`: Frontend origin(s) used for CORS/auth trusted origins. You can pass a comma-separated list.
-- `PORT` (optional): Server port; defaults to `3001`.
+- `DATABASE_URL`: Prisma runtime URL. Use `postgresql://...` / `postgres://...` locally (Bun) or `prisma://` / `prisma+postgres://` (Prisma Accelerate) on **Cloudflare Workers** (TCP `pg` is not used in the Worker bundle).
+- `DIRECT_URL` (optional): Direct Postgres URL for migrations (`prisma migrate deploy`) and local dev consistency. If omitted, migrations fall back to `DATABASE_URL`.
+- `FRONTEND_URL`: Frontend origin(s) for CORS and Better Auth trusted origins (comma-separated allowed).
+- `BETTER_AUTH_URL`: Public base URL of this API (e.g. `https://api.example.com`).
+- `BETTER_AUTH_SECRET`: Session secret (min 32 characters in production).
+- `PORT` (optional): Bun server port; defaults to `3001` (ignored on Workers).
 - `PRISMA_RUNTIME_CONNECTION` (optional): Force runtime DB mode. Allowed values: `accelerate` or `direct`.
 - `ENABLE_AI_COACH` (optional): Enable AI chat/analysis endpoints. Defaults to `true`.
 - `OPENAI_API_KEY` (required when AI is enabled in production): OpenAI API key for chat completions.
@@ -16,29 +18,44 @@
 - `AI_MAX_OUTPUT_TOKENS` (optional): Global fallback max completion tokens. Defaults to `700`.
 - `AI_MAX_OUTPUT_TOKENS_CHAT` (optional): Chat max completion tokens. Defaults to `420` (or `AI_MAX_OUTPUT_TOKENS` if set).
 - `AI_MAX_OUTPUT_TOKENS_ANALYZE` (optional): Analyze max completion tokens. Defaults to `560` (or `AI_MAX_OUTPUT_TOKENS` if set).
-- `POSTHOG_API_KEY` (optional): Project API key for backend analytics/AI observability.
-- `POSTHOG_HOST` (optional): PostHog ingest host. Defaults to `https://us.i.posthog.com` (use `https://eu.i.posthog.com` for EU projects).
+- `POSTHOG_API_KEY` (optional): PostHog project API key (HTTP capture from the Worker).
+- `POSTHOG_HOST` (optional): PostHog ingest host. Defaults to `https://us.i.posthog.com`.
 
-### Runtime DB selection
+### Runtime DB selection (Bun / Node)
 
-- In production, if `DATABASE_URL` is `prisma://...`, runtime defaults to Prisma Accelerate (even when `DIRECT_URL` is set).
-- In non-production, runtime prefers `DIRECT_URL` for strongest read-after-write consistency.
-- `DIRECT_URL` should be treated primarily as a migration/admin connection in hosted environments.
+- In production, if `DATABASE_URL` is an Accelerate URL, runtime defaults to Accelerate when `PRISMA_RUNTIME_CONNECTION` is not `direct`.
+- In non-production, runtime prefers `DIRECT_URL` for read-after-write consistency when set.
+- **Cloudflare Workers** always use an Accelerate URL as `DATABASE_URL` (see `wrangler secret` below).
 
-## Railway Notes
+## Cloudflare Workers
 
-This service is configured to run directly from source in production:
+1. Create a Prisma Accelerate connection string for your Postgres database and use it as Worker secret `DATABASE_URL`.
+2. From `backend/`, set secrets (non-interactive CI uses `WRANGLER_LOG=stderr` and `wrangler secret put` with stdin):
 
-- Start command: `bun run src/index.ts`
-- Postinstall: `prisma generate`
+   `DATABASE_URL`, `DIRECT_URL` (optional, not used at runtime on Workers), `FRONTEND_URL`, `BETTER_AUTH_URL`, `BETTER_AUTH_SECRET`, `OPENAI_API_KEY` (if AI enabled), OAuth secrets if applicable, `POSTHOG_*` if used.
 
-Suggested Railway setup:
+3. **Rate limiting:** Optionally create a KV namespace and add `kv_namespaces` with binding `RATE_LIMIT_KV` in `wrangler.jsonc`. Without KV, limits are in-memory per isolate (OK for low traffic).
 
-1. Set service root to `backend/`.
-2. Set config file path to `/backend/railway.json` (or `/backend/nixpacks.toml`).
-3. Use Bun runtime.
-4. Set the environment variables above.
-5. Add a migration command before deploy:
-   - `prisma migrate deploy`
+4. Deploy:
 
-If Railway is still running `next build`, the service is building from repo root instead of `backend/`.
+   ```bash
+   cd backend && bun install && bunx prisma generate && bun run worker:deploy
+   ```
+
+5. Point the frontend `NEXT_PUBLIC_API_URL` at your Worker URL (scheme + host, no `/api` suffix).
+
+### Railway → Workers env mapping
+
+| Railway / Bun env   | Cloudflare                         |
+| ------------------- | ---------------------------------- |
+| Same variable names | `wrangler secret put <NAME>`       |
+| `PORT`              | Not used (Workers HTTP)            |
+| `NODE_ENV`          | Set via `wrangler.jsonc` `vars` or secret |
+
+## Local development (Bun)
+
+```bash
+cd backend && bun install && bun run dev
+```
+
+Postinstall runs `prisma generate`. Use `DATABASE_URL` + `DIRECT_URL` as before for local Postgres.

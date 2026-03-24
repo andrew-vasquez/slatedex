@@ -376,6 +376,9 @@ admin.get("/users", async (c) => {
   const page = hasMore ? rows.slice(0, limit) : rows;
   const userIds = page.map((row) => row.id);
 
+  type TeamCountRow = { userId: string; _count: { _all: number } };
+  type UsageRow = { userId: string; chatCount: number; analyzeCount: number };
+
   const [teamCounts, usageRows] = await Promise.all([
     userIds.length > 0
       ? prisma.team.groupBy({
@@ -383,7 +386,7 @@ admin.get("/users", async (c) => {
           where: { userId: { in: userIds } },
           _count: { _all: true },
         })
-      : Promise.resolve([]),
+      : Promise.resolve([] as TeamCountRow[]),
     userIds.length > 0
       ? prisma.aiMonthlyUsage.findMany({
           where: {
@@ -396,11 +399,15 @@ admin.get("/users", async (c) => {
             analyzeCount: true,
           },
         })
-      : Promise.resolve([]),
+      : Promise.resolve([] as UsageRow[]),
   ]);
 
-  const teamCountByUser = new Map(teamCounts.map((entry) => [entry.userId, entry._count._all]));
-  const usageByUser = new Map(usageRows.map((entry) => [entry.userId, entry]));
+  const teamCountByUser = new Map<string, number>(
+    teamCounts.map((entry): [string, number] => [entry.userId, entry._count._all])
+  );
+  const usageByUser = new Map<string, UsageRow>(
+    usageRows.map((entry): [string, UsageRow] => [entry.userId, entry])
+  );
 
   const items = page.map((user) => {
     const usage = usageByUser.get(user.id);

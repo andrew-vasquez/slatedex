@@ -34,9 +34,10 @@ Example routes: `frontend/app/page.tsx` (home) and `frontend/app/game/[generatio
 - `cd frontend && bunx tsc --noEmit --incremental false`: full type-check pass before PRs.
 
 ### Backend
-- `cd backend && bun run dev`: start Hono dev server with hot reload.
-- `cd backend && bun run build`: build for production.
-- `cd backend && bun run start`: run the production build.
+- `cd backend && bun run dev`: start the Hono API locally with Bun (hot reload via `dev:hot`).
+- `cd backend && bun run build` / `bun run start`: Bun binary build for self-hosted Node/Bun targets.
+- `cd backend && bun run worker:dev` / `bun run worker:deploy`: Cloudflare Workers (Wrangler); production API expects Prisma Accelerate on `DATABASE_URL`.
+- `cd backend && bun run typecheck`: TypeScript (`tsc --noEmit`).
 
 ## Coding Style & Naming Conventions
 - Use TypeScript and React function components.

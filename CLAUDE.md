@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Monorepo with two top-level directories:
 
 - `frontend/` — Next.js 16 App Router (React 19, Tailwind CSS v4, Bun)
-- `backend/` — Hono API server (Prisma, Better Auth, Bun)
+- `backend/` — Hono API (Prisma, Better Auth); local dev on Bun, production API on Cloudflare Workers + Prisma Accelerate
 
 ## Commands
 
@@ -30,9 +30,12 @@ bunx tsc --noEmit  # TypeScript type check
 
 ```bash
 cd backend
-bun run dev        # Start Hono dev server (hot reload)
-bun run build      # Build for production
-bun run start      # Run production build
+bun run dev        # Bun: local Hono API
+bun run worker:dev # Cloudflare: Wrangler dev
+bun run worker:deploy
+bun run build      # Bun binary build (self-hosted)
+bun run start
+bun run typecheck  # tsc --noEmit
 ```
 
 No test framework is configured.

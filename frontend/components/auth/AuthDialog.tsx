@@ -15,7 +15,7 @@ function formatAuthError(error: unknown): string {
   if (error instanceof Error) {
     const message = error.message.trim();
     if (/failed to fetch|networkerror|load failed/i.test(message)) {
-      return "Unable to reach the auth server. Check NEXT_PUBLIC_API_URL on Vercel and FRONTEND_URL/BETTER_AUTH_URL on Railway.";
+      return "Unable to reach the auth server. Check NEXT_PUBLIC_API_URL on Vercel and FRONTEND_URL/BETTER_AUTH_URL on your API host (e.g. Cloudflare Workers secrets).";
     }
     return message.length > 0 ? message : "An unexpected error occurred";
   }

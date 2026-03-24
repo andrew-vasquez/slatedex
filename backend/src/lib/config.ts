@@ -1,3 +1,5 @@
+import { env, isProduction } from "./runtime";
+
 const DEFAULT_PORT = 3001;
 const DEFAULT_FRONTEND_ORIGIN = "http://localhost:3000";
 const DEFAULT_AI_MODEL = "gpt-4o-mini";
@@ -15,6 +17,21 @@ const DEV_FALLBACK_ORIGINS = [
   "http://localhost:4173",
   "http://127.0.0.1:4173",
 ];
+
+export type AppConfig = {
+  port: number;
+  frontendOrigins: string[];
+  primaryFrontendOrigin: string;
+  ai: {
+    enabled: boolean;
+    apiKey: string;
+    model: string;
+    models: { chat: string; analyze: string };
+    requestTimeoutMs: number;
+    maxOutputTokens: number;
+    maxOutputTokensByTask: { chat: number; analyze: number };
+  };
+};
 
 function ensureProtocol(value: string): string {
   const trimmed = value.trim();
@@ -74,37 +91,6 @@ function isDevelopmentOrigin(origin: string): boolean {
   }
 }
 
-function validateProductionAuthEnv(): void {
-  if (process.env.NODE_ENV !== "production") return;
-
-  const hasFrontendOrigin = (process.env.FRONTEND_URL?.trim().length ?? 0) > 0;
-  const hasBetterAuthUrl = (process.env.BETTER_AUTH_URL?.trim().length ?? 0) > 0;
-
-  const missing: string[] = [];
-  if (!hasFrontendOrigin) missing.push("FRONTEND_URL");
-  if (!hasBetterAuthUrl) missing.push("BETTER_AUTH_URL");
-
-  if (missing.length > 0) {
-    throw new Error(
-      `Missing required production auth env var(s): ${missing.join(", ")}`
-    );
-  }
-}
-
-function validateBetterAuthSecret(): void {
-  const secret = process.env.BETTER_AUTH_SECRET?.trim();
-
-  if (process.env.NODE_ENV !== "production") return;
-
-  if (!secret) {
-    throw new Error("Missing required production auth env var: BETTER_AUTH_SECRET");
-  }
-
-  if (secret.length < 32) {
-    throw new Error("BETTER_AUTH_SECRET must be at least 32 characters in production.");
-  }
-}
-
 function parseOrigins(raw: string | undefined): string[] {
   if (!raw) return [DEFAULT_FRONTEND_ORIGIN];
 
@@ -113,7 +99,7 @@ function parseOrigins(raw: string | undefined): string[] {
     .map((value) => normalizeAllowedOrigin(value))
     .filter((value) => value.length > 0);
 
-  if (process.env.NODE_ENV !== "production") {
+  if (!isProduction()) {
     origins.push(...DEV_FALLBACK_ORIGINS);
   }
 
@@ -142,66 +128,121 @@ function parsePositiveInteger(raw: string | undefined, fallback: number): number
   return parsed;
 }
 
-const frontendOrigins = parseOrigins(process.env.FRONTEND_URL?.trim());
-const aiEnabled = parseBoolean(process.env.ENABLE_AI_COACH, true);
-const aiApiKey = process.env.OPENAI_API_KEY?.trim() || "";
-const aiGlobalModel = process.env.OPENAI_MODEL?.trim() || "";
-const aiModelFallback = aiGlobalModel || DEFAULT_AI_MODEL;
-const aiChatModel = process.env.OPENAI_MODEL_CHAT?.trim() || aiGlobalModel || DEFAULT_AI_CHAT_MODEL;
-const aiAnalyzeModel =
-  process.env.OPENAI_MODEL_ANALYZE?.trim() || aiGlobalModel || DEFAULT_AI_ANALYZE_MODEL;
-const aiTimeoutMs = parsePositiveInteger(process.env.AI_REQUEST_TIMEOUT_MS, DEFAULT_AI_TIMEOUT_MS);
-const aiGlobalMaxOutputTokensRaw = process.env.AI_MAX_OUTPUT_TOKENS;
-const aiMaxOutputTokensFallback = parsePositiveInteger(aiGlobalMaxOutputTokensRaw, DEFAULT_AI_MAX_OUTPUT_TOKENS);
-const aiChatMaxOutputTokens = parsePositiveInteger(
-  process.env.AI_MAX_OUTPUT_TOKENS_CHAT,
-  aiGlobalMaxOutputTokensRaw ? aiMaxOutputTokensFallback : DEFAULT_AI_CHAT_MAX_OUTPUT_TOKENS
-);
-const aiAnalyzeMaxOutputTokens = parsePositiveInteger(
-  process.env.AI_MAX_OUTPUT_TOKENS_ANALYZE,
-  aiGlobalMaxOutputTokensRaw ? aiMaxOutputTokensFallback : DEFAULT_AI_ANALYZE_MAX_OUTPUT_TOKENS
-);
+function validateProductionAuthEnv(): void {
+  if (!isProduction()) return;
 
-validateProductionAuthEnv();
-validateBetterAuthSecret();
+  const hasFrontendOrigin = (env("FRONTEND_URL")?.length ?? 0) > 0;
+  const hasBetterAuthUrl = (env("BETTER_AUTH_URL")?.length ?? 0) > 0;
 
-if (process.env.NODE_ENV === "production" && aiEnabled && !aiApiKey) {
-  throw new Error("OPENAI_API_KEY is required in production when ENABLE_AI_COACH is enabled.");
+  const missing: string[] = [];
+  if (!hasFrontendOrigin) missing.push("FRONTEND_URL");
+  if (!hasBetterAuthUrl) missing.push("BETTER_AUTH_URL");
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required production auth env var(s): ${missing.join(", ")}`);
+  }
 }
 
-export const config = {
-  port: parsePort(process.env.PORT),
-  frontendOrigins,
-  primaryFrontendOrigin: frontendOrigins[0] ?? DEFAULT_FRONTEND_ORIGIN,
-  ai: {
-    enabled: aiEnabled,
-    apiKey: aiApiKey,
-    model: aiModelFallback,
-    models: {
-      chat: aiChatModel,
-      analyze: aiAnalyzeModel,
+function validateBetterAuthSecret(): void {
+  const secret = env("BETTER_AUTH_SECRET");
+
+  if (!isProduction()) return;
+
+  if (!secret) {
+    throw new Error("Missing required production auth env var: BETTER_AUTH_SECRET");
+  }
+
+  if (secret.length < 32) {
+    throw new Error("BETTER_AUTH_SECRET must be at least 32 characters in production.");
+  }
+}
+
+function buildAppConfig(): AppConfig {
+  const frontendOrigins = parseOrigins(env("FRONTEND_URL"));
+  const aiEnabled = parseBoolean(env("ENABLE_AI_COACH"), true);
+  const aiApiKey = env("OPENAI_API_KEY") ?? "";
+  const aiGlobalModel = env("OPENAI_MODEL") ?? "";
+  const aiModelFallback = aiGlobalModel || DEFAULT_AI_MODEL;
+  const aiChatModel = env("OPENAI_MODEL_CHAT")?.trim() || aiGlobalModel || DEFAULT_AI_CHAT_MODEL;
+  const aiAnalyzeModel =
+    env("OPENAI_MODEL_ANALYZE")?.trim() || aiGlobalModel || DEFAULT_AI_ANALYZE_MODEL;
+  const aiTimeoutMs = parsePositiveInteger(env("AI_REQUEST_TIMEOUT_MS"), DEFAULT_AI_TIMEOUT_MS);
+  const aiGlobalMaxOutputTokensRaw = env("AI_MAX_OUTPUT_TOKENS");
+  const aiMaxOutputTokensFallback = parsePositiveInteger(
+    aiGlobalMaxOutputTokensRaw,
+    DEFAULT_AI_MAX_OUTPUT_TOKENS
+  );
+  const aiChatMaxOutputTokens = parsePositiveInteger(
+    env("AI_MAX_OUTPUT_TOKENS_CHAT"),
+    aiGlobalMaxOutputTokensRaw ? aiMaxOutputTokensFallback : DEFAULT_AI_CHAT_MAX_OUTPUT_TOKENS
+  );
+  const aiAnalyzeMaxOutputTokens = parsePositiveInteger(
+    env("AI_MAX_OUTPUT_TOKENS_ANALYZE"),
+    aiGlobalMaxOutputTokensRaw ? aiMaxOutputTokensFallback : DEFAULT_AI_ANALYZE_MAX_OUTPUT_TOKENS
+  );
+
+  validateProductionAuthEnv();
+  validateBetterAuthSecret();
+
+  if (isProduction() && aiEnabled && !aiApiKey) {
+    throw new Error("OPENAI_API_KEY is required in production when ENABLE_AI_COACH is enabled.");
+  }
+
+  return {
+    port: parsePort(env("PORT")),
+    frontendOrigins,
+    primaryFrontendOrigin: frontendOrigins[0] ?? DEFAULT_FRONTEND_ORIGIN,
+    ai: {
+      enabled: aiEnabled,
+      apiKey: aiApiKey,
+      model: aiModelFallback,
+      models: {
+        chat: aiChatModel,
+        analyze: aiAnalyzeModel,
+      },
+      requestTimeoutMs: aiTimeoutMs,
+      maxOutputTokens: aiMaxOutputTokensFallback,
+      maxOutputTokensByTask: {
+        chat: aiChatMaxOutputTokens,
+        analyze: aiAnalyzeMaxOutputTokens,
+      },
     },
-    requestTimeoutMs: aiTimeoutMs,
-    maxOutputTokens: aiMaxOutputTokensFallback,
-    maxOutputTokensByTask: {
-      chat: aiChatMaxOutputTokens,
-      analyze: aiAnalyzeMaxOutputTokens,
-    },
+  };
+}
+
+let cachedConfig: AppConfig | null = null;
+
+export function getConfig(): AppConfig {
+  if (!cachedConfig) {
+    cachedConfig = buildAppConfig();
+  }
+  return cachedConfig;
+}
+
+/** @deprecated Prefer `getConfig()` — proxy for gradual migration */
+export const config = new Proxy({} as AppConfig, {
+  get(_, prop) {
+    return (getConfig() as Record<string, unknown>)[prop as string];
   },
-};
+});
 
 export function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return false;
   const normalizedOrigin = normalizeRequestOrigin(origin);
+  const cfg = getConfig();
 
-  const matched = config.frontendOrigins.some((allowedOrigin) =>
+  const matched = cfg.frontendOrigins.some((allowedOrigin) =>
     matchesAllowedOrigin(normalizedOrigin, allowedOrigin)
   );
   if (matched) return true;
 
-  if (process.env.NODE_ENV !== "production" && isDevelopmentOrigin(normalizedOrigin)) {
+  if (!isProduction() && isDevelopmentOrigin(normalizedOrigin)) {
     return true;
   }
 
   return false;
+}
+
+export function resetConfigCacheForTests(): void {
+  cachedConfig = null;
 }

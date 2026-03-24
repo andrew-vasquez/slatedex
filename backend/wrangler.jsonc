@@ -1,0 +1,10 @@
+// Add kv_namespaces with binding "RATE_LIMIT_KV" for rate limits shared across isolates (optional; otherwise in-memory per isolate).
+{
+  "name": "poke-builder-api",
+  "main": "src/worker.ts",
+  "compatibility_date": "2025-03-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "NODE_ENV": "production"
+  }
+}

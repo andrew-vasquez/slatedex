@@ -1,5 +1,4 @@
 import OpenAI from "openai";
-import { OpenAI as PostHogOpenAI } from "@posthog/ai";
 import {
   APIConnectionError,
   APIConnectionTimeoutError,
@@ -10,12 +9,9 @@ import type {
   ChatCompletionMessage,
   ChatCompletionMessageParam,
 } from "openai/resources/chat/completions/completions";
-import { config } from "../config";
-import { getPostHog } from "../posthog";
+import { getConfig } from "../config";
 
-type OpenAIClientType = OpenAI;
-let openAiClient: OpenAIClientType | null = null;
-let openAiClientHasPostHog = false;
+let openAiClient: OpenAI | null = null;
 
 export class AiRequestError extends Error {
   constructor(message: string) {
@@ -30,35 +26,20 @@ export type AiAnalyticsContext = {
   properties?: Record<string, unknown>;
 };
 
-function getClient(): OpenAIClientType {
+function getClient(): OpenAI {
+  const config = getConfig();
   if (!config.ai.apiKey) {
     throw new Error("OPENAI_API_KEY is not configured.");
   }
 
   if (!openAiClient) {
-    const ph = getPostHog();
-    if (ph) {
-      try {
-        openAiClient = new PostHogOpenAI({
-          apiKey: config.ai.apiKey,
-          posthog: ph,
-        }) as unknown as OpenAIClientType;
-        openAiClientHasPostHog = true;
-      } catch (error) {
-        console.error("[ai] failed to initialize PostHog OpenAI wrapper; falling back to OpenAI client", error);
-        openAiClient = new OpenAI({ apiKey: config.ai.apiKey });
-        openAiClientHasPostHog = false;
-      }
-    } else {
-      openAiClient = new OpenAI({ apiKey: config.ai.apiKey });
-      openAiClientHasPostHog = false;
-    }
+    openAiClient = new OpenAI({ apiKey: config.ai.apiKey });
   }
 
   return openAiClient;
 }
 
-function extractTextFromContent(content: ChatCompletionMessage["content"]): string {
+function extractTextFromContent(content: ChatCompletionMessage["content"] | null | undefined): string {
   if (!content) return "";
   if (typeof content === "string") return content.trim();
 
@@ -89,10 +70,9 @@ function extractTextFromContent(content: ChatCompletionMessage["content"]): stri
 }
 
 function extractTextFromResponse(response: unknown): string {
-  const fromChoices = extractTextFromContent(
-    (response as { choices?: Array<{ message?: { content?: ChatCompletionMessage["content"] } }> })
-      ?.choices?.[0]?.message?.content
-  );
+  const choiceContent = (response as { choices?: Array<{ message?: { content?: ChatCompletionMessage["content"] } }> })
+    ?.choices?.[0]?.message?.content;
+  const fromChoices = extractTextFromContent(choiceContent);
   if (fromChoices) return fromChoices;
 
   const responseRecord = response as { output_text?: unknown; output?: unknown };
@@ -152,6 +132,7 @@ export async function generateAiText(
   model: string;
   usage: { promptTokens: number; completionTokens: number; totalTokens: number } | null;
 }> {
+  const config = getConfig();
   const client = getClient();
   const controller = new AbortController();
   let timedOut = false;
@@ -170,7 +151,6 @@ export async function generateAiText(
     }
   }
 
-  const analytics = options?.analytics;
   const model = options?.model?.trim() || config.ai.model;
   const isGpt5 = model.trim().toLowerCase().startsWith("gpt-5");
   const maxOutputTokens = options?.maxOutputTokens ?? config.ai.maxOutputTokens;
@@ -178,15 +158,6 @@ export async function generateAiText(
   const temperaturePayload = supportsCustomTemperature(model)
     ? { temperature: resolvedTemperature }
     : {};
-  const posthogParams =
-    analytics && openAiClientHasPostHog
-      ? {
-          posthogDistinctId: analytics.distinctId,
-          posthogTraceId: analytics.traceId,
-          posthogProperties: analytics.properties,
-          posthogCaptureImmediate: true,
-        }
-      : {};
 
   try {
     let response;
@@ -195,7 +166,6 @@ export async function generateAiText(
       messages,
       max_completion_tokens: maxOutputTokens,
       ...temperaturePayload,
-      ...posthogParams,
     };
     const requestOptions = {
       signal: controller.signal,
@@ -204,34 +174,6 @@ export async function generateAiText(
     try {
       response = await client.chat.completions.create(requestPayload, requestOptions);
     } catch (error: unknown) {
-      const shouldRetryWithoutPostHog =
-        openAiClientHasPostHog &&
-        !controller.signal.aborted;
-
-      if (shouldRetryWithoutPostHog) {
-        try {
-          const fallbackClient = new OpenAI({ apiKey: config.ai.apiKey });
-          const fallbackResponse = await fallbackClient.chat.completions.create(
-            {
-              model,
-              messages,
-              max_completion_tokens: maxOutputTokens,
-              ...temperaturePayload,
-            },
-            requestOptions
-          );
-          console.warn(
-            "[ai] PostHog OpenAI wrapper request failed; used plain OpenAI client for this request. Will retry PostHog wrapper next request."
-          );
-          response = fallbackResponse;
-        } catch (retryError: unknown) {
-          error = retryError;
-        }
-      }
-
-      if (response) {
-        // Fallback retry succeeded; continue using this response.
-      } else {
         if (error instanceof APIConnectionTimeoutError) {
           throw new AiRequestError("AI provider timed out. Please try again.");
         }
@@ -303,7 +245,6 @@ export async function generateAiText(
         }
 
         throw new AiRequestError("AI request failed due to an unexpected provider error.");
-      }
     }
 
     const refusalMessage =
@@ -326,11 +267,6 @@ export async function generateAiText(
         if (retryText) {
           response = retryResponse;
           text = retryText;
-          if (openAiClientHasPostHog) {
-            console.warn(
-              "[ai] Empty response from PostHog-wrapped client; used plain OpenAI client for this request. Will retry PostHog wrapper next request."
-            );
-          }
         }
       } catch {
         // Preserve original empty-response handling below.

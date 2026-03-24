@@ -1,5 +1,5 @@
 import { createMiddleware } from "hono/factory";
-import { auth } from "../lib/auth";
+import { getAuth } from "../lib/auth";
 
 type AuthVariables = {
   user: { id: string; name: string; email: string };
@@ -9,7 +9,7 @@ type AuthVariables = {
 export const authMiddleware = createMiddleware<{
   Variables: AuthVariables;
 }>(async (c, next) => {
-  const session = await auth.api.getSession({
+  const session = await getAuth().api.getSession({
     headers: c.req.raw.headers,
   });
 
