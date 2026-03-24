@@ -44,6 +44,10 @@
 
 5. Point the frontend `NEXT_PUBLIC_API_URL` at your Worker URL (scheme + host, no `/api` suffix).
 
+**Deploy error `fileURLToPath` / `Received undefined` (code 10021):** The Prisma client is generated with `runtime = "workerd"` in `prisma/schema.prisma` so Cloudflare’s upload-time script check does not execute Node-style bootstrap that breaks when `import.meta.url` is missing. Run `bunx prisma generate` after pulling changes.
+
+**Worker name mismatch:** `wrangler.jsonc` → `name` should match the Worker name in the Cloudflare dashboard (and what Workers Builds expects), or CI may override it and open a config PR.
+
 ### Railway → Workers env mapping
 
 | Railway / Bun env   | Cloudflare                         |
