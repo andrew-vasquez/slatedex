@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { Prisma, UserPlan, UserRole } from "../generated/prisma/client";
 import { prisma } from "../db";
+import { readJsonBody } from "../lib/request";
 import { authMiddleware } from "../middleware/auth";
 import { requireRole } from "../middleware/admin";
 
@@ -29,6 +30,7 @@ const MAX_QUERY_LENGTH = 80;
 const MAX_PAGE_SIZE = 100;
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_LIMIT_VALUE = 100_000;
+const MAX_ADMIN_REQUEST_BODY_BYTES = 16_000;
 
 function parseRange(raw: string | undefined): RangeKey {
   if (raw === "90d") return "90d";
@@ -464,11 +466,14 @@ admin.patch("/users/:id/entitlements", async (c) => {
   const userId = c.req.param("id");
   if (!userId) return c.json({ error: "User id is required." }, 400);
 
-  const body = await c.req.json().catch(() => null);
-  if (!body || typeof body !== "object") {
+  const body = await readJsonBody(c.req.raw, MAX_ADMIN_REQUEST_BODY_BYTES);
+  if (!body.ok) {
+    return c.json({ error: body.error }, body.status);
+  }
+  if (!body.value || typeof body.value !== "object") {
     return c.json({ error: "Invalid request body." }, 400);
   }
-  const payload = body as Record<string, unknown>;
+  const payload = body.value as Record<string, unknown>;
 
   const plan = parsePlan(payload.plan);
   const monthlyChatLimit = parseLimit(payload.monthlyChatLimit);
@@ -529,11 +534,14 @@ admin.patch("/users/:id/role", async (c) => {
   const userId = c.req.param("id");
   if (!userId) return c.json({ error: "User id is required." }, 400);
 
-  const body = await c.req.json().catch(() => null);
-  if (!body || typeof body !== "object") {
+  const body = await readJsonBody(c.req.raw, MAX_ADMIN_REQUEST_BODY_BYTES);
+  if (!body.ok) {
+    return c.json({ error: body.error }, body.status);
+  }
+  if (!body.value || typeof body.value !== "object") {
     return c.json({ error: "Invalid request body." }, 400);
   }
-  const payload = body as Record<string, unknown>;
+  const payload = body.value as Record<string, unknown>;
   const role = parseRole(payload.role);
   if (role === "invalid" || !role) {
     return c.json({ error: "role is invalid." }, 400);

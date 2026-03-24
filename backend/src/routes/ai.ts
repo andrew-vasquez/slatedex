@@ -14,6 +14,7 @@ import { getBossGuidanceForVersion } from "../lib/ai/bossData";
 import { buildAnalyzePrompt, buildChatPrompt } from "../lib/ai/prompts";
 import { AiRequestError, generateAiText } from "../lib/ai/openai";
 import { capturePostHogEventImmediate } from "../lib/posthog";
+import { readJsonBody } from "../lib/request";
 import {
   getCurrentUsageSnapshot,
   releaseUsageReservation,
@@ -52,6 +53,7 @@ const MAX_EVOLUTION_LINE_LENGTH = 5;
 const ALLOWED_EXCLUSIVE_STATUSES = new Set(["exclusive", "shared", "unknown"]);
 const ALLOWED_DEX_MODES = new Set<DexMode>(["regional", "national"]);
 const MAX_ANALYTICS_ERROR_MESSAGE_LENGTH = 500;
+const MAX_AI_REQUEST_BODY_BYTES = 128_000;
 
 const ai = new Hono<AuthEnv>();
 ai.use("*", authMiddleware);
@@ -996,12 +998,15 @@ ai.post("/chat", async (c) => {
   }
 
   const user = c.get("user");
-  const body = await c.req.json().catch(() => null);
-  if (!body || typeof body !== "object") {
+  const body = await readJsonBody(c.req.raw, MAX_AI_REQUEST_BODY_BYTES);
+  if (!body.ok) {
+    return c.json({ error: body.error }, body.status);
+  }
+  if (!body.value || typeof body.value !== "object") {
     return c.json({ error: "Invalid request body" }, 400);
   }
 
-  const payload = body as Record<string, unknown>;
+  const payload = body.value as Record<string, unknown>;
   const providedTeamId = parseTeamId(payload.teamId);
   const generation = parsePositiveInt(payload.generation);
   const gameId = parsePositiveInt(payload.gameId);
@@ -1270,12 +1275,15 @@ ai.post("/analyze", async (c) => {
   }
 
   const user = c.get("user");
-  const body = await c.req.json().catch(() => null);
-  if (!body || typeof body !== "object") {
+  const body = await readJsonBody(c.req.raw, MAX_AI_REQUEST_BODY_BYTES);
+  if (!body.ok) {
+    return c.json({ error: body.error }, body.status);
+  }
+  if (!body.value || typeof body.value !== "object") {
     return c.json({ error: "Invalid request body" }, 400);
   }
 
-  const payload = body as Record<string, unknown>;
+  const payload = body.value as Record<string, unknown>;
   const providedTeamId = parseTeamId(payload.teamId);
   const generation = parsePositiveInt(payload.generation);
   const gameId = parsePositiveInt(payload.gameId);

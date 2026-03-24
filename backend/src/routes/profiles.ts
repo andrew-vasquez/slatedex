@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { UserPlan, UserRole } from "../generated/prisma/client";
 import { prisma } from "../db";
+import { readJsonBody } from "../lib/request";
 import { authMiddleware } from "../middleware/auth";
 import { getCurrentUsageSnapshot } from "../lib/ai/quota";
 import { isProduction } from "../lib/runtime";
@@ -21,6 +22,7 @@ const USERNAME_WINDOW_DAYS = 30;
 const USERNAME_REGEX = /^[a-z0-9](?:[a-z0-9_]{1,28}[a-z0-9])?$/;
 const MAX_ME_SAVED_TEAMS = 24;
 const MAX_PUBLIC_SAVED_TEAMS = 12;
+const MAX_PROFILE_REQUEST_BODY_BYTES = 16_000;
 const AVATAR_FRAMES = new Set([
   "classic",
   "fire",
@@ -448,8 +450,11 @@ profiles.get("/me", authMiddleware, async (c) => {
 
 profiles.put("/me", authMiddleware, async (c) => {
   const authUser = c.get("user");
-  const body = await c.req.json().catch(() => null);
-  const payload = body && typeof body === "object" ? (body as Record<string, unknown>) : null;
+  const body = await readJsonBody(c.req.raw, MAX_PROFILE_REQUEST_BODY_BYTES);
+  if (!body.ok) {
+    return c.json({ error: body.error }, body.status);
+  }
+  const payload = body.value && typeof body.value === "object" ? (body.value as Record<string, unknown>) : null;
 
   if (!payload) {
     return c.json({ error: "Invalid request body" }, 400);

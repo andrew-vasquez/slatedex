@@ -12,8 +12,10 @@
     "postinstall": "prisma generate",
     "worker:dev": "wrangler dev",
     "worker:deploy": "wrangler deploy",
+    "worker:types": "wrangler types",
+    "worker:types:check": "wrangler types --check",
     "deploy": "wrangler deploy",
-    "typecheck": "bunx tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.4.0",
@@ -27,6 +29,7 @@
     "@cloudflare/workers-types": "^4.20250317.0",
     "@types/bun": "latest",
     "prisma": "^7.4.0",
+    "typescript": "^5.9.3",
     "wrangler": "^4.37.1"
   }
 }

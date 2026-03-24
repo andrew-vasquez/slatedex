@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { prisma } from "../db";
+import { readJsonBody } from "../lib/request";
 import { authMiddleware } from "../middleware/auth";
 
 type AuthEnv = {
@@ -16,6 +17,7 @@ const MAX_VERSION_ID_LENGTH = 64;
 const MAX_CHECKPOINT_BOSS_NAME_LENGTH = 80;
 const MAX_EVOLUTION_LINE_LENGTH = 5;
 const MAX_TEAM_PAYLOAD_BYTES = 64_000;
+const MAX_TEAM_REQUEST_BODY_BYTES = 80_000;
 const ALLOWED_EXCLUSIVE_STATUSES = new Set(["exclusive", "shared", "unknown"]);
 const ALLOWED_CHECKPOINT_STAGES = new Set(["gym", "elite4", "champion"]);
 
@@ -310,12 +312,15 @@ teams.get("/:id", async (c) => {
 // POST /api/teams
 teams.post("/", async (c) => {
   const user = c.get("user");
-  const body = await c.req.json().catch(() => null);
-  if (!body || typeof body !== "object") {
+  const body = await readJsonBody(c.req.raw, MAX_TEAM_REQUEST_BODY_BYTES);
+  if (!body.ok) {
+    return c.json({ error: body.error }, body.status);
+  }
+  if (!body.value || typeof body.value !== "object") {
     return c.json({ error: "Invalid request body" }, 400);
   }
 
-  const payload = body as Record<string, unknown>;
+  const payload = body.value as Record<string, unknown>;
   const name = parseTeamName(payload.name);
   const generation = parsePositiveInt(payload.generation);
   const gameId = parsePositiveInt(payload.gameId);
@@ -367,9 +372,12 @@ teams.post("/", async (c) => {
 teams.put("/:id", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req.raw, MAX_TEAM_REQUEST_BODY_BYTES);
 
-  if (!body || typeof body !== "object") {
+  if (!body.ok) {
+    return c.json({ error: body.error }, body.status);
+  }
+  if (!body.value || typeof body.value !== "object") {
     return c.json({ error: "Invalid request body" }, 400);
   }
 
@@ -382,7 +390,7 @@ teams.put("/:id", async (c) => {
     return c.json({ error: "Team not found" }, 404);
   }
 
-  const payload = body as Record<string, unknown>;
+  const payload = body.value as Record<string, unknown>;
   const data: Record<string, unknown> = {};
 
   if (payload.name !== undefined) {

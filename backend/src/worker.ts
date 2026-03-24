@@ -4,14 +4,11 @@ import "./register-worker";
 import { app } from "./app";
 import { primeWorkerRuntime, type WorkerBindings } from "./lib/runtime";
 
-type CfExecutionContext = {
-  waitUntil(promise: Promise<unknown>): void;
-  passThroughOnException(): void;
-};
-
-export default {
-  fetch(request: Request, env: WorkerBindings, ctx: CfExecutionContext) {
+const worker: ExportedHandler<WorkerBindings> = {
+  fetch(request, env, ctx) {
     primeWorkerRuntime(env);
     return app.fetch(request, env, ctx);
   },
 };
+
+export default worker;
