@@ -3,6 +3,7 @@ import { UserPlan, UserRole } from "../generated/prisma/client";
 import { prisma } from "../db";
 import { authMiddleware } from "../middleware/auth";
 import { getCurrentUsageSnapshot } from "../lib/ai/quota";
+import { isProduction } from "../lib/runtime";
 
 type AuthEnv = {
   Variables: {
@@ -173,7 +174,7 @@ function parseAvatarUrl(raw: unknown): { value?: string | null; error?: string }
   const host = parsed.hostname.toLowerCase();
   const isLocalhost = host === "localhost" || host === "127.0.0.1";
   const isTrustedHost = TRUSTED_AVATAR_HOSTS.has(host);
-  const allowHost = isTrustedHost || (process.env.NODE_ENV !== "production" && isLocalhost);
+  const allowHost = isTrustedHost || (!isProduction() && isLocalhost);
   if (!allowHost) {
     return { error: "avatarUrl host is not allowed" };
   }

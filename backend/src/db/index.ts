@@ -1,5 +1,6 @@
 import { PrismaClient } from "../generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { env, isWorkerDeployment } from "../lib/runtime";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
@@ -8,7 +9,6 @@ function normalizeEnvUrl(value: string | undefined): string | undefined {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
 
-  // Railway/UI copy-paste commonly includes wrapping quotes.
   if (
     (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
     (trimmed.startsWith("'") && trimmed.endsWith("'"))
@@ -29,31 +29,40 @@ function urlTargetLabel(url: string): string {
   }
 }
 
-const databaseUrl = normalizeEnvUrl(process.env.DATABASE_URL);
-const directUrl = normalizeEnvUrl(process.env.DIRECT_URL);
-const runtimeConnectionMode = process.env.PRISMA_RUNTIME_CONNECTION?.trim().toLowerCase();
-
-if (!databaseUrl && !directUrl) {
-  throw new Error("DATABASE_URL or DIRECT_URL is required to start the backend.");
-}
-
 function isPrismaAccelerateUrl(value: string | undefined): value is string {
-  return Boolean(value?.startsWith("prisma://"));
+  return Boolean(value?.startsWith("prisma://") || value?.startsWith("prisma+postgres://"));
 }
 
 function createPrismaClient(): PrismaClient {
+  const databaseUrl = normalizeEnvUrl(env("DATABASE_URL"));
+  const directUrl = normalizeEnvUrl(env("DIRECT_URL"));
+  const runtimeConnectionMode = env("PRISMA_RUNTIME_CONNECTION")?.toLowerCase();
+
+  if (!databaseUrl && !directUrl) {
+    throw new Error("DATABASE_URL or DIRECT_URL is required to start the backend.");
+  }
+
+  if (isWorkerDeployment()) {
+    if (!databaseUrl || !isPrismaAccelerateUrl(databaseUrl)) {
+      throw new Error(
+        "[db] Cloudflare Workers require Prisma Accelerate: set DATABASE_URL to your prisma:// or prisma+postgres:// Accelerate URL."
+      );
+    }
+    console.log("[db] Using Prisma Accelerate (Worker)");
+    return new PrismaClient({ accelerateUrl: databaseUrl });
+  }
+
   const hasAccelerateUrl = isPrismaAccelerateUrl(databaseUrl);
   const forceDirect = runtimeConnectionMode === "direct";
   const forceAccelerate = runtimeConnectionMode === "accelerate";
   const shouldPreferAccelerate =
-    forceAccelerate || (!forceDirect && process.env.NODE_ENV === "production" && hasAccelerateUrl);
+    forceAccelerate || (!forceDirect && env("NODE_ENV") === "production" && hasAccelerateUrl);
 
-  if (shouldPreferAccelerate && hasAccelerateUrl) {
+  if (shouldPreferAccelerate && hasAccelerateUrl && databaseUrl) {
     console.log("[db] Using Prisma Accelerate via DATABASE_URL");
     return new PrismaClient({ accelerateUrl: databaseUrl });
   }
 
-  // In non-production, prefer direct for strongest read-after-write consistency during local auth testing.
   if (directUrl) {
     console.log(`[db] Using direct Postgres via DIRECT_URL (${urlTargetLabel(directUrl)})`);
     return new PrismaClient({
@@ -61,7 +70,7 @@ function createPrismaClient(): PrismaClient {
     });
   }
 
-  if (hasAccelerateUrl) {
+  if (hasAccelerateUrl && databaseUrl) {
     console.log("[db] Using Prisma Accelerate via DATABASE_URL");
     return new PrismaClient({ accelerateUrl: databaseUrl });
   }
@@ -76,10 +85,28 @@ function createPrismaClient(): PrismaClient {
   });
 }
 
-export const prisma =
-  globalForPrisma.prisma ??
-  createPrismaClient();
+let moduleSingleton: PrismaClient | undefined;
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+function getPrismaInstance(): PrismaClient {
+  if (moduleSingleton) return moduleSingleton;
+  if (globalForPrisma.prisma) {
+    moduleSingleton = globalForPrisma.prisma;
+    return moduleSingleton;
+  }
+  moduleSingleton = createPrismaClient();
+  if (env("NODE_ENV") !== "production") {
+    globalForPrisma.prisma = moduleSingleton;
+  }
+  return moduleSingleton;
 }
+
+export function getPrisma(): PrismaClient {
+  return getPrismaInstance();
+}
+
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    const real = getPrismaInstance();
+    return Reflect.get(real, prop, receiver === prisma ? real : receiver);
+  },
+});
