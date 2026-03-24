@@ -4,6 +4,7 @@ NIXPACKS_NODE_VERSION = "20"
 [phases.install]
 cmds = ["bun install --frozen-lockfile"]
 
+# Prisma `runtime = \"workerd\"` uses `.wasm?module` imports Bun cannot bundle; use `bun run start` (runs TS) or `build:bun-binary` only if you regenerate the client with `runtime = \"bun\"`.
 [phases.build]
 cmds = ["bun run build"]
 

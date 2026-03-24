@@ -4,13 +4,15 @@
   "scripts": {
     "dev": "bun run src/index.ts",
     "dev:hot": "bun run --hot src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun",
+    "build": "bun run typecheck",
+    "build:bun-binary": "bun build src/index.ts --outdir dist --target bun",
     "start": "bun run src/index.ts",
     "reset-password": "bun run scripts/dev-reset-password.ts",
     "set-user-role": "bun run scripts/set-user-role.ts",
     "postinstall": "prisma generate",
     "worker:dev": "wrangler dev",
     "worker:deploy": "wrangler deploy",
+    "deploy": "wrangler deploy",
     "typecheck": "bunx tsc --noEmit"
   },
   "dependencies": {

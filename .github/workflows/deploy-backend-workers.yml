@@ -25,6 +25,9 @@ jobs:
       - name: Install and generate Prisma client
         run: bun install --frozen-lockfile && bunx prisma generate
 
+      - name: Typecheck
+        run: bun run build
+
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
