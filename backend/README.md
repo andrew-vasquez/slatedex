@@ -42,7 +42,15 @@
    cd backend && bun install && bunx prisma generate && bun run worker:deploy
    ```
 
+   **Cloudflare Workers Builds (dashboard):** set **Build command** to `bun run build` (TypeScript only). Do **not** use `bun build src/index.ts`: Prisma `runtime = "workerd"` uses `.wasm?module` imports Bun cannot bundle. Wrangler bundles the Worker on deploy.
+
+   Dashboard **Deploy command** can stay `npx wrangler deploy` or use `bun run deploy` (same as `worker:deploy`). Per [Workers Builds configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/), the `[build]` block in `wrangler.jsonc` is **not** run by Workers Builds—only local `wrangler deploy` / `wrangler dev` use it (this repo runs `bun run build` before bundling locally).
+
 5. Point the frontend `NEXT_PUBLIC_API_URL` at your Worker URL (scheme + host, no `/api` suffix).
+
+**Deploy error `fileURLToPath` / `Received undefined` (code 10021):** The Prisma client is generated with `runtime = "workerd"` in `prisma/schema.prisma` so Cloudflare’s upload-time script check does not execute Node-style bootstrap that breaks when `import.meta.url` is missing. Run `bunx prisma generate` after pulling changes.
+
+**Worker name mismatch:** `wrangler.jsonc` → `name` should match the Worker name in the Cloudflare dashboard (and what Workers Builds expects), or CI may override it and open a config PR.
 
 ### Railway → Workers env mapping
 

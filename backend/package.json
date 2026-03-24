@@ -4,14 +4,18 @@
   "scripts": {
     "dev": "bun run src/index.ts",
     "dev:hot": "bun run --hot src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun",
+    "build": "bun run typecheck",
+    "build:bun-binary": "bun build src/index.ts --outdir dist --target bun",
     "start": "bun run src/index.ts",
     "reset-password": "bun run scripts/dev-reset-password.ts",
     "set-user-role": "bun run scripts/set-user-role.ts",
     "postinstall": "prisma generate",
     "worker:dev": "wrangler dev",
     "worker:deploy": "wrangler deploy",
-    "typecheck": "bunx tsc --noEmit"
+    "worker:types": "wrangler types",
+    "worker:types:check": "wrangler types --check",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.4.0",
@@ -25,6 +29,7 @@
     "@cloudflare/workers-types": "^4.20250317.0",
     "@types/bun": "latest",
     "prisma": "^7.4.0",
+    "typescript": "^5.9.3",
     "wrangler": "^4.37.1"
   }
 }

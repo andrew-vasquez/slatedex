@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { prisma } from "../db";
+import { readJsonBody } from "../lib/request";
 import { authMiddleware } from "../middleware/auth";
 import { getBossesForGame, isSupportedGame } from "../lib/battle/presetRosters";
 import { analyzeBattle } from "../lib/battle/matchupEngine";
@@ -24,6 +25,7 @@ const MAX_POKEMON_NAME_LENGTH = 48;
 const MAX_SPRITE_LENGTH = 500;
 const MAX_VERSION_ID_LENGTH = 64;
 const MAX_PRESET_BOSS_KEY_LENGTH = 120;
+const MAX_BATTLE_REQUEST_BODY_BYTES = 80_000;
 const ALLOWED_SOURCES = new Set(["MANUAL", "PRESET"]);
 const REALISM_MODES = new Set<BattleRealismMode>(["strict", "sandbox"]);
 
@@ -206,12 +208,15 @@ battle.get("/presets", async (c) => {
 // ── POST /api/battle-matchups/analyze ───────────────────────────────────────
 // Public — no auth required (analysis is stateless)
 battle.post("/matchups/analyze", async (c) => {
-  const body = await c.req.json().catch(() => null);
-  if (!body || typeof body !== "object") {
+  const body = await readJsonBody(c.req.raw, MAX_BATTLE_REQUEST_BODY_BYTES);
+  if (!body.ok) {
+    return c.json({ error: body.error }, body.status);
+  }
+  if (!body.value || typeof body.value !== "object") {
     return c.json({ error: "Invalid request body" }, 400);
   }
 
-  const payload = body as Record<string, unknown>;
+  const payload = body.value as Record<string, unknown>;
   const realismMode = parseRealismMode(payload.realismMode);
   if (realismMode === "invalid") {
     return c.json({ error: "realismMode must be 'strict' or 'sandbox'." }, 400);
@@ -342,12 +347,15 @@ opponentTeams.get("/", async (c) => {
 opponentTeams.post("/", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const body = await c.req.json().catch(() => null);
-  if (!body || typeof body !== "object") {
+  const body = await readJsonBody(c.req.raw, MAX_BATTLE_REQUEST_BODY_BYTES);
+  if (!body.ok) {
+    return c.json({ error: body.error }, body.status);
+  }
+  if (!body.value || typeof body.value !== "object") {
     return c.json({ error: "Invalid request body" }, 400);
   }
 
-  const payload = body as Record<string, unknown>;
+  const payload = body.value as Record<string, unknown>;
 
   const name = typeof payload.name === "string" ? payload.name.trim() : "";
   if (!name || name.length > MAX_OPPONENT_TEAM_NAME_LENGTH) {
@@ -434,8 +442,11 @@ opponentTeams.put("/:id", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: "Unauthorized" }, 401);
   const id = c.req.param("id");
-  const body = await c.req.json().catch(() => null);
-  if (!body || typeof body !== "object") {
+  const body = await readJsonBody(c.req.raw, MAX_BATTLE_REQUEST_BODY_BYTES);
+  if (!body.ok) {
+    return c.json({ error: body.error }, body.status);
+  }
+  if (!body.value || typeof body.value !== "object") {
     return c.json({ error: "Invalid request body" }, 400);
   }
 
@@ -445,7 +456,7 @@ opponentTeams.put("/:id", async (c) => {
   });
   if (!existing) return c.json({ error: "Opponent team not found." }, 404);
 
-  const payload = body as Record<string, unknown>;
+  const payload = body.value as Record<string, unknown>;
   const data: Record<string, unknown> = {};
 
   if (payload.name !== undefined) {

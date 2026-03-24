@@ -35,7 +35,9 @@ Example routes: `frontend/app/page.tsx` (home) and `frontend/app/game/[generatio
 
 ### Backend
 - `cd backend && bun run dev`: start the Hono API locally with Bun (hot reload via `dev:hot`).
-- `cd backend && bun run build` / `bun run start`: Bun binary build for self-hosted Node/Bun targets.
+- `cd backend && bun run build`: TypeScript check (used by Cloudflare Workers Builds; avoids Bun-bundling Prisma’s workerd WASM client).
+- `cd backend && bun run build:bun-binary`: Bun bundle of `index.ts` (only if Prisma client is generated for `bun`/`nodejs`, not `workerd`).
+- `cd backend && bun run start`: runs the API with Bun (`src/index.ts`).
 - `cd backend && bun run worker:dev` / `bun run worker:deploy`: Cloudflare Workers (Wrangler); production API expects Prisma Accelerate on `DATABASE_URL`.
 - `cd backend && bun run typecheck`: TypeScript (`tsc --noEmit`).
 

@@ -33,7 +33,8 @@ cd backend
 bun run dev        # Bun: local Hono API
 bun run worker:dev # Cloudflare: Wrangler dev
 bun run worker:deploy
-bun run build      # Bun binary build (self-hosted)
+bun run build      # Typecheck (Workers CI; Prisma workerd client cannot be Bun-bundled)
+bun run build:bun-binary  # Optional: Bun bundle of index.ts (needs Prisma runtime=bun, not workerd)
 bun run start
 bun run typecheck  # tsc --noEmit
 ```
