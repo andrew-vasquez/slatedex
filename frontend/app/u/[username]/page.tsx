@@ -103,7 +103,10 @@ function PokemonSpriteStrip({ team }: { team: ProfileSavedTeam }) {
           <div
             key={`${team.id}-${pokemon.name}`}
             className="flex h-9 w-9 items-center justify-center rounded-lg border"
-            style={{ borderColor: "var(--border)", background: "rgba(9, 15, 35, 0.58)" }}
+            style={{
+              borderColor: "var(--border)",
+              background: "color-mix(in srgb, var(--surface-3) 70%, var(--surface-2))",
+            }}
             title={pokemon.name}
           >
             {safeImageSrc(pokemon.sprite) ? (
@@ -196,13 +199,22 @@ export default async function PublicProfilePage({
               Trainer Profile
             </span>
           </div>
-          <Link
-            href="/play"
-            className="hidden rounded-xl border px-3.5 py-2 text-[0.82rem] font-semibold transition-colors hover:border-[var(--border-hover)] sm:inline-flex items-center gap-1.5"
-            style={{ borderColor: "var(--border)", color: "var(--text-secondary)", background: "var(--surface-2)" }}
-          >
-            Open Builder
-          </Link>
+          <div className="hidden items-center gap-2 sm:flex">
+            <Link
+              href="/weaknesses"
+              className="rounded-xl border px-3.5 py-2 text-[0.82rem] font-semibold transition-colors hover:border-[var(--border-hover)]"
+              style={{ borderColor: "var(--border)", color: "var(--text-secondary)", background: "var(--surface-2)", textDecoration: "none" }}
+            >
+              Weakness Tool
+            </Link>
+            <Link
+              href="/play"
+              className="rounded-xl border px-3.5 py-2 text-[0.82rem] font-semibold transition-colors hover:border-[var(--border-hover)] inline-flex items-center gap-1.5"
+              style={{ borderColor: "var(--border)", color: "var(--text-secondary)", background: "var(--surface-2)" }}
+            >
+              Open Builder
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -222,7 +234,7 @@ export default async function PublicProfilePage({
               style={{
                 borderColor: avatarFrameStyles.border,
                 boxShadow: avatarFrameStyles.glow,
-                background: "rgba(8, 14, 31, 0.75)",
+                background: "color-mix(in srgb, var(--surface-3) 78%, var(--surface-2))",
               }}
             >
               {avatar ? (
@@ -256,13 +268,6 @@ export default async function PublicProfilePage({
               </p>
             </div>
           </div>
-          <Link
-            href="/play"
-            className="hidden rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors hover:border-[var(--border-hover)] sm:inline-flex"
-            style={{ borderColor: "var(--border)", color: "var(--text-primary)", background: "var(--surface-2)" }}
-          >
-            Open Builder
-          </Link>
         </div>
 
         <p className="mt-4 max-w-3xl text-sm leading-relaxed sm:text-[0.95rem]" style={{ color: "var(--text-secondary)" }}>
@@ -300,8 +305,8 @@ export default async function PublicProfilePage({
                       key={gameId}
                       className="rounded-xl border px-3 py-2"
                       style={{
-                        borderColor: decor.accent,
-                        background: decor.soft,
+                        borderColor: `color-mix(in srgb, ${decor.accent} 48%, var(--border))`,
+                        background: `color-mix(in srgb, ${decor.soft} 72%, var(--surface-1))`,
                       }}
                     >
                       <div className="flex items-center gap-2">

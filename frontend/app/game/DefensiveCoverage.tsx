@@ -80,23 +80,23 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
 
   const getCellBg = (net: number, weakCount: number, resistCount: number): string => {
     if (weakCount === 0 && resistCount === 0) return "var(--surface-2)";
-    if (net >= 2) return "rgba(19, 111, 58, 0.18)";
-    if (net >= 0) return "rgba(196, 126, 31, 0.14)";
-    if (net >= -1) return "rgba(218, 44, 67, 0.18)";
-    return "rgba(185, 28, 28, 0.26)";
+    if (net >= 2) return "var(--success-bg-strong)";
+    if (net >= 0) return "var(--warning-bg)";
+    if (net >= -1) return "var(--danger-bg)";
+    return "var(--danger-bg-strong)";
   };
 
   const getCellBorder = (net: number, weakCount: number, resistCount: number): string => {
     if (weakCount === 0 && resistCount === 0) return "rgba(148, 163, 184, 0.25)";
-    if (net >= 1) return "rgba(19, 111, 58, 0.4)";
-    if (net >= 0) return "rgba(196, 126, 31, 0.38)";
-    return "rgba(185, 28, 28, 0.4)";
+    if (net >= 1) return "var(--success-border)";
+    if (net >= 0) return "var(--warning-border)";
+    return "var(--danger-border)";
   };
 
   const getNetColor = (net: number): string => {
-    if (net > 0) return "#136f3a";
-    if (net < 0) return "#991b1b";
-    return "#9a670e";
+    if (net > 0) return "var(--success-text)";
+    if (net < 0) return "var(--danger-text)";
+    return "var(--warning-text)";
   };
 
   const formatNet = (net: number): string => {
@@ -157,11 +157,11 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
 
         <div className="flex items-center gap-2 text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
           <span className="inline-flex items-center gap-1">
-            <span className="h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(19, 111, 58, 0.35)" }} />
+            <span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--success-bg-strong)" }} />
             Covered
           </span>
           <span className="inline-flex items-center gap-1">
-            <span className="h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(218, 44, 67, 0.3)" }} />
+            <span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--danger-bg-strong)" }} />
             Exposed
           </span>
           {typeSummaries.some((t) => t.isLocked) && (
@@ -175,7 +175,7 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
 
       <div className="mb-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <div className="panel-soft px-3.5 py-3">
-          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "#f87171" }}>
+          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--danger-text)" }}>
             Pressure Points
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5" onPointerLeave={clearPreview}>
@@ -192,10 +192,10 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
                     onClick={() => selectType(item.type)}
                     className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold capitalize"
                     style={{
-                      background: isActive ? "rgba(185, 28, 28, 0.18)" : "rgba(185, 28, 28, 0.12)",
-                      border: isActive ? "1px solid rgba(248, 113, 113, 0.45)" : "1px solid rgba(185, 28, 28, 0.26)",
-                      color: "#fca5a5",
-                      boxShadow: isActive ? "0 0 0 2px rgba(248, 113, 113, 0.2)" : undefined,
+                      background: isActive ? "var(--danger-bg-strong)" : "var(--danger-bg)",
+                      border: "1px solid var(--danger-border)",
+                      color: "var(--danger-text)",
+                      boxShadow: isActive ? "0 0 0 2px var(--danger-bg)" : undefined,
                     }}
                   >
                     {item.type} ({item.weakCount} weak)
@@ -211,7 +211,7 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
         </div>
 
         <div className="panel-soft px-3.5 py-3">
-          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "#4ade80" }}>
+          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--success-text)" }}>
             Safe Pivots
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5" onPointerLeave={clearPreview}>
@@ -228,10 +228,10 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
                     onClick={() => selectType(item.type)}
                     className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold capitalize"
                     style={{
-                      background: isActive ? "rgba(19, 111, 58, 0.18)" : "rgba(19, 111, 58, 0.12)",
-                      border: isActive ? "1px solid rgba(134, 239, 172, 0.45)" : "1px solid rgba(19, 111, 58, 0.26)",
-                      color: "#86efac",
-                      boxShadow: isActive ? "0 0 0 2px rgba(74, 222, 128, 0.2)" : undefined,
+                      background: isActive ? "var(--success-bg-strong)" : "var(--success-bg)",
+                      border: "1px solid var(--success-border)",
+                      color: "var(--success-text)",
+                      boxShadow: isActive ? "0 0 0 2px var(--success-bg)" : undefined,
                     }}
                   >
                     {item.type} (+{Math.max(item.net, 0)})
@@ -334,19 +334,19 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
 
           <div className="coverage-detail-body">
             <div className="mb-3 grid grid-cols-3 gap-1.5">
-              <div className="rounded-md px-2 py-1.5" style={{ background: "rgba(248, 113, 113, 0.12)", border: "1px solid rgba(248, 113, 113, 0.28)" }}>
-                <p className="text-[0.55rem] font-semibold uppercase" style={{ color: "#fca5a5" }}>
+              <div className="rounded-md px-2 py-1.5" style={{ background: "var(--danger-bg)", border: "1px solid var(--danger-border)" }}>
+                <p className="text-[0.55rem] font-semibold uppercase" style={{ color: "var(--danger-text)" }}>
                   Weak
                 </p>
-                <p className="font-mono text-xs" style={{ color: "#fca5a5" }}>
+                <p className="font-mono text-xs" style={{ color: "var(--danger-text)" }}>
                   {activeData.isLocked ? "—" : activeData.weakCount}
                 </p>
               </div>
-              <div className="rounded-md px-2 py-1.5" style={{ background: "rgba(74, 222, 128, 0.12)", border: "1px solid rgba(74, 222, 128, 0.28)" }}>
-                <p className="text-[0.55rem] font-semibold uppercase" style={{ color: "#86efac" }}>
+              <div className="rounded-md px-2 py-1.5" style={{ background: "var(--success-bg)", border: "1px solid var(--success-border)" }}>
+                <p className="text-[0.55rem] font-semibold uppercase" style={{ color: "var(--success-text)" }}>
                   Resist
                 </p>
-                <p className="font-mono text-xs" style={{ color: "#86efac" }}>
+                <p className="font-mono text-xs" style={{ color: "var(--success-text)" }}>
                   {activeData.isLocked ? "—" : activeData.resistCount}
                 </p>
               </div>
@@ -372,7 +372,7 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
 
             <div className="grid grid-cols-1 gap-3">
               <div>
-                <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "#fca5a5" }}>
+                <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--danger-text)" }}>
                   Weak ({activeData.isLocked ? "—" : activeData.weakCount})
                 </p>
                 <div className="coverage-sprite-list flex flex-wrap gap-1">
@@ -390,7 +390,7 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
                         height={30}
                         unoptimized
                         className="rounded border"
-                        style={{ borderColor: "rgba(248, 113, 113, 0.35)", background: "rgba(248, 113, 113, 0.16)" }}
+                        style={{ borderColor: "var(--danger-border)", background: "var(--danger-bg)" }}
                         title={`${pokemon.name} (${pokemon.effectiveness}x)`}
                       />
                     ))
@@ -403,7 +403,7 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
               </div>
 
               <div>
-                <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "#86efac" }}>
+                <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--success-text)" }}>
                   Resist ({activeData.isLocked ? "—" : activeData.resistCount})
                 </p>
                 <div className="coverage-sprite-list flex flex-wrap gap-1">
@@ -421,7 +421,7 @@ const DefensiveCoverage = ({ coverage, generation }: DefensiveCoverageProps) => 
                         height={30}
                         unoptimized
                         className="rounded border"
-                        style={{ borderColor: "rgba(74, 222, 128, 0.35)", background: "rgba(74, 222, 128, 0.14)" }}
+                        style={{ borderColor: "var(--success-border)", background: "var(--success-bg)" }}
                         title={`${pokemon.name} (${pokemon.effectiveness}x)`}
                       />
                     ))

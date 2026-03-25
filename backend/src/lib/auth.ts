@@ -24,6 +24,7 @@ function buildAuth() {
     }),
     emailAndPassword: {
       enabled: true,
+      autoSignIn: true,
     },
     plugins: [
       username({
@@ -45,9 +46,9 @@ function buildAuth() {
     advanced: {
       useSecureCookies: isProduction(),
       defaultCookieAttributes: {
-        sameSite: isProduction() ? "none" : "lax",
+        // Keep auth cookies first-party friendly for Safari/iOS by relying on the frontend proxy.
+        sameSite: "lax",
         secure: isProduction(),
-        partitioned: isProduction(),
       },
     },
   });

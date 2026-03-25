@@ -7,33 +7,9 @@ import type {
   Pokemon,
 } from "./types";
 import { authClient } from "./auth-client";
-
-function getApiUrl(): string {
-  const rawUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-
-  if (!rawUrl) {
-    if (process.env.NODE_ENV === "production") {
-      console.warn(
-        "NEXT_PUBLIC_API_URL is not set in production. API requests will fall back to localhost."
-      );
-    }
-    return "http://localhost:3001";
-  }
-
-  const unquoted = rawUrl.replace(/^['"]+|['"]+$/g, "");
-  const withProtocol =
-    !unquoted.startsWith("http://") && !unquoted.startsWith("https://")
-      ? `https://${unquoted}`
-      : unquoted;
-
-  let normalized = withProtocol.replace(/\/+$/, "");
-  if (/(\/api)+$/i.test(normalized)) {
-    normalized = normalized.replace(/(\/api)+$/i, "");
-  }
-  return normalized;
-}
-
-const API_URL = getApiUrl();
+import { getClientSafeApiBaseUrl } from "./backend-url";
+const SESSION_CONFIRMATION_ATTEMPTS = 5;
+const SESSION_CONFIRMATION_DELAYS_MS = [150, 300, 500, 800];
 
 export type UserRoleValue = "USER" | "ADMIN" | "OWNER";
 export type UserPlanValue = "FREE" | "PRO";
@@ -243,7 +219,8 @@ export interface AdminUserRow {
 }
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const requestUrl = `${API_URL}${path}`;
+  const apiBaseUrl = getClientSafeApiBaseUrl();
+  const requestUrl = `${apiBaseUrl}${path}`;
   const res = await fetch(requestUrl, {
     ...options,
     credentials: "include",
@@ -374,9 +351,13 @@ export async function loginWithIdentifier(
     return { ok: false, error: result.error.message ?? "Invalid credentials" };
   }
 
-  const session = await authClient.getSession().catch(() => null);
+  const session = await waitForAuthenticatedSession();
   if (!session?.data?.user) {
-    return { ok: false, error: "Sign in did not complete. Please try again." };
+    return {
+      ok: false,
+      error:
+        "Sign in reached the auth server, but the session cookie was not available afterwards. On iPhone/iPad this usually means the auth cookie is being delayed or blocked. Please try again, and if it keeps happening, use the frontend and API on the same site domain.",
+    };
   }
 
   return { ok: true };
@@ -407,12 +388,31 @@ export async function registerWithEmail(
     return { ok: false, error: result.error.message ?? "Sign up failed" };
   }
 
-  const session = await authClient.getSession().catch(() => null);
+  const session = await waitForAuthenticatedSession();
   if (!session?.data?.user) {
-    return { ok: false, error: "Sign up did not complete. Please try again." };
+    return {
+      ok: false,
+      error:
+        "Account creation reached the auth server, but the session cookie was not available afterwards. On iPhone/iPad this usually means the auth cookie is being delayed or blocked. Please try again, and if it keeps happening, use the frontend and API on the same site domain.",
+    };
   }
 
   return { ok: true };
+}
+
+async function waitForAuthenticatedSession() {
+  for (let attempt = 0; attempt < SESSION_CONFIRMATION_ATTEMPTS; attempt += 1) {
+    const session = await authClient.getSession().catch(() => null);
+    if (session?.data?.user) {
+      return session;
+    }
+
+    if (attempt < SESSION_CONFIRMATION_DELAYS_MS.length) {
+      await new Promise((resolve) => setTimeout(resolve, SESSION_CONFIRMATION_DELAYS_MS[attempt]));
+    }
+  }
+
+  return null;
 }
 
 export function fetchPublicProfile(username: string): Promise<PublicProfile> {

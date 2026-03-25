@@ -4,6 +4,7 @@ import { FiShield, FiZap, FiGrid, FiStar, FiTarget, FiActivity } from "react-ico
 import { LandingNav, HeroAuthButtons, AuthCTASection, FooterAuthLinks } from "@/app/AuthSection";
 import HeroTypewriter from "@/app/landing/HeroTypewriter";
 import LiveMiniDemo from "@/app/landing/LiveMiniDemo";
+import SlatedexBrand from "@/components/ui/SlatedexBrand";
 
 export const metadata: Metadata = {
   title: "Slatedex — Pokémon Team Builder",
@@ -71,15 +72,7 @@ export default function LandingPage() {
       {/* ── Sticky Nav ─────────────────────────────────────── */}
       <header className="glass sticky top-0 z-40 border-b" style={{ borderColor: "var(--border)" }}>
         <div className="mx-auto flex max-w-screen-xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link
-            href="/"
-            className="font-display text-xl leading-none"
-            style={{ letterSpacing: "-0.025em", textDecoration: "none" }}
-            aria-label="Slatedex home"
-          >
-            <span style={{ color: "var(--text-primary)" }}>Slate</span>
-            <span style={{ color: "var(--accent)" }}>dex</span>
-          </Link>
+          <SlatedexBrand titleClassName="text-[1.6rem] sm:text-[1.9rem]" iconScaleClassName="h-[1.02rem] w-[1.02rem]" />
           <LandingNav />
         </div>
       </header>
@@ -251,6 +244,7 @@ export default function LandingPage() {
             </Link>
 
             <nav className="flex flex-wrap items-center justify-center gap-4 sm:gap-6" aria-label="Footer navigation">
+              <Link href="/weaknesses" className="landing-footer-link text-[0.72rem] font-medium">Weaknesses</Link>
               <Link href="/play" className="landing-footer-link text-[0.72rem] font-medium">Builder</Link>
               <Link href="/terms" className="landing-footer-link text-[0.72rem] font-medium">Terms</Link>
               <Link href="/privacy" className="landing-footer-link text-[0.72rem] font-medium">Privacy</Link>

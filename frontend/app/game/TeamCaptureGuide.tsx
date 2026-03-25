@@ -404,7 +404,7 @@ const TeamCaptureGuide = ({
                           className="flex items-start gap-2 rounded-md border px-2 py-1.5 transition-opacity duration-200"
                           style={{
                             borderColor: "var(--border)",
-                            background: "rgba(8, 15, 34, 0.42)",
+                            background: "color-mix(in srgb, var(--surface-2) 88%, var(--surface-1))",
                             opacity: allChecked ? 0.5 : 1,
                           }}
                         >
@@ -430,7 +430,7 @@ const TeamCaptureGuide = ({
                                     className="inline-flex cursor-pointer items-baseline gap-1 rounded-full border px-1.5 py-0.5 text-[0.64rem] transition-all duration-200"
                                     style={{
                                       borderColor: isChecked ? "rgba(74, 222, 128, 0.3)" : "var(--border)",
-                                      background: isChecked ? "rgba(74, 222, 128, 0.1)" : "var(--surface-1)",
+                                      background: isChecked ? "var(--success-bg)" : "var(--surface-1)",
                                       color: "var(--text-secondary)",
                                       opacity: isChecked ? 0.65 : 1,
                                       textDecoration: isChecked ? "line-through" : "none",
@@ -440,9 +440,9 @@ const TeamCaptureGuide = ({
                                     <span
                                       className="inline-flex h-3 w-3 shrink-0 items-center justify-center rounded-sm text-[0.5rem]"
                                       style={{
-                                        border: isChecked ? "1px solid rgba(74, 222, 128, 0.5)" : "1px solid var(--border)",
-                                        background: isChecked ? "rgba(74, 222, 128, 0.25)" : "transparent",
-                                        color: isChecked ? "#86efac" : "transparent",
+                                        border: isChecked ? "1px solid var(--success-border)" : "1px solid var(--border)",
+                                        background: isChecked ? "var(--success-bg-strong)" : "transparent",
+                                        color: isChecked ? "var(--success-text)" : "transparent",
                                       }}
                                       aria-hidden="true"
                                     >
@@ -484,7 +484,7 @@ const TeamCaptureGuide = ({
                     <div className="flex items-start gap-2.5">
                       <div
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border"
-                        style={{ borderColor: "var(--border)", background: "rgba(8, 15, 34, 0.55)" }}
+                        style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface-3) 74%, var(--surface-2))" }}
                       >
                         <Image src={pokemonSpriteSrc(pokemon.sprite, pokemon.id)} alt={pokemon.name} width={32} height={32} unoptimized className="h-8 w-8 object-contain" />
                       </div>
@@ -512,7 +512,7 @@ const TeamCaptureGuide = ({
                             )}
 
                             {!compactMode && evolutionSteps.length > 0 ? (
-                              <div className="rounded-md border px-2 py-1.5" style={{ borderColor: "var(--border)", background: "rgba(8, 15, 34, 0.42)" }}>
+                              <div className="rounded-md border px-2 py-1.5" style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface-3) 76%, var(--surface-2))" }}>
                                 <p className="text-[0.66rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
                                   Evolution Path
                                 </p>
@@ -539,7 +539,7 @@ const TeamCaptureGuide = ({
                                   <div
                                     key={`${pokemon.id}-encounter-${encounterIndex}`}
                                     className="rounded-md border px-2 py-1.5"
-                                    style={{ borderColor: "var(--border)", background: "rgba(8, 15, 34, 0.42)" }}
+                                    style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface-3) 76%, var(--surface-2))" }}
                                   >
                                     <p className="text-[0.76rem] font-semibold" style={{ color: "var(--text-primary)" }}>
                                       {encounter.location}
@@ -575,7 +575,7 @@ const TeamCaptureGuide = ({
                                       <div
                                         key={`${alt.pokemonId}-alt-${ei}`}
                                         className="mt-0.5 rounded-md border px-2 py-1"
-                                        style={{ borderColor: "var(--border)", background: "rgba(8, 15, 34, 0.3)" }}
+                                        style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface-2) 92%, var(--surface-1))" }}
                                       >
                                         <p className="text-[0.72rem] font-semibold" style={{ color: "var(--text-primary)" }}>
                                           {encounter.location}

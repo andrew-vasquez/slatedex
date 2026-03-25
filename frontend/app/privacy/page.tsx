@@ -4,8 +4,9 @@ import OpenCookiePreferencesButton from "@/app/privacy/OpenCookiePreferencesButt
 import Breadcrumb from "@/components/ui/Breadcrumb";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Slatedex",
-  description: "Learn how Slatedex collects, uses, and protects your data.",
+  title: "Privacy Policy for Slatedex Pokémon Team Builder",
+  description:
+    "Learn how Slatedex collects, uses, stores, and protects account data, saved teams, cookies, analytics preferences, and public profile information.",
 };
 
 const LAST_UPDATED = "February 18, 2026";

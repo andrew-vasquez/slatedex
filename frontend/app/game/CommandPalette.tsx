@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { FiSearch, FiPlus, FiTrash2, FiDownload, FiShare2 } from "react-icons/fi";
-import { TYPE_COLORS } from "@/lib/constants";
 import { pokemonSpriteSrc } from "@/lib/image";
 import type { Pokemon } from "@/lib/types";
 

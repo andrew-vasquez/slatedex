@@ -17,40 +17,19 @@ import {
 } from "@/lib/storageKeys";
 import UserMenu from "@/components/auth/UserMenu";
 import Breadcrumb from "@/components/ui/Breadcrumb";
+import { PokemonTypeBadge } from "@/components/ui/PokemonTypeBadge";
 
 // Region color theming — mirrors the game selector palette
 const REGION_COLORS: Record<string, { accent: string; soft: string; edge: string }> = {
-  Kanto:  { accent: "#e53935", soft: "rgba(229,57,53,0.10)",   edge: "rgba(229,57,53,0.22)"  },
-  Johto:  { accent: "#fb8c00", soft: "rgba(251,140,0,0.10)",   edge: "rgba(251,140,0,0.22)"  },
-  Hoenn:  { accent: "#00897b", soft: "rgba(0,137,123,0.10)",   edge: "rgba(0,137,123,0.22)"  },
-  Sinnoh: { accent: "#1e88e5", soft: "rgba(30,136,229,0.10)",  edge: "rgba(30,136,229,0.22)" },
-  Unova:  { accent: "#795548", soft: "rgba(121,85,72,0.10)",   edge: "rgba(121,85,72,0.22)"  },
-  Kalos:  { accent: "#7e57c2", soft: "rgba(126,87,194,0.10)",  edge: "rgba(126,87,194,0.22)" },
-  Alola:  { accent: "#ef6c00", soft: "rgba(239,108,0,0.10)",   edge: "rgba(239,108,0,0.22)"  },
-  Galar:  { accent: "#546e7a", soft: "rgba(84,110,122,0.10)",  edge: "rgba(84,110,122,0.22)" },
-  Paldea: { accent: "#c62828", soft: "rgba(198,40,40,0.10)",   edge: "rgba(198,40,40,0.22)"  },
-};
-
-// Pokemon type badge colors
-const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  normal:   { bg: "rgba(168,168,120,0.22)", text: "#c8c880" },
-  fire:     { bg: "rgba(240,128,48,0.22)",  text: "#f09050" },
-  water:    { bg: "rgba(104,144,240,0.22)", text: "#88aaff" },
-  electric: { bg: "rgba(248,208,48,0.22)",  text: "#f8d840" },
-  grass:    { bg: "rgba(120,200,80,0.22)",  text: "#78d050" },
-  ice:      { bg: "rgba(152,216,216,0.22)", text: "#98e0e0" },
-  fighting: { bg: "rgba(192,48,40,0.22)",   text: "#e05048" },
-  poison:   { bg: "rgba(160,64,160,0.22)",  text: "#cc66cc" },
-  ground:   { bg: "rgba(224,192,104,0.22)", text: "#e8c860" },
-  flying:   { bg: "rgba(168,144,240,0.22)", text: "#b8a8ff" },
-  psychic:  { bg: "rgba(248,88,136,0.22)",  text: "#ff7799" },
-  bug:      { bg: "rgba(168,184,32,0.22)",  text: "#b8cc28" },
-  rock:     { bg: "rgba(184,160,56,0.22)",  text: "#c8b040" },
-  ghost:    { bg: "rgba(112,88,152,0.22)",  text: "#9878cc" },
-  dragon:   { bg: "rgba(112,56,248,0.22)",  text: "#9060ff" },
-  dark:     { bg: "rgba(112,88,72,0.22)",   text: "#9c8870" },
-  steel:    { bg: "rgba(184,184,208,0.22)", text: "#c8c8e0" },
-  fairy:    { bg: "rgba(238,153,172,0.22)", text: "#ffaabb" },
+  Kanto:  { accent: "#dc2626", soft: "rgba(220,38,38,0.12)",   edge: "rgba(220,38,38,0.26)"  },
+  Johto:  { accent: "#b45309", soft: "rgba(180,83,9,0.12)",    edge: "rgba(180,83,9,0.26)"   },
+  Hoenn:  { accent: "#0f766e", soft: "rgba(15,118,110,0.12)",  edge: "rgba(15,118,110,0.26)" },
+  Sinnoh: { accent: "#2563eb", soft: "rgba(37,99,235,0.12)",   edge: "rgba(37,99,235,0.26)"  },
+  Unova:  { accent: "#6b4f3b", soft: "rgba(107,79,59,0.12)",   edge: "rgba(107,79,59,0.26)"  },
+  Kalos:  { accent: "#7c3aed", soft: "rgba(124,58,237,0.12)",  edge: "rgba(124,58,237,0.26)" },
+  Alola:  { accent: "#c2410c", soft: "rgba(194,65,12,0.12)",   edge: "rgba(194,65,12,0.26)"  },
+  Galar:  { accent: "#0369a1", soft: "rgba(3,105,161,0.12)",   edge: "rgba(3,105,161,0.26)"  },
+  Paldea: { accent: "#be185d", soft: "rgba(190,24,93,0.12)",   edge: "rgba(190,24,93,0.26)"  },
 };
 
 function getGenerationLabel(generation: number): string {
@@ -223,15 +202,16 @@ function TeamCard({
         {uniqueTypes.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {uniqueTypes.map((type) => {
-              const tc = TYPE_COLORS[type] ?? { bg: "var(--surface-2)", text: "var(--text-muted)" };
               return (
-                <span
+                <PokemonTypeBadge
                   key={type}
-                  className="rounded-md px-1.5 py-0.5 text-[0.58rem] font-bold uppercase tracking-[0.08em]"
-                  style={{ background: tc.bg, color: tc.text }}
+                  pokemonType={type}
+                  size="xs"
+                  uppercase
+                  className="font-bold"
                 >
                   {type}
-                </span>
+                </PokemonTypeBadge>
               );
             })}
           </div>
@@ -368,7 +348,17 @@ export default function TeamsPage() {
               My Teams
             </span>
           </div>
-          <UserMenu />
+          <UserMenu
+            betweenThemeAndAuth={(
+              <Link
+                href="/weaknesses"
+                className="user-menu-trigger"
+                style={{ textDecoration: "none" }}
+              >
+                Weakness Tool
+              </Link>
+            )}
+          />
         </div>
       </header>
 

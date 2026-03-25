@@ -13,6 +13,7 @@ import { FALLBACK_POKEMON_SPRITE } from "@/lib/image";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { fetchTeamCountsByGame } from "@/lib/api";
 import UserMenu from "@/components/auth/UserMenu";
+import SlatedexBrand from "@/components/ui/SlatedexBrand";
 
 const SPRITE_IDS: Record<string, number> = {
   bulbasaur: 1,
@@ -69,15 +70,15 @@ const getSpriteUrl = (name: string): string => {
 };
 
 const REGION_COLORS: Record<string, { accent: string; soft: string; edge: string }> = {
-  Kanto:  { accent: "#e53935", soft: "rgba(229,57,53,0.10)",   edge: "rgba(229,57,53,0.22)"  },
-  Johto:  { accent: "#fb8c00", soft: "rgba(251,140,0,0.10)",   edge: "rgba(251,140,0,0.22)"  },
-  Hoenn:  { accent: "#00897b", soft: "rgba(0,137,123,0.10)",   edge: "rgba(0,137,123,0.22)"  },
-  Sinnoh: { accent: "#1e88e5", soft: "rgba(30,136,229,0.10)",  edge: "rgba(30,136,229,0.22)" },
-  Unova:  { accent: "#795548", soft: "rgba(121,85,72,0.10)",   edge: "rgba(121,85,72,0.22)"  },
-  Kalos:  { accent: "#7e57c2", soft: "rgba(126,87,194,0.10)",  edge: "rgba(126,87,194,0.22)" },
-  Alola:  { accent: "#ef6c00", soft: "rgba(239,108,0,0.10)",   edge: "rgba(239,108,0,0.22)"  },
-  Galar:  { accent: "#546e7a", soft: "rgba(84,110,122,0.10)",  edge: "rgba(84,110,122,0.22)" },
-  Paldea: { accent: "#c62828", soft: "rgba(198,40,40,0.10)",   edge: "rgba(198,40,40,0.22)"  },
+  Kanto:  { accent: "#dc2626", soft: "rgba(220,38,38,0.12)",   edge: "rgba(220,38,38,0.26)"  },
+  Johto:  { accent: "#b45309", soft: "rgba(180,83,9,0.12)",    edge: "rgba(180,83,9,0.26)"   },
+  Hoenn:  { accent: "#0f766e", soft: "rgba(15,118,110,0.12)",  edge: "rgba(15,118,110,0.26)" },
+  Sinnoh: { accent: "#2563eb", soft: "rgba(37,99,235,0.12)",   edge: "rgba(37,99,235,0.26)"  },
+  Unova:  { accent: "#6b4f3b", soft: "rgba(107,79,59,0.12)",   edge: "rgba(107,79,59,0.26)"  },
+  Kalos:  { accent: "#7c3aed", soft: "rgba(124,58,237,0.12)",  edge: "rgba(124,58,237,0.26)" },
+  Alola:  { accent: "#c2410c", soft: "rgba(194,65,12,0.12)",   edge: "rgba(194,65,12,0.26)"  },
+  Galar:  { accent: "#0369a1", soft: "rgba(3,105,161,0.12)",   edge: "rgba(3,105,161,0.26)"  },
+  Paldea: { accent: "#be185d", soft: "rgba(190,24,93,0.12)",   edge: "rgba(190,24,93,0.26)"  },
 };
 
 const GEN_ROMAN: Record<number, string> = {
@@ -177,24 +178,18 @@ const GameSelector = () => {
         <div className="relative mx-auto max-w-screen-xl px-4 py-5 sm:px-6 sm:py-7">
           {/* Top bar: logo + auth */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
-                style={{ background: "var(--accent-soft)", border: "1px solid rgba(218,44,67,0.30)" }}
-                aria-hidden="true"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ color: "var(--accent)" }}>
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8" />
-                  <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="1.8" />
-                  <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="1.8" />
-                </svg>
-              </div>
-              <h1 className="font-display text-3xl leading-none sm:text-4xl" style={{ letterSpacing: "-0.025em" }}>
-                <span style={{ color: "var(--text-primary)" }}>Slate</span>
-                <span style={{ color: "var(--accent)" }}>dex</span>
-              </h1>
-            </div>
-            <UserMenu />
+            <SlatedexBrand titleClassName="text-3xl sm:text-4xl" />
+            <UserMenu
+              betweenThemeAndAuth={(
+                <Link
+                  href="/weaknesses"
+                  className="user-menu-trigger"
+                  style={{ textDecoration: "none" }}
+                >
+                  Weakness Tool
+                </Link>
+              )}
+            />
           </div>
 
           {/* Tagline + stat chips */}

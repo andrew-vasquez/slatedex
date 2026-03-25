@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Chakra_Petch, IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import "@/app/globals.css";
@@ -36,10 +37,27 @@ export const metadata: Metadata = {
   title: "Slatedex — Pokémon Team Builder",
   description:
     "Build your ideal Pokémon team with Slatedex. Analyze type coverage, find defensive weaknesses, and get smart team recommendations across all nine generations.",
+  alternates: {
+    canonical: SITE_URL,
+  },
   keywords:
     "slatedex, pokemon, team builder, pokemon team, competitive pokemon, pokemon strategy, pokemon types, pokemon generations, team analysis, type coverage",
   authors: [{ name: "Slatedex" }],
   robots: "index, follow",
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: "Slatedex",
+    title: "Slatedex — Pokémon Team Builder",
+    description:
+      "Build your ideal Pokémon team with Slatedex. Analyze type coverage, find defensive weaknesses, and get smart team recommendations across all nine generations.",
+  },
+  twitter: {
+    card: "summary",
+    title: "Slatedex — Pokémon Team Builder",
+    description:
+      "Build your ideal Pokémon team with Slatedex. Analyze type coverage, find defensive weaknesses, and get smart team recommendations across all nine generations.",
+  },
   icons: {
     icon: [{ url: "/pokeball.svg", type: "image/svg+xml" }],
     shortcut: "/pokeball.svg",
@@ -59,6 +77,7 @@ const themeInitScript = `
       var root = document.documentElement;
       root.dataset.theme = resolvedTheme;
       root.style.colorScheme = resolvedTheme;
+      document.cookie = "theme=" + resolvedTheme + "; path=/; max-age=31536000; samesite=lax";
 
       var meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute("content", resolvedTheme === "dark" ? "#060914" : "#f3ecde");
@@ -83,17 +102,22 @@ const webAppJsonLd = JSON.stringify({
   keywords: "slatedex, pokemon, team builder, competitive pokemon, pokemon strategy, type coverage",
 });
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies();
+  const cookieTheme = cookieStore.get("theme")?.value;
+  const initialTheme = cookieTheme === "light" || cookieTheme === "dark" ? cookieTheme : "dark";
+
   return (
     <html
       lang="en"
       className={`${display.variable} ${body.variable} ${mono.variable}`}
-      style={{ colorScheme: "dark" }}
+      style={{ colorScheme: initialTheme }}
+      data-theme={initialTheme}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <head>
-        <meta name="theme-color" content="#060914" />
+        <meta name="theme-color" content={initialTheme === "dark" ? "#060914" : "#f3ecde"} />
         <link rel="preconnect" href="https://raw.githubusercontent.com" />
         <Script id="theme-init" strategy="beforeInteractive">
           {themeInitScript}

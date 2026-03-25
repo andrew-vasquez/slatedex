@@ -1,0 +1,81 @@
+import { ALL_TYPES, TYPE_EFFECTIVENESS, TYPE_IMMUNITIES, TYPE_INTRO_GENERATION, TYPE_RESISTANCES } from "@/lib/constants";
+
+export type DefensiveMultiplierBucket =
+  | "quadWeak"
+  | "weak"
+  | "neutral"
+  | "resist"
+  | "strongResist"
+  | "immune";
+
+export interface DefensiveMatchupResult {
+  byType: Record<string, number>;
+  buckets: Record<DefensiveMultiplierBucket, string[]>;
+}
+
+function normalizeMultiplier(value: number): number {
+  if (value === 0) return 0;
+  if (value <= 0.25) return 0.25;
+  if (value <= 0.5) return 0.5;
+  if (value < 2) return 1;
+  if (value < 4) return 2;
+  return 4;
+}
+
+export function getDefensiveMatchups(defendingTypes: string[], generation?: number): DefensiveMatchupResult {
+  const byType: Record<string, number> = {};
+  const buckets: Record<DefensiveMultiplierBucket, string[]> = {
+    quadWeak: [],
+    weak: [],
+    neutral: [],
+    resist: [],
+    strongResist: [],
+    immune: [],
+  };
+
+  for (const attackingType of ALL_TYPES) {
+    const introGeneration = TYPE_INTRO_GENERATION[attackingType] ?? 1;
+    if (generation !== undefined && introGeneration > generation) {
+      continue;
+    }
+
+    let multiplier = 1;
+
+    for (const defendingType of defendingTypes) {
+      const immunities = TYPE_IMMUNITIES[defendingType] ?? [];
+      if (immunities.includes(attackingType)) {
+        multiplier = 0;
+        break;
+      }
+
+      const weaknesses = TYPE_EFFECTIVENESS[defendingType] ?? [];
+      if (weaknesses.includes(attackingType)) {
+        multiplier *= 2;
+      }
+
+      const resistances = TYPE_RESISTANCES[defendingType] ?? [];
+      if (resistances.includes(attackingType)) {
+        multiplier *= 0.5;
+      }
+    }
+
+    const normalized = normalizeMultiplier(multiplier);
+    byType[attackingType] = normalized;
+
+    if (normalized === 4) {
+      buckets.quadWeak.push(attackingType);
+    } else if (normalized === 2) {
+      buckets.weak.push(attackingType);
+    } else if (normalized === 0.5) {
+      buckets.resist.push(attackingType);
+    } else if (normalized === 0.25) {
+      buckets.strongResist.push(attackingType);
+    } else if (normalized === 0) {
+      buckets.immune.push(attackingType);
+    } else {
+      buckets.neutral.push(attackingType);
+    }
+  }
+
+  return { byType, buckets };
+}
