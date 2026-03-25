@@ -13,6 +13,21 @@ export interface DefensiveMatchupResult {
   buckets: Record<DefensiveMultiplierBucket, string[]>;
 }
 
+export interface TypeChartProfile {
+  offensive: {
+    strongAgainst: string[];
+    resistedBy: string[];
+    noEffectAgainst: string[];
+    neutralAgainst: string[];
+  };
+  defensive: {
+    weakTo: string[];
+    resistTo: string[];
+    immuneTo: string[];
+    neutralTo: string[];
+  };
+}
+
 function normalizeMultiplier(value: number): number {
   if (value === 0) return 0;
   if (value <= 0.25) return 0.25;
@@ -78,4 +93,65 @@ export function getDefensiveMatchups(defendingTypes: string[], generation?: numb
   }
 
   return { byType, buckets };
+}
+
+export function getTypeChartProfile(type: string, generation?: number): TypeChartProfile {
+  const availableTypes = ALL_TYPES.filter((entry) => {
+    const introGeneration = TYPE_INTRO_GENERATION[entry] ?? 1;
+    return generation === undefined || introGeneration <= generation;
+  });
+
+  const offensive = {
+    strongAgainst: [] as string[],
+    resistedBy: [] as string[],
+    noEffectAgainst: [] as string[],
+    neutralAgainst: [] as string[],
+  };
+
+  const defensive = {
+    weakTo: [] as string[],
+    resistTo: [] as string[],
+    immuneTo: [] as string[],
+    neutralTo: [] as string[],
+  };
+
+  for (const defendingType of availableTypes) {
+    if ((TYPE_IMMUNITIES[defendingType] ?? []).includes(type)) {
+      offensive.noEffectAgainst.push(defendingType);
+      continue;
+    }
+
+    if ((TYPE_EFFECTIVENESS[defendingType] ?? []).includes(type)) {
+      offensive.strongAgainst.push(defendingType);
+      continue;
+    }
+
+    if ((TYPE_RESISTANCES[defendingType] ?? []).includes(type)) {
+      offensive.resistedBy.push(defendingType);
+      continue;
+    }
+
+    offensive.neutralAgainst.push(defendingType);
+  }
+
+  for (const attackingType of availableTypes) {
+    if ((TYPE_IMMUNITIES[type] ?? []).includes(attackingType)) {
+      defensive.immuneTo.push(attackingType);
+      continue;
+    }
+
+    if ((TYPE_EFFECTIVENESS[type] ?? []).includes(attackingType)) {
+      defensive.weakTo.push(attackingType);
+      continue;
+    }
+
+    if ((TYPE_RESISTANCES[type] ?? []).includes(attackingType)) {
+      defensive.resistTo.push(attackingType);
+      continue;
+    }
+
+    defensive.neutralTo.push(attackingType);
+  }
+
+  return { offensive, defensive };
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { FiChevronUp, FiSearch } from "react-icons/fi";
+import { FiChevronUp, FiSearch, FiX } from "react-icons/fi";
+import MatchupBucketCard from "@/components/ui/MatchupBucketCard";
 import { PokemonTypeBadge } from "@/components/ui/PokemonTypeBadge";
 import { getDefensiveMatchups } from "@/lib/type-matchups";
 import { pokemonSpriteSrc } from "@/lib/image";
@@ -20,11 +21,9 @@ interface WeaknessLookupClientProps {
 
 const LAST_SELECTED_KEY = "slatedex:weaknesses:last-selected";
 const MOBILE_SHEET_SEEN_KEY = "slatedex:weaknesses:mobile-sheet-seen";
+const CARD_DENSITY_KEY = "slatedex:weaknesses:compact-cards";
 const GENERATIONS = Array.from({ length: 9 }, (_, index) => index + 1);
-const SPRITE_CARD_MIN_WIDTH = 102;
 const SPRITE_GRID_GAP = 12;
-const SPRITE_CARD_HEIGHT_DESKTOP = 164;
-const SPRITE_CARD_HEIGHT_MOBILE = 148;
 const GRID_OVERSCAN_ROWS = 4;
 
 const loadedSpriteSrcs = new Set<string>();
@@ -76,46 +75,10 @@ function PokemonSprite({
   );
 }
 
-function MatchupBucket({
-  title,
-  multiplier,
-  types,
-  tone,
-  compactSummary,
-}: {
-  title: string;
-  multiplier: string;
-  types: string[];
-  tone: "danger" | "success" | "neutral";
-  compactSummary?: string;
-}) {
-  return (
-    <section className="weakness-bucket panel-soft">
-      <div className="weakness-bucket-header">
-        <div className="min-w-0">
-          <p className="weakness-bucket-label">{title}</p>
-          <h3 className="weakness-bucket-value">{multiplier}</h3>
-        </div>
-        <span className={`weakness-bucket-count weakness-bucket-count--${tone}`}>{types.length}</span>
-      </div>
-      {compactSummary ? (
-        <p className="weakness-bucket-summary">{compactSummary}</p>
-      ) : (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {types.length > 0 ? (
-            types.map((type) => <PokemonTypeBadge key={`${title}-${type}`} pokemonType={type} size="md" />)
-          ) : (
-            <span className="weakness-empty-chip">None</span>
-          )}
-        </div>
-      )}
-    </section>
-  );
-}
-
 export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [generationFilter, setGenerationFilter] = useState<number | "all">("all");
+  const [compactCards, setCompactCards] = useState(false);
   const [selectedPokemonId, setSelectedPokemonId] = useState<number>(pokemon[0]?.id ?? 1);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
@@ -143,6 +106,14 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
 
   useEffect(() => {
     try {
+      setCompactCards(window.localStorage.getItem(CARD_DENSITY_KEY) === "true");
+    } catch {
+      setCompactCards(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
       window.localStorage.setItem(LAST_SELECTED_KEY, String(selectedPokemonId));
     } catch {
       // Ignore client storage access failures.
@@ -150,19 +121,27 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
   }, [selectedPokemonId]);
 
   useEffect(() => {
+    try {
+      window.localStorage.setItem(CARD_DENSITY_KEY, compactCards ? "true" : "false");
+    } catch {
+      // Ignore client storage access failures.
+    }
+  }, [compactCards]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const mediaQuery = window.matchMedia("(max-width: 819px)");
-    const syncViewport = () => setIsMobileViewport(mediaQuery.matches);
+    const mobileQuery = window.matchMedia("(max-width: 819px)");
+    const syncViewport = () => setIsMobileViewport(mobileQuery.matches);
 
     syncViewport();
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", syncViewport);
-      return () => mediaQuery.removeEventListener("change", syncViewport);
+    if (typeof mobileQuery.addEventListener === "function") {
+      mobileQuery.addEventListener("change", syncViewport);
+      return () => mobileQuery.removeEventListener("change", syncViewport);
     }
 
-    mediaQuery.addListener(syncViewport);
-    return () => mediaQuery.removeListener(syncViewport);
+    mobileQuery.addListener(syncViewport);
+    return () => mobileQuery.removeListener(syncViewport);
   }, []);
 
   useEffect(() => {
@@ -187,7 +166,8 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
       const width = node.clientWidth;
       if (!width) return;
 
-      const nextColumns = Math.max(1, Math.floor((width + SPRITE_GRID_GAP) / (SPRITE_CARD_MIN_WIDTH + SPRITE_GRID_GAP)));
+      const minWidth = compactCards ? 84 : 102;
+      const nextColumns = Math.max(1, Math.floor((width + SPRITE_GRID_GAP) / (minWidth + SPRITE_GRID_GAP)));
       setGridColumns((current) => (current === nextColumns ? current : nextColumns));
     };
 
@@ -196,27 +176,50 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
     const observer = new ResizeObserver(() => updateColumns());
     observer.observe(node);
     return () => observer.disconnect();
-  }, []);
+  }, [compactCards]);
+
+  const searchablePokemon = useMemo(
+    () =>
+      pokemon.map((entry) => {
+        const formattedName = formatPokemonName(entry.name);
+        return {
+          entry,
+          formattedName,
+          nameLower: entry.name.toLowerCase(),
+          formattedNameLower: formattedName.toLowerCase(),
+          typeSearch: entry.types.join(" ").toLowerCase(),
+          dexSearch: String(entry.id),
+        };
+      }),
+    [pokemon]
+  );
 
   const filteredPokemon = useMemo(() => {
     const normalizedQuery = deferredSearchTerm.trim().toLowerCase();
 
-    return pokemon.filter((entry) => {
-      if (generationFilter !== "all" && entry.generation !== generationFilter) {
-        return false;
-      }
+    const filteredEntries = searchablePokemon.filter(({ entry }) =>
+      generationFilter === "all" || entry.generation === generationFilter
+    );
 
-      if (!normalizedQuery) return true;
+    if (!normalizedQuery) {
+      return filteredEntries.map(({ entry }) => entry);
+    }
 
-      const searchableTypes = entry.types.join(" ");
-      return (
-        entry.name.toLowerCase().includes(normalizedQuery) ||
-        formatPokemonName(entry.name).toLowerCase().includes(normalizedQuery) ||
-        searchableTypes.includes(normalizedQuery) ||
-        String(entry.id) === normalizedQuery
-      );
-    });
-  }, [deferredSearchTerm, generationFilter, pokemon]);
+    return filteredEntries
+      .map((item) => {
+        let score = Number.POSITIVE_INFINITY;
+        if (item.dexSearch === normalizedQuery) score = 0;
+        else if (item.nameLower === normalizedQuery || item.formattedNameLower === normalizedQuery) score = 1;
+        else if (item.nameLower.startsWith(normalizedQuery) || item.formattedNameLower.startsWith(normalizedQuery)) score = 2;
+        else if (item.typeSearch.includes(normalizedQuery)) score = 3;
+        else if (item.nameLower.includes(normalizedQuery) || item.formattedNameLower.includes(normalizedQuery)) score = 4;
+
+        return { item, score };
+      })
+      .filter((candidate) => Number.isFinite(candidate.score))
+      .sort((a, b) => a.score - b.score || a.item.entry.id - b.item.entry.id)
+      .map(({ item }) => item.entry);
+  }, [deferredSearchTerm, generationFilter, searchablePokemon]);
 
   useEffect(() => {
     if (filteredPokemon.length === 0) return;
@@ -253,7 +256,9 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
     };
   }, [isMobileSheetOpen, isMobileViewport]);
 
-  const rowHeight = isMobileViewport ? SPRITE_CARD_HEIGHT_MOBILE : SPRITE_CARD_HEIGHT_DESKTOP;
+  const rowHeight = isMobileViewport
+    ? compactCards ? 126 : 148
+    : compactCards ? 132 : 164;
   const totalRows = Math.ceil(filteredPokemon.length / Math.max(1, gridColumns));
 
   useEffect(() => {
@@ -345,15 +350,15 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
       </div>
 
       <div className="weakness-bucket-grid">
-        <MatchupBucket title="Quad weaknesses" multiplier="4x" types={matchup.buckets.quadWeak} tone="danger" />
-        <MatchupBucket title="Weaknesses" multiplier="2x" types={matchup.buckets.weak} tone="danger" />
-        <MatchupBucket title="Resists" multiplier="0.5x" types={matchup.buckets.resist} tone="success" />
-        <MatchupBucket title="Strong resists" multiplier="0.25x" types={matchup.buckets.strongResist} tone="success" />
-        <MatchupBucket title="Immunities" multiplier="0x" types={matchup.buckets.immune} tone="neutral" />
-        <MatchupBucket
+        <MatchupBucketCard title="Quad weaknesses" multiplier="4x" items={matchup.buckets.quadWeak} tone="danger" />
+        <MatchupBucketCard title="Weaknesses" multiplier="2x" items={matchup.buckets.weak} tone="danger" />
+        <MatchupBucketCard title="Resists" multiplier="0.5x" items={matchup.buckets.resist} tone="success" />
+        <MatchupBucketCard title="Strong resists" multiplier="0.25x" items={matchup.buckets.strongResist} tone="success" />
+        <MatchupBucketCard title="Immunities" multiplier="0x" items={matchup.buckets.immune} tone="neutral" />
+        <MatchupBucketCard
           title="Neutral hits"
           multiplier="1x"
-          types={matchup.buckets.neutral}
+          items={matchup.buckets.neutral}
           tone="neutral"
           compactSummary={`${matchup.buckets.neutral.length} attacking types deal regular damage.`}
         />
@@ -373,13 +378,13 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
             <p className="weakness-kicker">Fast type reference</p>
             <h1 className="font-display weakness-page-title">Tap a Pokemon. See every weakness immediately.</h1>
             <p className="weakness-page-copy">
-              This view is built for quick checks on phones, iPads, and desktop: sprite-first browsing, instant search,
-              and a pinned defensive chart with separate 4x, 2x, resist, and immunity buckets.
+              Sprite-first browsing, instant search, and a pinned defensive chart make it easy to check 4x weaknesses,
+              2x weaknesses, resists, and immunities at a glance.
             </p>
           </div>
           <div className="weakness-summary-badges">
             <span className="weakness-summary-chip">{pokemon.length} Pokemon indexed</span>
-            <span className="weakness-summary-chip">Built for fast phone + iPad checks</span>
+            <span className="weakness-summary-chip">4x, 2x, resist, and immunity breakdowns</span>
           </div>
         </div>
       </section>
@@ -401,7 +406,26 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
                 placeholder="Search Pokemon, type, or dex number"
                 className="weakness-search-input"
                 aria-label="Search Pokemon by name, type, or dex number"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint="search"
+                inputMode="search"
               />
+              {searchTerm ? (
+                <button
+                  type="button"
+                  className="weakness-search-clear"
+                  onClick={() => {
+                    startTransition(() => {
+                      setSearchTerm("");
+                    });
+                  }}
+                  aria-label="Clear search"
+                >
+                  <FiX size={15} aria-hidden="true" />
+                </button>
+              ) : null}
             </label>
 
             <div className="weakness-generation-row" role="tablist" aria-label="Filter Pokemon by generation">
@@ -440,11 +464,42 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
                 {selectedPokemon ? `Selected: ${formatPokemonName(selectedPokemon.name)}` : "Pick a Pokemon"}
               </span>
             </div>
+
+            <div className="weakness-toolbar-actions">
+              <span className="weakness-display-label">Card size</span>
+              <div className="weakness-display-toggle" role="tablist" aria-label="Choose weakness browser card size">
+                <button
+                  type="button"
+                  className="weakness-filter-chip"
+                  data-active={!compactCards}
+                  onClick={() => setCompactCards(false)}
+                  aria-pressed={!compactCards}
+                >
+                  Comfortable
+                </button>
+                <button
+                  type="button"
+                  className="weakness-filter-chip"
+                  data-active={compactCards}
+                  onClick={() => setCompactCards(true)}
+                  aria-pressed={compactCards}
+                >
+                  Compact
+                </button>
+              </div>
+            </div>
+
           </div>
 
           {filteredPokemon.length > 0 ? (
             <>
-              <div ref={gridRef} className="weakness-sprite-grid" role="list" aria-label="Pokemon sprite browser">
+              <div
+                ref={gridRef}
+                className="weakness-sprite-grid"
+                data-compact={compactCards}
+                role="list"
+                aria-label="Pokemon sprite browser"
+              >
                 {topSpacerHeight > 0 ? (
                   <div
                     className="weakness-sprite-spacer"
@@ -460,6 +515,7 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
                       key={entry.id}
                       type="button"
                       className="weakness-sprite-button"
+                      data-compact={compactCards}
                       data-active={isActive}
                       onClick={() => {
                         setSelectedPokemonId(entry.id);
@@ -470,11 +526,11 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
                       aria-pressed={isActive}
                       aria-label={`Inspect ${formatPokemonName(entry.name)} weaknesses`}
                     >
-                    <div className="weakness-sprite-frame">
+                      <div className="weakness-sprite-frame">
                         <PokemonSprite
                           src={pokemonSpriteSrc(entry.sprite, entry.id)}
                           alt=""
-                          size={72}
+                          size={compactCards ? 56 : 72}
                           eager={absoluteIndex < eagerSpriteCount}
                         />
                       </div>

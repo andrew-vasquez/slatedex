@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { FiArrowRight, FiMenu, FiX } from "react-icons/fi";
 
-export default function MobileHeaderMenu() {
+interface MobileHeaderMenuProps {
+  currentTool?: "weaknesses" | "type-chart";
+}
+
+export default function MobileHeaderMenu({ currentTool = "weaknesses" }: MobileHeaderMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const shellRef = useRef<HTMLDivElement | null>(null);
 
@@ -52,12 +56,39 @@ export default function MobileHeaderMenu() {
           <FiArrowRight size={16} aria-hidden="true" />
         </Link>
 
-        <span className="weakness-mobile-nav-link weakness-mobile-nav-link--current" aria-current="page">
-          <span>
-            <strong>Weakness Tool</strong>
-            <small>You are here</small>
+        {currentTool === "weaknesses" ? (
+          <span className="weakness-mobile-nav-link weakness-mobile-nav-link--current" aria-current="page">
+            <span>
+              <strong>Weakness Tool</strong>
+              <small>You are here</small>
+            </span>
           </span>
-        </span>
+        ) : (
+          <Link href="/weaknesses" className="weakness-mobile-nav-link" onClick={() => setIsOpen(false)}>
+            <span>
+              <strong>Weakness Tool</strong>
+              <small>Check full Pokemon weaknesses fast</small>
+            </span>
+            <FiArrowRight size={16} aria-hidden="true" />
+          </Link>
+        )}
+
+        {currentTool === "type-chart" ? (
+          <span className="weakness-mobile-nav-link weakness-mobile-nav-link--current" aria-current="page">
+            <span>
+              <strong>Type Chart</strong>
+              <small>You are here</small>
+            </span>
+          </span>
+        ) : (
+          <Link href="/type-chart" className="weakness-mobile-nav-link" onClick={() => setIsOpen(false)}>
+            <span>
+              <strong>Type Chart</strong>
+              <small>See every type&apos;s strengths and weaknesses</small>
+            </span>
+            <FiArrowRight size={16} aria-hidden="true" />
+          </Link>
+        )}
       </div>
     </div>
   );

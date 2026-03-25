@@ -3,7 +3,15 @@ import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import UserMenu from "@/components/auth/UserMenu";
 import MobileHeaderMenu from "@/app/weaknesses/MobileHeaderMenu";
 
-export default function WeaknessHeader() {
+interface WeaknessHeaderProps {
+  subtitle?: string;
+  currentTool?: "weaknesses" | "type-chart";
+}
+
+export default function WeaknessHeader({
+  subtitle = "Pokemon weakness lookup",
+  currentTool = "weaknesses",
+}: WeaknessHeaderProps) {
   return (
     <header className="glass sticky top-0 z-40 border-b" style={{ borderColor: "var(--border)" }}>
       <div className="mx-auto flex max-w-screen-xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
@@ -27,14 +35,30 @@ export default function WeaknessHeader() {
               <span style={{ color: "var(--accent)" }}>dex</span>
             </Link>
             <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-              Pokemon weakness lookup
+              {subtitle}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
           <UserMenu />
-          <MobileHeaderMenu />
+          <MobileHeaderMenu currentTool={currentTool} />
+          <div className="weakness-header-tool-links">
+            <Link
+              href="/weaknesses"
+              className="weakness-header-tool-chip"
+              data-current={currentTool === "weaknesses"}
+            >
+              Weakness Tool
+            </Link>
+            <Link
+              href="/type-chart"
+              className="weakness-header-tool-chip"
+              data-current={currentTool === "type-chart"}
+            >
+              Type Chart
+            </Link>
+          </div>
           <Link
             href="/play"
             className="landing-cta-primary weakness-header-cta weakness-header-cta-desktop inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold"

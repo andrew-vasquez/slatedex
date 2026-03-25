@@ -5,7 +5,7 @@
  * specifically defensive coverage calculations.
  */
 
-import { TYPE_EFFECTIVENESS, TYPE_RESISTANCES, ALL_TYPES, TYPE_INTRO_GENERATION } from '@/lib/constants';
+import { TYPE_EFFECTIVENESS, TYPE_IMMUNITIES, TYPE_RESISTANCES, ALL_TYPES, TYPE_INTRO_GENERATION } from '@/lib/constants';
 import type { Pokemon, PokemonWithEffectiveness, CoverageMap, OffensiveCoverageMap } from '@/lib/types';
 
 /**
@@ -37,6 +37,14 @@ export const getTeamDefensiveCoverage = (team: Pokemon[], generation?: number): 
 
       // Check each of the Pokemon's types
       pokemon.types.forEach((defenderType: string) => {
+        const immunities: string[] = TYPE_IMMUNITIES[defenderType] || [];
+        if (immunities.includes(attackingType)) {
+          effectiveness = 0;
+          return;
+        }
+
+        if (effectiveness === 0) return;
+
         // Check if this defender type is weak to the attacking type
         const weaknesses: string[] = TYPE_EFFECTIVENESS[defenderType] || [];
         if (weaknesses.includes(attackingType)) {
