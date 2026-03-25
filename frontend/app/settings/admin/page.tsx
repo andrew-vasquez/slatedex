@@ -34,6 +34,7 @@ import {
 } from "recharts";
 import UserMenu from "@/components/auth/UserMenu";
 import Breadcrumb from "@/components/ui/Breadcrumb";
+import MobileSiteMenu from "@/components/ui/MobileSiteMenu";
 import { useAuth } from "@/components/providers/AuthProvider";
 import {
   fetchAdminOverview,
@@ -429,7 +430,21 @@ export default function AdminSettingsPage() {
               Admin Dashboard
             </h1>
           </div>
-          <UserMenu />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <MobileSiteMenu
+              items={[
+                { href: "/play", label: "Launch Builder", description: "Choose a game and build" },
+                { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
+                { href: "/type-chart", label: "Type Chart", description: "See type strengths and weaknesses" },
+                { href: "/teams", label: "My Teams", description: "Open your saved teams" },
+                { href: "/settings", label: "Settings", description: "Manage your account" },
+                { href: "/settings/admin", label: "Admin", description: "You are here" },
+              ]}
+            />
+            <div className="hidden min-[820px]:flex min-[820px]:items-center min-[820px]:gap-3">
+              <UserMenu />
+            </div>
+          </div>
         </div>
       </header>
 
@@ -926,4 +941,3 @@ export default function AdminSettingsPage() {
     </div>
   );
 }
-

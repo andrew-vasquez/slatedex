@@ -6,6 +6,7 @@ import { FiArrowLeft, FiUser, FiShield, FiFileText, FiChevronRight } from "react
 import { useAuth } from "@/components/providers/AuthProvider";
 import UserMenu from "@/components/auth/UserMenu";
 import Breadcrumb from "@/components/ui/Breadcrumb";
+import MobileSiteMenu from "@/components/ui/MobileSiteMenu";
 import { fetchMyProfile, type UserRoleValue } from "@/lib/api";
 import {
   COOKIE_CONSENT_UPDATED_EVENT,
@@ -169,7 +170,20 @@ export default function SettingsPage() {
               Slate<span style={{ color: "var(--accent)" }}>dex</span>
             </Link>
           </div>
-          <UserMenu />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <MobileSiteMenu
+              items={[
+                { href: "/play", label: "Launch Builder", description: "Choose a game and build" },
+                { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
+                { href: "/type-chart", label: "Type Chart", description: "See type strengths and weaknesses" },
+                { href: "/teams", label: "My Teams", description: "Open your saved teams" },
+                { href: "/settings", label: "Settings", description: "You are here" },
+              ]}
+            />
+            <div className="hidden min-[820px]:flex min-[820px]:items-center min-[820px]:gap-3">
+              <UserMenu />
+            </div>
+          </div>
         </div>
       </header>
 

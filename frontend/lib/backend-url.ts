@@ -1,5 +1,6 @@
 const LOCAL_API_FALLBACK = "http://localhost:3001";
 export const BACKEND_PROXY_PATH = "/_backend";
+export const AUTH_BASE_PATH = "/api/auth";
 
 function normalizeApiBaseUrl(rawUrl: string | undefined): string {
   const trimmed = rawUrl?.trim();
@@ -36,4 +37,12 @@ export function getClientSafeApiBaseUrl(): string {
   }
 
   return getExternalApiBaseUrl();
+}
+
+export function getClientSafeAuthBaseUrl(): string {
+  if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
+    return `${window.location.origin}${BACKEND_PROXY_PATH}${AUTH_BASE_PATH}`;
+  }
+
+  return `${getExternalApiBaseUrl()}${AUTH_BASE_PATH}`;
 }

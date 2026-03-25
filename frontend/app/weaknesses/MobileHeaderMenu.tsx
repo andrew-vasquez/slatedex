@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { FiArrowRight, FiMenu, FiX } from "react-icons/fi";
+import { FiArrowRight, FiLogIn, FiLogOut, FiMenu, FiSettings, FiUser, FiX } from "react-icons/fi";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { signOut } from "@/lib/auth-client";
 
 interface MobileHeaderMenuProps {
   currentTool?: "weaknesses" | "type-chart";
 }
 
 export default function MobileHeaderMenu({ currentTool = "weaknesses" }: MobileHeaderMenuProps) {
+  const { user, isAuthenticated, isLoading, openAuthDialog } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const shellRef = useRef<HTMLDivElement | null>(null);
 
@@ -48,6 +51,52 @@ export default function MobileHeaderMenu({ currentTool = "weaknesses" }: MobileH
       </button>
 
       <div className="weakness-mobile-nav-menu panel" data-open={isOpen}>
+        {isLoading ? null : isAuthenticated ? (
+          <>
+            <div className="site-mobile-nav-account">
+              <strong>{user?.name ?? "Trainer"}</strong>
+              <small>{user?.email ?? "Signed in"}</small>
+            </div>
+            <Link
+              href={user?.username ? `/u/${user.username}` : "/settings/profile"}
+              className="weakness-mobile-nav-link"
+              onClick={() => setIsOpen(false)}
+            >
+              <span>
+                <strong>Profile</strong>
+                <small>Open your trainer page</small>
+              </span>
+              <FiUser size={16} aria-hidden="true" />
+            </Link>
+            <Link
+              href="/settings"
+              className="weakness-mobile-nav-link"
+              onClick={() => setIsOpen(false)}
+            >
+              <span>
+                <strong>Settings</strong>
+                <small>Manage your account</small>
+              </span>
+              <FiSettings size={16} aria-hidden="true" />
+            </Link>
+          </>
+        ) : (
+          <button
+            type="button"
+            className="weakness-mobile-nav-link site-mobile-nav-button"
+            onClick={() => {
+              setIsOpen(false);
+              openAuthDialog("sign-in");
+            }}
+          >
+            <span>
+              <strong>Sign In</strong>
+              <small>Access teams, profile, and settings</small>
+            </span>
+            <FiLogIn size={16} aria-hidden="true" />
+          </button>
+        )}
+
         <Link href="/play" className="weakness-mobile-nav-link" onClick={() => setIsOpen(false)}>
           <span>
             <strong>Launch Builder</strong>
@@ -89,6 +138,26 @@ export default function MobileHeaderMenu({ currentTool = "weaknesses" }: MobileH
             <FiArrowRight size={16} aria-hidden="true" />
           </Link>
         )}
+
+        {isLoading ? null : isAuthenticated ? (
+          <>
+            <div className="site-mobile-nav-divider" aria-hidden="true" />
+            <button
+              type="button"
+              className="weakness-mobile-nav-link site-mobile-nav-button"
+              onClick={async () => {
+                setIsOpen(false);
+                await signOut();
+              }}
+            >
+              <span>
+                <strong>Sign Out</strong>
+                <small>End this session</small>
+              </span>
+              <FiLogOut size={16} aria-hidden="true" />
+            </button>
+          </>
+        ) : null}
       </div>
     </div>
   );

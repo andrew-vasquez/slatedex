@@ -18,6 +18,8 @@ import {
 import UserMenu from "@/components/auth/UserMenu";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 import { PokemonTypeBadge } from "@/components/ui/PokemonTypeBadge";
+import MobileSiteMenu from "@/components/ui/MobileSiteMenu";
+import DesktopToolsMenu from "@/components/ui/DesktopToolsMenu";
 
 // Region color theming — mirrors the game selector palette
 const REGION_COLORS: Record<string, { accent: string; soft: string; edge: string }> = {
@@ -348,17 +350,22 @@ export default function TeamsPage() {
               My Teams
             </span>
           </div>
-          <UserMenu
-            betweenThemeAndAuth={(
-              <Link
-                href="/weaknesses"
-                className="user-menu-trigger"
-                style={{ textDecoration: "none" }}
-              >
-                Weakness Tool
-              </Link>
-            )}
-          />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <MobileSiteMenu
+              items={[
+                { href: "/play", label: "Launch Builder", description: "Choose a game and build" },
+                { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
+                { href: "/type-chart", label: "Type Chart", description: "See type strengths and weaknesses" },
+                { href: "/teams", label: "My Teams", description: "You are here" },
+                { href: "/settings", label: "Settings", description: "Manage your account" },
+              ]}
+            />
+            <div className="hidden min-[820px]:flex min-[820px]:items-center min-[820px]:gap-3">
+              <UserMenu
+                betweenThemeAndAuth={<DesktopToolsMenu />}
+              />
+            </div>
+          </div>
         </div>
       </header>
 

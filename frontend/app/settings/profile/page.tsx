@@ -23,6 +23,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import AvatarPickerModal from "@/app/settings/profile/AvatarPickerModal";
 import FavoritePokemonPicker from "@/app/settings/profile/FavoritePokemonPicker";
 import Breadcrumb from "@/components/ui/Breadcrumb";
+import DesktopToolsMenu from "@/components/ui/DesktopToolsMenu";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 type CopyStatus = "idle" | "copied" | "error";
@@ -329,17 +330,11 @@ export default function ProfileSettingsPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href="/weaknesses"
-              className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold"
-              style={{ borderColor: "var(--border)", color: "var(--text-secondary)", textDecoration: "none" }}
-            >
-              Weakness Tool
-            </Link>
+            <DesktopToolsMenu />
             <Link
               href={publicPath}
               target="_blank"
-              className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold"
+              className="landing-cta-secondary header-nav-button inline-flex items-center gap-1.5 border"
               style={{
                 borderColor: "rgba(218, 44, 67, 0.4)",
                 background: "var(--accent-soft)",
@@ -352,7 +347,7 @@ export default function ProfileSettingsPage() {
             <button
               type="button"
               onClick={copyPublicUrl}
-              className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold"
+              className="landing-cta-secondary header-nav-button inline-flex items-center gap-1.5 border"
               style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
             >
               {copyStatus === "copied" ? <FiCheck size={14} /> : <FiCopy size={14} />}

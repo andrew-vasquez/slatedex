@@ -1,9 +1,9 @@
 import { createAuthClient } from "better-auth/react";
 import { usernameClient } from "better-auth/client/plugins";
-import { getClientSafeApiBaseUrl } from "./backend-url";
+import { getClientSafeAuthBaseUrl } from "./backend-url";
 
 export const authClient = createAuthClient({
-  baseURL: getClientSafeApiBaseUrl(),
+  baseURL: getClientSafeAuthBaseUrl(),
   plugins: [usernameClient()],
 });
 
