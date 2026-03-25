@@ -280,7 +280,7 @@ const PokemonCard = ({
             ))}
             {isVersionExclusive && (
               <span
-                className="exclusive-badge px-1 py-px text-[0.5rem] font-bold uppercase tracking-wide"
+                className="exclusive-badge exclusive-badge--compact px-1 py-px text-[0.5rem] font-bold uppercase tracking-wide"
                 title={exclusivityText}
               >
                 EX
@@ -353,7 +353,7 @@ const PokemonCard = ({
             </span>
             {isVersionExclusive && (
               <span
-                className="exclusive-badge shrink-0 px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.06em]"
+                className="exclusive-badge exclusive-badge--full shrink-0 px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.06em]"
                 title={exclusivityText}
                 aria-label={exclusivityText}
               >

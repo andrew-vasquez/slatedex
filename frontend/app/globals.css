@@ -3362,20 +3362,70 @@ html[data-theme="light"] .pokemon-type-button[data-pressed="true"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.28rem;
   border-radius: 999px;
-  border: 1px solid rgba(234, 179, 8, 0.34);
-  background: rgba(234, 179, 8, 0.16);
-  color: #fef08a;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.34);
+  background:
+    linear-gradient(180deg, rgba(250, 204, 21, 0.16), rgba(217, 119, 6, 0.12)),
+    rgba(24, 18, 10, 0.2);
+  color: #fde68a;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 220, 0.18),
+    0 6px 16px rgba(24, 18, 10, 0.12);
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
 }
 
 html[data-theme="light"] .exclusive-badge {
-  border-color: rgba(180, 83, 9, 0.28);
-  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(180, 83, 9, 0.24);
+  background:
+    linear-gradient(180deg, rgba(255, 244, 214, 0.96), rgba(250, 220, 157, 0.82)),
+    rgba(255, 250, 240, 0.92);
   color: #8a4b08;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 1px 0 rgba(138, 75, 8, 0.06);
+    0 4px 12px rgba(138, 75, 8, 0.08);
+}
+
+.exclusive-badge::before {
+  content: "";
+  width: 0.38rem;
+  height: 0.38rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.82;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="light"] .exclusive-badge::before {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.72);
+}
+
+.exclusive-badge--compact {
+  min-height: 1rem;
+  padding: 0.1rem 0.42rem;
+  font-size: 0.5rem;
+  letter-spacing: 0.12em;
+}
+
+.exclusive-badge--full {
+  min-height: 1.4rem;
+  padding: 0.28rem 0.6rem;
+  letter-spacing: 0.08em;
+}
+
+.exclusive-badge--compact::before {
+  width: 0.3rem;
+  height: 0.3rem;
+}
+
+.exclusive-badge:hover {
+  transform: translateY(-1px);
 }
 
 .weakness-summary-grid {
