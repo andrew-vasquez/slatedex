@@ -4,7 +4,9 @@ import { username } from "better-auth/plugins/username";
 import { getPrisma } from "../db";
 import { getConfig } from "./config";
 import { env, isProduction } from "./runtime";
+
 const USERNAME_REGEX = /^[a-z0-9](?:[a-z0-9_]{1,28}[a-z0-9])?$/;
+const AUTH_BASE_PATH = "/api/auth";
 
 function getBaseURL(): string {
   const url = env("BETTER_AUTH_URL");
@@ -19,6 +21,7 @@ function buildAuth() {
   const cfg = getConfig();
   return betterAuth({
     baseURL: getBaseURL(),
+    basePath: AUTH_BASE_PATH,
     database: prismaAdapter(getPrisma(), {
       provider: "postgresql",
     }),

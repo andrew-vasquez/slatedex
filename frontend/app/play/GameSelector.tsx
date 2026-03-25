@@ -14,6 +14,8 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { fetchTeamCountsByGame } from "@/lib/api";
 import UserMenu from "@/components/auth/UserMenu";
 import SlatedexBrand from "@/components/ui/SlatedexBrand";
+import MobileSiteMenu from "@/components/ui/MobileSiteMenu";
+import DesktopToolsMenu from "@/components/ui/DesktopToolsMenu";
 
 const SPRITE_IDS: Record<string, number> = {
   bulbasaur: 1,
@@ -179,17 +181,21 @@ const GameSelector = () => {
           {/* Top bar: logo + auth */}
           <div className="flex items-center justify-between">
             <SlatedexBrand titleClassName="text-3xl sm:text-4xl" />
-            <UserMenu
-              betweenThemeAndAuth={(
-                <Link
-                  href="/weaknesses"
-                  className="user-menu-trigger"
-                  style={{ textDecoration: "none" }}
-                >
-                  Weakness Tool
-                </Link>
-              )}
-            />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <MobileSiteMenu
+                items={[
+                  { href: "/play", label: "Builder", description: "You are here" },
+                  { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
+                  { href: "/type-chart", label: "Type Chart", description: "See every type at a glance" },
+                  { href: "/teams", label: "My Teams", description: "Open your saved teams" },
+                ]}
+              />
+              <div className="hidden min-[820px]:flex min-[820px]:items-center min-[820px]:gap-3">
+                <UserMenu
+                  betweenThemeAndAuth={<DesktopToolsMenu />}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Tagline + stat chips */}

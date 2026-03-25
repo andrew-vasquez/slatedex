@@ -4,20 +4,28 @@ import Link from "next/link";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { FiArrowRight, FiGrid } from "react-icons/fi";
 import UserMenu from "@/components/auth/UserMenu";
+import MobileSiteMenu from "@/components/ui/MobileSiteMenu";
+import DesktopToolsMenu from "@/components/ui/DesktopToolsMenu";
 
 export function LandingNav() {
   return (
     <div className="flex items-center gap-2 sm:gap-3">
-      <UserMenu />
-      <Link
-        href="/weaknesses"
-        className="landing-cta-secondary hidden items-center gap-1.5 rounded-xl border px-3.5 py-2 text-sm font-semibold sm:inline-flex"
-      >
-        Weakness Tool
-      </Link>
+      <MobileSiteMenu
+        items={[
+          { href: "/play", label: "Launch Builder", description: "Choose a game and build a team" },
+          { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
+          { href: "/type-chart", label: "Type Chart", description: "See type strengths and weaknesses" },
+        ]}
+      />
+      <div className="hidden min-[820px]:flex min-[820px]:items-center min-[820px]:gap-3">
+        <UserMenu />
+      </div>
+      <div className="hidden min-[820px]:block">
+        <DesktopToolsMenu />
+      </div>
       <Link
         href="/play"
-        className="landing-cta-primary inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold"
+        className="landing-cta-primary header-nav-button hidden items-center gap-1.5 min-[820px]:inline-flex"
       >
         Launch Builder
         <FiArrowRight size={14} aria-hidden="true" />

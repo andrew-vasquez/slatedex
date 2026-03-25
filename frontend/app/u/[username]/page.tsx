@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { FiArrowLeft } from "react-icons/fi";
 import { AVATAR_FRAME_OPTIONS, getAvatarFrameStyles, getGameDecoration, type AvatarFrameKey } from "@/lib/profile";
 import FavoritePokemonDisplay from "@/app/u/[username]/FavoritePokemonDisplay";
+import MobileSiteMenu from "@/components/ui/MobileSiteMenu";
+import DesktopToolsMenu from "@/components/ui/DesktopToolsMenu";
 import { getVersionLabel } from "@/lib/pokemon";
 import { normalizeAvatarUrl } from "@/lib/avatar";
 import { safeImageSrc } from "@/lib/image";
@@ -199,21 +201,26 @@ export default async function PublicProfilePage({
               Trainer Profile
             </span>
           </div>
-          <div className="hidden items-center gap-2 sm:flex">
-            <Link
-              href="/weaknesses"
-              className="rounded-xl border px-3.5 py-2 text-[0.82rem] font-semibold transition-colors hover:border-[var(--border-hover)]"
-              style={{ borderColor: "var(--border)", color: "var(--text-secondary)", background: "var(--surface-2)", textDecoration: "none" }}
-            >
-              Weakness Tool
-            </Link>
-            <Link
-              href="/play"
-              className="rounded-xl border px-3.5 py-2 text-[0.82rem] font-semibold transition-colors hover:border-[var(--border-hover)] inline-flex items-center gap-1.5"
-              style={{ borderColor: "var(--border)", color: "var(--text-secondary)", background: "var(--surface-2)" }}
-            >
-              Open Builder
-            </Link>
+          <div className="flex items-center gap-2">
+            <MobileSiteMenu
+              items={[
+                { href: "/play", label: "Launch Builder", description: "Choose a game and build" },
+                { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
+                { href: "/type-chart", label: "Type Chart", description: "See type strengths and weaknesses" },
+                { href: "/teams", label: "My Teams", description: "Open your saved teams" },
+                { href: `/u/${profile.username}`, label: "Trainer Profile", description: "You are here" },
+              ]}
+            />
+            <div className="hidden min-[820px]:flex min-[820px]:items-center min-[820px]:gap-2">
+              <DesktopToolsMenu />
+              <Link
+                href="/play"
+                className="landing-cta-secondary header-nav-button transition-colors hover:border-[var(--border-hover)] inline-flex items-center gap-1.5"
+                style={{ borderColor: "var(--border)", color: "var(--text-secondary)", background: "var(--surface-2)" }}
+              >
+                Open Builder
+              </Link>
+            </div>
           </div>
         </div>
       </header>

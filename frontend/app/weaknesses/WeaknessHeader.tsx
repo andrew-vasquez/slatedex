@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import UserMenu from "@/components/auth/UserMenu";
 import MobileHeaderMenu from "@/app/weaknesses/MobileHeaderMenu";
+import DesktopToolsMenu from "@/components/ui/DesktopToolsMenu";
 
 interface WeaknessHeaderProps {
   subtitle?: string;
@@ -41,27 +42,14 @@ export default function WeaknessHeader({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <UserMenu />
-          <MobileHeaderMenu currentTool={currentTool} />
-          <div className="weakness-header-tool-links">
-            <Link
-              href="/weaknesses"
-              className="weakness-header-tool-chip"
-              data-current={currentTool === "weaknesses"}
-            >
-              Weakness Tool
-            </Link>
-            <Link
-              href="/type-chart"
-              className="weakness-header-tool-chip"
-              data-current={currentTool === "type-chart"}
-            >
-              Type Chart
-            </Link>
+          <div className="hidden min-[820px]:flex min-[820px]:items-center min-[820px]:gap-3">
+            <DesktopToolsMenu />
+            <UserMenu />
           </div>
+          <MobileHeaderMenu currentTool={currentTool} />
           <Link
             href="/play"
-            className="landing-cta-primary weakness-header-cta weakness-header-cta-desktop inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold"
+            className="landing-cta-primary header-nav-button weakness-header-cta weakness-header-cta-desktop inline-flex items-center gap-1.5"
           >
             Launch Builder
             <FiArrowRight size={14} aria-hidden="true" />
