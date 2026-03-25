@@ -3,7 +3,8 @@
  * No React hooks — safe to import from any component or hook.
  */
 import type { ReactNode } from "react";
-import { TYPE_COLORS } from "@/lib/constants";
+import { PokemonTypeBadge } from "@/components/ui/PokemonTypeBadge";
+import { formatPokemonType } from "@/lib/pokemonTypePalette";
 import type { AiBossGuidanceEntry } from "@/lib/api";
 import type { Pokemon } from "@/lib/types";
 
@@ -196,16 +197,16 @@ function parseCompoundTypeToken(token: string): string[] | null {
 }
 
 export function renderTypePill(type: string, key: string): ReactNode {
-  const bgClass = TYPE_COLORS[type] ?? "bg-stone-500";
-  const displayName = type.charAt(0).toUpperCase() + type.slice(1);
   return (
-    <span
+    <PokemonTypeBadge
       key={key}
-      className={`type-badge inline-flex items-center rounded px-1.5 py-px text-[0.65rem] font-semibold text-white ${bgClass}`}
+      pokemonType={type}
+      size="xs"
+      className="type-badge"
       style={{ lineHeight: 1.4 }}
     >
-      {displayName}
-    </span>
+      {formatPokemonType(type)}
+    </PokemonTypeBadge>
   );
 }
 

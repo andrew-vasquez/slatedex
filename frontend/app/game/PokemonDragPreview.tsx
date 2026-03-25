@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { TYPE_COLORS } from "@/lib/constants";
+import { PokemonTypeBadge } from "@/components/ui/PokemonTypeBadge";
 import { pokemonSpriteSrc } from "@/lib/image";
 import type { Pokemon } from "@/lib/types";
 
@@ -29,9 +29,9 @@ const PokemonDragPreview = ({ pokemon }: PokemonDragPreviewProps) => {
           </h3>
           <div className="mt-0.5 flex gap-1">
             {pokemon.types.map((type: string) => (
-              <span key={type} className={`rounded px-1.5 py-0 text-[0.55rem] font-semibold text-white ${TYPE_COLORS[type]}`}>
+              <PokemonTypeBadge key={type} pokemonType={type} size="xs">
                 {type.charAt(0).toUpperCase() + type.slice(1)}
-              </span>
+              </PokemonTypeBadge>
             ))}
           </div>
         </div>

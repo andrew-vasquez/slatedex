@@ -5,7 +5,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FiInfo } from "react-icons/fi";
-import { TYPE_COLORS } from "@/lib/constants";
+import { PokemonTypeBadge } from "@/components/ui/PokemonTypeBadge";
 import { pokemonSpriteSrc } from "@/lib/image";
 import type { Pokemon } from "@/lib/types";
 
@@ -222,9 +222,9 @@ const PokemonCard = ({
         </p>
         <div className="mt-1 flex flex-wrap justify-center gap-1">
           {pokemon.types.map((type: string) => (
-            <span key={type} className={`rounded-md px-1.5 py-px text-[0.6rem] font-semibold text-white ${TYPE_COLORS[type]}`}>
+            <PokemonTypeBadge key={type} pokemonType={type} size="xs">
               {type.charAt(0).toUpperCase() + type.slice(1)}
-            </span>
+            </PokemonTypeBadge>
           ))}
         </div>
       </div>
@@ -274,14 +274,13 @@ const PokemonCard = ({
 
           <div className="mt-0.5 flex gap-0.5">
             {pokemon.types.map((type: string) => (
-              <span key={type} className={`rounded px-1 py-px text-[0.54rem] font-semibold leading-tight text-white ${TYPE_COLORS[type]}`}>
+              <PokemonTypeBadge key={type} pokemonType={type} size="xs">
                 {type.charAt(0).toUpperCase() + type.slice(1)}
-              </span>
+              </PokemonTypeBadge>
             ))}
             {isVersionExclusive && (
               <span
-                className="rounded px-1 py-px text-[0.5rem] font-bold uppercase tracking-wide"
-                style={{ background: "rgba(234,179,8,0.16)", color: "#fde047" }}
+                className="exclusive-badge exclusive-badge--compact px-1 py-px text-[0.5rem] font-bold uppercase tracking-wide"
                 title={exclusivityText}
               >
                 EX
@@ -354,12 +353,7 @@ const PokemonCard = ({
             </span>
             {isVersionExclusive && (
               <span
-                className="shrink-0 rounded px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.06em]"
-                style={{
-                  background: "rgba(234, 179, 8, 0.16)",
-                  border: "1px solid rgba(234, 179, 8, 0.34)",
-                  color: "#fef08a",
-                }}
+                className="exclusive-badge exclusive-badge--full shrink-0 px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.06em]"
                 title={exclusivityText}
                 aria-label={exclusivityText}
               >
@@ -370,9 +364,9 @@ const PokemonCard = ({
 
           <div className="mb-2 flex gap-1">
             {pokemon.types.map((type: string) => (
-              <span key={type} className={`type-badge rounded px-2 py-0.5 text-[0.68rem] font-semibold text-white ${TYPE_COLORS[type]}`}>
+              <PokemonTypeBadge key={type} pokemonType={type} size="sm" hoverable className="type-badge">
                 {type.charAt(0).toUpperCase() + type.slice(1)}
-              </span>
+              </PokemonTypeBadge>
             ))}
           </div>
 

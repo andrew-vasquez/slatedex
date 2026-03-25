@@ -66,15 +66,15 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
 
   const getCellBg = (hitCount: number): string => {
     if (hitCount === 0) return "var(--surface-2)";
-    if (hitCount === 1) return "rgba(196, 126, 31, 0.14)";
-    if (hitCount === 2) return "rgba(19, 111, 58, 0.14)";
-    return "rgba(19, 111, 58, 0.22)";
+    if (hitCount === 1) return "var(--warning-bg)";
+    if (hitCount === 2) return "var(--success-bg)";
+    return "var(--success-bg-strong)";
   };
 
   const getCellBorder = (hitCount: number): string => {
     if (hitCount === 0) return "rgba(148, 163, 184, 0.25)";
-    if (hitCount === 1) return "rgba(196, 126, 31, 0.38)";
-    return "rgba(19, 111, 58, 0.4)";
+    if (hitCount === 1) return "var(--warning-border)";
+    return "var(--success-border)";
   };
 
   const previewType = useCallback((type: string) => {
@@ -127,11 +127,11 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
 
         <div className="flex items-center gap-3 text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
           <span className="inline-flex items-center gap-1.5">
-            <span className="font-mono font-semibold" style={{ color: "#86efac" }}>{coveredCount}</span>
+            <span className="font-mono font-semibold" style={{ color: "var(--success-text)" }}>{coveredCount}</span>
             covered
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="font-mono font-semibold" style={{ color: uncoveredCount > 0 ? "#fca5a5" : "var(--text-muted)" }}>{uncoveredCount}</span>
+            <span className="font-mono font-semibold" style={{ color: uncoveredCount > 0 ? "var(--danger-text)" : "var(--text-muted)" }}>{uncoveredCount}</span>
             gaps
           </span>
         </div>
@@ -139,7 +139,7 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
 
       <div className="mb-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <div className="panel-soft px-3.5 py-3">
-          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "#f87171" }}>
+          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--danger-text)" }}>
             Coverage Gaps
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5" onPointerLeave={clearPreview}>
@@ -160,10 +160,10 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
                     onClick={() => selectType(item.type)}
                     className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold capitalize"
                     style={{
-                      background: isActive ? "rgba(185, 28, 28, 0.18)" : "rgba(185, 28, 28, 0.12)",
-                      border: isActive ? "1px solid rgba(248, 113, 113, 0.45)" : "1px solid rgba(185, 28, 28, 0.26)",
-                      color: "#fca5a5",
-                      boxShadow: isActive ? "0 0 0 2px rgba(248, 113, 113, 0.2)" : undefined,
+                      background: isActive ? "var(--danger-bg-strong)" : "var(--danger-bg)",
+                      border: "1px solid var(--danger-border)",
+                      color: "var(--danger-text)",
+                      boxShadow: isActive ? "0 0 0 2px var(--danger-bg)" : undefined,
                     }}
                   >
                     {item.type}
@@ -179,7 +179,7 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
         </div>
 
         <div className="panel-soft px-3.5 py-3">
-          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "#4ade80" }}>
+          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--success-text)" }}>
             Strongest Hits
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5" onPointerLeave={clearPreview}>
@@ -196,10 +196,10 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
                     onClick={() => selectType(item.type)}
                     className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold capitalize"
                     style={{
-                      background: isActive ? "rgba(19, 111, 58, 0.18)" : "rgba(19, 111, 58, 0.12)",
-                      border: isActive ? "1px solid rgba(134, 239, 172, 0.45)" : "1px solid rgba(19, 111, 58, 0.26)",
-                      color: "#86efac",
-                      boxShadow: isActive ? "0 0 0 2px rgba(74, 222, 128, 0.2)" : undefined,
+                      background: isActive ? "var(--success-bg-strong)" : "var(--success-bg)",
+                      border: "1px solid var(--success-border)",
+                      color: "var(--success-text)",
+                      boxShadow: isActive ? "0 0 0 2px var(--success-bg)" : undefined,
                     }}
                   >
                     {item.type} ({item.hitCount})
@@ -271,7 +271,7 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
                     {type.slice(0, 3)}
                   </span>
                   {hitCount > 0 && (
-                    <span className="mt-0.5 text-[0.5rem] font-bold tabular-nums" style={{ color: hitCount >= 2 ? "#136f3a" : "#9a670e" }}>
+                    <span className="mt-0.5 text-[0.5rem] font-bold tabular-nums" style={{ color: hitCount >= 2 ? "var(--success-text)" : "var(--warning-text)" }}>
                       {hitCount}
                     </span>
                   )}
@@ -310,13 +310,13 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
               <>
                 <div className="mb-3">
                   <div className="rounded-md px-2 py-1.5" style={{
-                    background: activeData.hitCount > 0 ? "rgba(74, 222, 128, 0.12)" : "rgba(248, 113, 113, 0.12)",
-                    border: `1px solid ${activeData.hitCount > 0 ? "rgba(74, 222, 128, 0.28)" : "rgba(248, 113, 113, 0.28)"}`,
+                    background: activeData.hitCount > 0 ? "var(--success-bg)" : "var(--danger-bg)",
+                    border: `1px solid ${activeData.hitCount > 0 ? "var(--success-border)" : "var(--danger-border)"}`,
                   }}>
-                    <p className="text-[0.55rem] font-semibold uppercase" style={{ color: activeData.hitCount > 0 ? "#86efac" : "#fca5a5" }}>
+                    <p className="text-[0.55rem] font-semibold uppercase" style={{ color: activeData.hitCount > 0 ? "var(--success-text)" : "var(--danger-text)" }}>
                       {activeData.hitCount > 0 ? "Super Effective" : "No Coverage"}
                     </p>
-                    <p className="font-mono text-xs" style={{ color: activeData.hitCount > 0 ? "#86efac" : "#fca5a5" }}>
+                    <p className="font-mono text-xs" style={{ color: activeData.hitCount > 0 ? "var(--success-text)" : "var(--danger-text)" }}>
                       {activeData.hitCount > 0 ? `${activeData.hitCount} hitter${activeData.hitCount !== 1 ? "s" : ""}` : "Gap"}
                     </p>
                   </div>
@@ -324,7 +324,7 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
 
                 {activeData.hitCount > 0 ? (
                   <div>
-                    <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "#86efac" }}>
+                    <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--success-text)" }}>
                       Can Hit ({activeData.hitCount})
                     </p>
                     <div className="coverage-sprite-list flex flex-wrap gap-1">
@@ -337,7 +337,7 @@ const OffensiveCoverage = ({ coverage }: OffensiveCoverageProps) => {
                           height={30}
                           unoptimized
                           className="rounded border"
-                          style={{ borderColor: "rgba(74, 222, 128, 0.35)", background: "rgba(74, 222, 128, 0.14)" }}
+                          style={{ borderColor: "var(--success-border)", background: "var(--success-bg)" }}
                           title={`${pokemon.name} — STAB super-effective`}
                         />
                       ))}

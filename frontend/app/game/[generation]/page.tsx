@@ -18,8 +18,8 @@ export async function generateMetadata({ params }: { params: Promise<{ generatio
   if (!gen) return {};
 
   return {
-    title: `Gen ${gen.generation} ${gen.primaryName} — ${gen.region} | Slatedex`,
-    description: `Build your Pokémon team for Generation ${gen.generation} in the ${gen.region} region. Analyze type coverage, defensive matchups, and smart picks — all with Slatedex.`,
+    title: `Gen ${gen.generation} ${gen.primaryName} Team Builder | Slatedex`,
+    description: `Build your Pokémon team for Generation ${gen.generation} in the ${gen.region} region with Slatedex. Analyze type coverage, defensive matchups, and smart picks.`,
   };
 }
 

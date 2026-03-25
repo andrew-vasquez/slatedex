@@ -50,15 +50,15 @@ const REGION_DECOR: Record<
     soft: string;
   }
 > = {
-  Kanto: { emblem: "◈", accent: "#f87171", soft: "rgba(248, 113, 113, 0.16)" },
-  Johto: { emblem: "◉", accent: "#fbbf24", soft: "rgba(251, 191, 36, 0.16)" },
-  Hoenn: { emblem: "△", accent: "#34d399", soft: "rgba(52, 211, 153, 0.16)" },
-  Sinnoh: { emblem: "◆", accent: "#60a5fa", soft: "rgba(96, 165, 250, 0.16)" },
-  Unova: { emblem: "⬢", accent: "#a78bfa", soft: "rgba(167, 139, 250, 0.16)" },
-  Kalos: { emblem: "✦", accent: "#fb7185", soft: "rgba(251, 113, 133, 0.16)" },
-  Alola: { emblem: "☼", accent: "#f97316", soft: "rgba(249, 115, 22, 0.16)" },
-  Galar: { emblem: "✶", accent: "#38bdf8", soft: "rgba(56, 189, 248, 0.16)" },
-  Paldea: { emblem: "✹", accent: "#f472b6", soft: "rgba(244, 114, 182, 0.16)" },
+  Kanto: { emblem: "◈", accent: "#dc2626", soft: "rgba(220, 38, 38, 0.14)" },
+  Johto: { emblem: "◉", accent: "#b45309", soft: "rgba(180, 83, 9, 0.14)" },
+  Hoenn: { emblem: "△", accent: "#0f766e", soft: "rgba(15, 118, 110, 0.14)" },
+  Sinnoh: { emblem: "◆", accent: "#2563eb", soft: "rgba(37, 99, 235, 0.14)" },
+  Unova: { emblem: "⬢", accent: "#7c3aed", soft: "rgba(124, 58, 237, 0.14)" },
+  Kalos: { emblem: "✦", accent: "#be185d", soft: "rgba(190, 24, 93, 0.14)" },
+  Alola: { emblem: "☼", accent: "#c2410c", soft: "rgba(194, 65, 12, 0.14)" },
+  Galar: { emblem: "✶", accent: "#0369a1", soft: "rgba(3, 105, 161, 0.14)" },
+  Paldea: { emblem: "✹", accent: "#be185d", soft: "rgba(190, 24, 93, 0.14)" },
 };
 
 const GAME_BY_ID = new Map(ALL_GAMES.map((game) => [game.id, game]));

@@ -3,8 +3,9 @@ import Link from "next/link";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | Slatedex",
-  description: "Read the Terms of Service for Slatedex — a Pokémon team builder and strategy tool.",
+  title: "Terms of Service for Slatedex Pokémon Team Builder",
+  description:
+    "Read the Slatedex Terms of Service covering accounts, acceptable use, saved team content, public profiles, intellectual property, and platform limitations.",
 };
 
 const LAST_UPDATED = "February 18, 2026";

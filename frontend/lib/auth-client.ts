@@ -1,33 +1,9 @@
 import { createAuthClient } from "better-auth/react";
 import { usernameClient } from "better-auth/client/plugins";
-
-function getBaseURL(): string {
-  const rawUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (!rawUrl) {
-    if (process.env.NODE_ENV === "production") {
-      console.warn(
-        "NEXT_PUBLIC_API_URL is not set in production. Auth requests will fall back to localhost."
-      );
-    }
-    return "http://localhost:3001";
-  }
-
-  // Ensure the URL has a protocol prefix
-  const unquoted = rawUrl.replace(/^['"]+|['"]+$/g, "");
-  const withProtocol =
-    !unquoted.startsWith("http://") && !unquoted.startsWith("https://")
-      ? `https://${unquoted}`
-      : unquoted;
-
-  let normalized = withProtocol.replace(/\/+$/, "");
-  if (/(\/api)+$/i.test(normalized)) {
-    normalized = normalized.replace(/(\/api)+$/i, "");
-  }
-  return normalized;
-}
+import { getClientSafeApiBaseUrl } from "./backend-url";
 
 export const authClient = createAuthClient({
-  baseURL: getBaseURL(),
+  baseURL: getClientSafeApiBaseUrl(),
   plugins: [usernameClient()],
 });
 

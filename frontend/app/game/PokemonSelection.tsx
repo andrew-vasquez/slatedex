@@ -6,7 +6,8 @@ import { type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from 
 import Image from "next/image";
 import PokemonCard from "@/app/game/PokemonCard";
 import AnimatedNumber from "@/app/game/AnimatedNumber";
-import { getAvailableTypes, TYPE_COLORS } from "@/lib/constants";
+import { PokemonTypeBadge, PokemonTypeButton } from "@/components/ui/PokemonTypeBadge";
+import { getAvailableTypes } from "@/lib/constants";
 import { pokemonSpriteSrc } from "@/lib/image";
 import type { CardDensity, DexMode, Pokemon, Game } from "@/lib/types";
 
@@ -544,17 +545,17 @@ const PokemonSelection = ({
                       <button
                         type="button"
                         onClick={() => onVersionFilterChange(!versionFilterEnabled)}
-                        className="rounded-lg px-3 py-2.5 min-h-[44px] inline-flex items-center justify-center text-[0.72rem] font-semibold transition-all duration-150"
+                        className={`rounded-lg px-3 py-2.5 min-h-[44px] inline-flex items-center justify-center text-[0.72rem] font-semibold transition-all duration-150 ${versionFilterEnabled ? "" : "exclusive-badge"}`}
                       style={{
                         background: versionFilterEnabled
                           ? "var(--version-color-soft)"
-                          : "rgba(234, 179, 8, 0.14)",
+                          : undefined,
                         color: versionFilterEnabled
                           ? "var(--version-color)"
-                          : "#fde047",
+                          : undefined,
                         border: versionFilterEnabled
                           ? "1px solid var(--version-color-border)"
-                          : "1px solid rgba(234, 179, 8, 0.34)",
+                          : undefined,
                       }}
                       aria-pressed={versionFilterEnabled}
                       aria-label={versionFilterEnabled ? "Showing only Pokémon from selected version — click to show all" : "Showing all Pokémon — click to filter by version"}
@@ -649,9 +650,11 @@ const PokemonSelection = ({
                           {getAvailableTypes(generation).map((type) => {
                             const isActive = activeTypeFilters.includes(type);
                             return (
-                              <button
+                              <PokemonTypeButton
                                 key={type}
-                                type="button"
+                                pokemonType={type}
+                                size="sm"
+                                pressed={isActive}
                                 onClick={() => {
                                   if (isActive) {
                                     onTypeFilterChange(activeTypeFilters.filter((entry) => entry !== type));
@@ -659,18 +662,11 @@ const PokemonSelection = ({
                                   }
                                   onTypeFilterChange([...activeTypeFilters, type]);
                                 }}
-                                className={`rounded-md px-2 py-0.5 text-[0.7rem] font-semibold transition-all duration-150 sm:px-2.5 sm:py-1 sm:text-[0.74rem] ${TYPE_COLORS[type]} ${isActive ? "" : "hover:opacity-90"}`}
+                                className={`sm:text-[0.74rem] ${isActive ? "" : "hover:opacity-90"}`}
                                 style={{
-                                  color: "#fff",
-                                  border: isActive ? "1px solid rgba(255, 255, 255, 0.6)" : "1px solid transparent",
-                                  boxShadow: isActive ? "0 0 0 1px rgba(255, 255, 255, 0.22) inset" : "none",
                                   opacity: isActive ? 1 : 0.68,
-                                  transform: isActive ? "translateY(-1px)" : "none",
                                 }}
-                                aria-pressed={isActive}
-                              >
-                                {type.charAt(0).toUpperCase() + type.slice(1)}
-                              </button>
+                              />
                             );
                           })}
                           {activeTypeFilters.length > 0 && (
@@ -841,9 +837,9 @@ const PokemonSelection = ({
                 <p className="mt-0.5 text-[0.68rem] font-semibold" style={{ color: "var(--text-primary)" }}>{p.name}</p>
                 <div className="mt-0.5 flex justify-center gap-0.5">
                   {p.types.map((type: string) => (
-                    <span key={type} className={`rounded px-1 py-px text-[0.5rem] font-semibold text-white ${TYPE_COLORS[type]}`}>
+                    <PokemonTypeBadge key={type} pokemonType={type} size="xs">
                       {type.charAt(0).toUpperCase() + type.slice(1)}
-                    </span>
+                    </PokemonTypeBadge>
                   ))}
                 </div>
               </div>

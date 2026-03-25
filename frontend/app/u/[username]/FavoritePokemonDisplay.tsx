@@ -85,7 +85,7 @@ export default function FavoritePokemonDisplay({ names }: { names: string[] }) {
             className="flex items-center gap-1.5 rounded-2xl border pl-1.5 pr-3 py-1"
             style={{
               borderColor: "var(--border)",
-              background: "rgba(11, 20, 44, 0.6)",
+              background: "color-mix(in srgb, var(--surface-3) 72%, var(--surface-2))",
             }}
           >
             {loading || !resolved.has(name) ? (

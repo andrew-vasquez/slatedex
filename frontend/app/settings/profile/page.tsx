@@ -330,6 +330,13 @@ export default function ProfileSettingsPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Link
+              href="/weaknesses"
+              className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold"
+              style={{ borderColor: "var(--border)", color: "var(--text-secondary)", textDecoration: "none" }}
+            >
+              Weakness Tool
+            </Link>
+            <Link
               href={publicPath}
               target="_blank"
               className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold"

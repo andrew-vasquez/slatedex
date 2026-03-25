@@ -49,6 +49,28 @@ export const TYPE_RESISTANCES: Record<string, string[]> = {
   fairy: ['fighting', 'bug', 'dark']
 };
 
+// Type immunities - what each type is immune to
+export const TYPE_IMMUNITIES: Record<string, string[]> = {
+  normal: ['ghost'],
+  fire: [],
+  water: [],
+  electric: [],
+  grass: [],
+  ice: [],
+  fighting: [],
+  poison: [],
+  ground: ['electric'],
+  flying: ['ground'],
+  psychic: [],
+  bug: [],
+  rock: [],
+  ghost: ['normal', 'fighting'],
+  dragon: [],
+  dark: ['psychic'],
+  steel: ['poison'],
+  fairy: ['dragon']
+};
+
 // All Pokemon types for iteration
 export const ALL_TYPES: string[] = [
   'normal', 'fire', 'water', 'electric', 'grass', 'ice',

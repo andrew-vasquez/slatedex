@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import GameSelector from "@/app/play/GameSelector";
 
 export const metadata: Metadata = {
-  title: "Pick a Generation | Slatedex",
-  description: "Choose your Pokémon game generation and start building your team with type coverage, smart picks, and defensive analysis.",
+  title: "Choose a Generation for Team Building | Slatedex",
+  description:
+    "Choose a Pokémon generation, compare regions and starters, and start building a stronger team with Slatedex coverage analysis and recommendations.",
 };
 
 export default function PlayPage() {

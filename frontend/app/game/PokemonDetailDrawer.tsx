@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import { FiPlus, FiX } from "react-icons/fi";
-import { TYPE_COLORS } from "@/lib/constants";
+import { PokemonTypeBadge } from "@/components/ui/PokemonTypeBadge";
 import { pokemonSpriteSrc } from "@/lib/image";
 import type { Pokemon } from "@/lib/types";
 
@@ -111,9 +111,9 @@ const PokemonDetailDrawer = ({ pokemon, onClose, onAdd, canAdd }: PokemonDetailD
             </h3>
             <div className="mt-1 flex gap-1.5">
               {activePokemon.types.map((type) => (
-                <span key={type} className={`rounded-md px-2.5 py-0.5 text-[0.65rem] font-semibold text-white ${TYPE_COLORS[type]}`}>
+                <PokemonTypeBadge key={type} pokemonType={type} size="sm">
                   {type.charAt(0).toUpperCase() + type.slice(1)}
-                </span>
+                </PokemonTypeBadge>
               ))}
             </div>
           </div>

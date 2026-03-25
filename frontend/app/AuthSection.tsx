@@ -10,6 +10,12 @@ export function LandingNav() {
     <div className="flex items-center gap-2 sm:gap-3">
       <UserMenu />
       <Link
+        href="/weaknesses"
+        className="landing-cta-secondary hidden items-center gap-1.5 rounded-xl border px-3.5 py-2 text-sm font-semibold sm:inline-flex"
+      >
+        Weakness Tool
+      </Link>
+      <Link
         href="/play"
         className="landing-cta-primary inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold"
       >

@@ -23,15 +23,33 @@ const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000;
 
 let cachedProfile: { profile: MyProfile; fetchedAt: number } | null = null;
 let inFlightProfileRequest: Promise<MyProfile> | null = null;
+let themeAnimationTimer: number | null = null;
 
 function applyTheme(theme: Theme): void {
   const root = document.documentElement;
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (!prefersReducedMotion) {
+    root.classList.add("theme-animating");
+    if (themeAnimationTimer !== null) {
+      window.clearTimeout(themeAnimationTimer);
+    }
+  }
+
   root.dataset.theme = theme;
   root.style.colorScheme = theme;
   localStorage.setItem("theme", theme);
+  document.cookie = `theme=${theme}; path=/; max-age=31536000; samesite=lax`;
 
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", theme === "dark" ? DARK_THEME_COLOR : LIGHT_THEME_COLOR);
+
+  if (!prefersReducedMotion) {
+    themeAnimationTimer = window.setTimeout(() => {
+      root.classList.remove("theme-animating");
+      themeAnimationTimer = null;
+    }, 280);
+  }
 }
 
 function getInitials(name: string): string {
@@ -43,6 +61,7 @@ function getInitials(name: string): string {
 interface UserMenuProps {
   className?: string;
   compactOnMobile?: boolean;
+  betweenThemeAndAuth?: React.ReactNode;
 }
 
 function toAvatarFrame(value: string | null | undefined): AvatarFrameKey {
@@ -81,7 +100,7 @@ function fetchMyProfileCached(): Promise<MyProfile> {
   return inFlightProfileRequest;
 }
 
-const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) => {
+const UserMenu = ({ className = "", compactOnMobile = false, betweenThemeAndAuth = null }: UserMenuProps) => {
   const { user, isAuthenticated, isLoading, openAuthDialog } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>("dark");
@@ -215,6 +234,8 @@ const UserMenu = ({ className = "", compactOnMobile = false }: UserMenuProps) =>
           <FiSun size={15} className={`theme-toggle-icon ${theme === "dark" ? "theme-toggle-icon--visible" : ""}`} aria-hidden="true" />
           <FiMoon size={15} className={`theme-toggle-icon ${theme === "light" ? "theme-toggle-icon--visible" : ""}`} aria-hidden="true" />
         </button>
+
+        {betweenThemeAndAuth}
 
         {/* Auth: loading */}
         {isLoading && (

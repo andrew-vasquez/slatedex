@@ -1,6 +1,25 @@
 /** @type {import('next').NextConfig} */
 const isProduction = process.env.NODE_ENV === "production";
 
+function normalizeExternalApiUrl(rawUrl) {
+  if (!rawUrl) return "http://localhost:3001";
+
+  const unquoted = rawUrl.replace(/^['"]+|['"]+$/g, "");
+  const withProtocol =
+    !unquoted.startsWith("http://") && !unquoted.startsWith("https://")
+      ? `https://${unquoted}`
+      : unquoted;
+
+  let normalized = withProtocol.replace(/\/+$/, "");
+  if (/(\/api)+$/i.test(normalized)) {
+    normalized = normalized.replace(/(\/api)+$/i, "");
+  }
+
+  return normalized;
+}
+
+const backendProxyTarget = normalizeExternalApiUrl(process.env.NEXT_PUBLIC_API_URL);
+
 const securityHeaders = [
   {
     key: "X-Content-Type-Options",
@@ -52,6 +71,14 @@ const nextConfig = {
       {
         source: "/:path*",
         headers: securityHeaders,
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/_backend/:path*",
+        destination: `${backendProxyTarget}/:path*`,
       },
     ];
   },

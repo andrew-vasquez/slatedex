@@ -302,9 +302,9 @@ const TeamRecommendations = ({
                         key={`${pokemon.id}-cover-${type}`}
                         className="rounded-full px-2 py-0.5 text-[0.66rem] font-semibold uppercase"
                         style={{
-                          background: "rgba(74, 222, 128, 0.14)",
-                          border: "1px solid rgba(74, 222, 128, 0.28)",
-                          color: "#86efac",
+                          background: "var(--success-bg)",
+                          border: "1px solid var(--success-border)",
+                          color: "var(--success-text)",
                         }}
                       >
                         covers {type}
@@ -328,9 +328,9 @@ const TeamRecommendations = ({
                         key={`${pokemon.id}-risk-${type}`}
                         className="rounded-full px-2 py-0.5 text-[0.66rem] font-semibold uppercase"
                         style={{
-                          background: "rgba(248, 113, 113, 0.12)",
-                          border: "1px solid rgba(248, 113, 113, 0.24)",
-                          color: "#fca5a5",
+                          background: "var(--danger-bg)",
+                          border: "1px solid var(--danger-border)",
+                          color: "var(--danger-text)",
                         }}
                       >
                         weak to {type}
@@ -354,7 +354,7 @@ const TeamRecommendations = ({
                   type="button"
                   onClick={() => onReplaceWeakest(pokemon)}
                   disabled={!canReplaceWeakest}
-                  className="btn-secondary mt-2 w-full !border-[rgba(59,130,246,0.32)] !bg-[rgba(59,130,246,0.14)] !text-[#93c5fd] disabled:pointer-events-none disabled:opacity-50"
+                  className="btn-secondary team-rec-action team-rec-action--replace mt-2 w-full disabled:pointer-events-none disabled:opacity-50"
                 >
                   Replace weakest fit
                 </button>
@@ -363,7 +363,7 @@ const TeamRecommendations = ({
                     type="button"
                     onClick={() => onReplaceTargeted(pokemon)}
                     disabled={!canReplaceTargeted}
-                    className="btn-secondary mt-2 w-full !border-[rgba(59,130,246,0.34)] !bg-[rgba(59,130,246,0.22)] !text-[#dbeafe] disabled:pointer-events-none disabled:opacity-50"
+                    className="btn-secondary team-rec-action team-rec-action--targeted mt-2 w-full disabled:pointer-events-none disabled:opacity-50"
                   >
                     {replaceTargetLabel ? `Replace ${replaceTargetLabel}` : "Replace targeted slot"}
                   </button>
