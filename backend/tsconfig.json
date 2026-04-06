@@ -10,7 +10,7 @@
     "lib": ["ES2022"],
     "noEmit": true,
     "skipLibCheck": true,
-    "types": ["bun", "@cloudflare/workers-types"]
+    "types": ["bun"]
   },
   "include": ["src/**/*.ts", "scripts/**/*.ts"]
 }

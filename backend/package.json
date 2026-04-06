@@ -2,21 +2,16 @@
   "name": "slatedex-backend",
   "version": "0.6.0",
   "scripts": {
-    "dev": "bun run prisma:generate:bun && bun run src/index.ts",
-    "dev:hot": "bun run prisma:generate:bun && bun run --hot src/index.ts",
-    "build": "bun run prisma:generate:worker && bun run typecheck",
+    "dev": "bun run prisma:generate && bun run src/index.ts",
+    "dev:hot": "bun run prisma:generate && bun run --hot src/index.ts",
+    "build": "bun run prisma:generate && bun run typecheck",
     "build:bun-binary": "bun build src/index.ts --outdir dist --target bun",
-    "start": "bun run prisma:generate:bun && bun run src/index.ts",
+    "start": "bun run prisma:generate && bun run src/index.ts",
+    "migrate:deploy": "bunx prisma migrate deploy",
     "reset-password": "bun run scripts/dev-reset-password.ts",
     "set-user-role": "bun run scripts/set-user-role.ts",
-    "postinstall": "bun run prisma:generate:bun",
-    "prisma:generate:bun": "bun run scripts/prisma-generate.ts bun",
-    "prisma:generate:worker": "bun run scripts/prisma-generate.ts workerd",
-    "worker:dev": "bun run prisma:generate:worker && wrangler dev",
-    "worker:deploy": "bun run prisma:generate:worker && wrangler deploy",
-    "worker:types": "wrangler types",
-    "worker:types:check": "wrangler types --check",
-    "deploy": "bun run prisma:generate:worker && wrangler deploy",
+    "postinstall": "bun run prisma:generate",
+    "prisma:generate": "bun run scripts/prisma-generate.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -28,10 +23,8 @@
     "openai": "^6.22.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250317.0",
     "@types/bun": "latest",
     "prisma": "^7.4.0",
-    "typescript": "^5.9.3",
-    "wrangler": "^4.37.1"
+    "typescript": "^5.9.3"
   }
 }

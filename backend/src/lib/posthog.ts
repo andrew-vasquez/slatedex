@@ -12,7 +12,7 @@ function captureHost(): string {
 }
 
 /**
- * Capture a PostHog event via HTTP (Workers-safe). Never throws.
+ * Capture a PostHog event via HTTP. Never throws.
  */
 export async function capturePostHogEventImmediate({
   distinctId,

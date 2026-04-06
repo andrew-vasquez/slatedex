@@ -1,5 +1,4 @@
 import type { Context, MiddlewareHandler } from "hono";
-import { getRateLimitKvFromBindings } from "../lib/runtime";
 
 export type KvRateLimitOptions = {
   windowMs: number;
@@ -36,27 +35,6 @@ function windowBucket(now: number, windowMs: number): number {
   return Math.floor(now / windowMs);
 }
 
-async function kvGetCount(
-  kv: NonNullable<ReturnType<typeof getRateLimitKvFromBindings>>,
-  key: string
-): Promise<number> {
-  const raw = await kv.get(key);
-  if (!raw) return 0;
-  const n = Number.parseInt(raw, 10);
-  return Number.isFinite(n) ? n : 0;
-}
-
-async function kvSetCount(
-  kv: NonNullable<ReturnType<typeof getRateLimitKvFromBindings>>,
-  key: string,
-  value: number,
-  windowMs: number
-): Promise<void> {
-  await kv.put(key, String(value), {
-    expirationTtl: Math.max(60, Math.ceil(windowMs / 1000) + 120),
-  });
-}
-
 function memKey(prefix: string, clientKey: string, bucket: number): string {
   return `${prefix}:${clientKey}:${bucket}`;
 }
@@ -70,7 +48,7 @@ function responseStatus(c: Context): number {
 }
 
 /**
- * Rate limiter backed by Cloudflare KV when `RATE_LIMIT_KV` is bound; otherwise in-memory (dev / Bun).
+ * Simple in-memory rate limiter for the Bun server runtime.
  */
 export function kvRateLimiter(options: KvRateLimitOptions): MiddlewareHandler {
   const { windowMs, limit, prefix, skipSuccessfulRequests } = options;
@@ -80,53 +58,29 @@ export function kvRateLimiter(options: KvRateLimitOptions): MiddlewareHandler {
       return next();
     }
 
-    const kv = getRateLimitKvFromBindings();
     const clientKey = getClientKey(c);
     const bucket = windowBucket(Date.now(), windowMs);
-    const key = `rl:${prefix}:${clientKey}:${bucket}`;
+    const key = memKey(prefix, clientKey, bucket);
 
     if (skipSuccessfulRequests) {
-      if (kv) {
-        const failures = await kvGetCount(kv, key);
-        if (failures >= limit) {
-          return c.json({ error: "Too many requests" }, 429);
-        }
-      } else {
-        const mk = memKey(prefix, clientKey, bucket);
-        const failures = memoryStore.get(mk) ?? 0;
-        if (failures >= limit) {
-          return c.json({ error: "Too many requests" }, 429);
-        }
+      const failures = memoryStore.get(key) ?? 0;
+      if (failures >= limit) {
+        return c.json({ error: "Too many requests" }, 429);
       }
 
       await next();
 
       if (responseStatus(c) < 400) return;
 
-      if (kv) {
-        const nextVal = (await kvGetCount(kv, key)) + 1;
-        await kvSetCount(kv, key, nextVal, windowMs);
-      } else {
-        const mk = memKey(prefix, clientKey, bucket);
-        memoryStore.set(mk, (memoryStore.get(mk) ?? 0) + 1);
-      }
+      memoryStore.set(key, failures + 1);
       return;
     }
 
-    if (kv) {
-      const count = await kvGetCount(kv, key);
-      if (count >= limit) {
-        return c.json({ error: "Too many requests" }, 429);
-      }
-      await kvSetCount(kv, key, count + 1, windowMs);
-    } else {
-      const mk = memKey(prefix, clientKey, bucket);
-      const count = memoryStore.get(mk) ?? 0;
-      if (count >= limit) {
-        return c.json({ error: "Too many requests" }, 429);
-      }
-      memoryStore.set(mk, count + 1);
+    const count = memoryStore.get(key) ?? 0;
+    if (count >= limit) {
+      return c.json({ error: "Too many requests" }, 429);
     }
+    memoryStore.set(key, count + 1);
 
     await next();
   };

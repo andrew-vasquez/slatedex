@@ -1,6 +1,6 @@
 import { PrismaClient } from "../generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { env, isWorkerDeployment } from "../lib/runtime";
+import { env } from "../lib/runtime";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
@@ -40,16 +40,6 @@ function createPrismaClient(): PrismaClient {
 
   if (!databaseUrl && !directUrl) {
     throw new Error("DATABASE_URL or DIRECT_URL is required to start the backend.");
-  }
-
-  if (isWorkerDeployment()) {
-    if (!databaseUrl || !isPrismaAccelerateUrl(databaseUrl)) {
-      throw new Error(
-        "[db] Cloudflare Workers require Prisma Accelerate: set DATABASE_URL to your prisma:// or prisma+postgres:// Accelerate URL."
-      );
-    }
-    console.log("[db] Using Prisma Accelerate (Worker)");
-    return new PrismaClient({ accelerateUrl: databaseUrl });
   }
 
   const hasAccelerateUrl = isPrismaAccelerateUrl(databaseUrl);
