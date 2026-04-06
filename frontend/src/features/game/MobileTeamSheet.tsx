@@ -51,7 +51,6 @@ export default function MobileTeamSheet({
   const touchLastTime = useRef<number | null>(null);
   const isDragging = useRef(false);
   const velocityRef = useRef(0);
-  const savedScrollY = useRef(0);
   const suppressClickRef = useRef(false);
   const suppressClickTimerRef = useRef<number | null>(null);
 
@@ -70,29 +69,28 @@ export default function MobileTeamSheet({
     });
   }, [emitHaptic]);
 
-  // iOS-compatible scroll lock: position-fixed trick preserves scroll position
+  // Lock background scroll without forcing a scroll-position restore jump.
   useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+
     if (isOpen) {
-      savedScrollY.current = window.scrollY;
-      document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${savedScrollY.current}px`;
-      document.body.style.left = "0";
-      document.body.style.right = "0";
+      html.style.overflow = "hidden";
+      html.style.overscrollBehavior = "none";
+      body.style.overflow = "hidden";
+      body.style.touchAction = "none";
     } else {
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.left = "";
-      document.body.style.right = "";
-      window.scrollTo(0, savedScrollY.current);
+      html.style.overflow = "";
+      html.style.overscrollBehavior = "";
+      body.style.overflow = "";
+      body.style.touchAction = "";
     }
+
     return () => {
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.left = "";
-      document.body.style.right = "";
+      html.style.overflow = "";
+      html.style.overscrollBehavior = "";
+      body.style.overflow = "";
+      body.style.touchAction = "";
     };
   }, [isOpen]);
 
