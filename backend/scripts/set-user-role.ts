@@ -1,9 +1,6 @@
 import "dotenv/config";
 import { UserRole } from "../src/generated/prisma/client";
 import { prisma } from "../src/db";
-import { primeBunRuntime } from "../src/lib/runtime";
-
-primeBunRuntime();
 
 type CliArgs = {
   email: string | null;
@@ -101,4 +98,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

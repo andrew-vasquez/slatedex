@@ -7,8 +7,6 @@
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
-  // Local Bun dev uses the checked-in schema directly.
-  // Worker builds generate a temporary schema that rewrites this to `workerd`.
   runtime  = "bun"
 }
 

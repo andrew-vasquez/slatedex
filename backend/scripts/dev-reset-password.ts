@@ -1,9 +1,6 @@
 import "dotenv/config";
 import { hashPassword } from "better-auth/crypto";
 import { prisma } from "../src/db";
-import { primeBunRuntime } from "../src/lib/runtime";
-
-primeBunRuntime();
 
 type CliArgs = {
   email: string;

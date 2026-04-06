@@ -139,6 +139,8 @@ app.onError((error, c) => {
   return c.json({ error: "Internal server error" }, 500);
 });
 
+app.get("/healthz", (c) => c.json({ ok: true }));
+
 app.get("/", (c) => {
   const cfg = getConfig();
   return c.text(`Poke Builder API running on port ${cfg.port}`);

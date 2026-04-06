@@ -1,9 +1,7 @@
 import { app } from "./app";
 import { getConfig } from "./lib/config";
-import { primeBunRuntime } from "./lib/runtime";
 import { shutdownPostHog } from "./lib/posthog";
 
-primeBunRuntime();
 const cfg = getConfig();
 
 const SERVER_SYMBOL = Symbol.for("poke-builder.server");
