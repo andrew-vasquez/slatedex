@@ -2,15 +2,15 @@
   "version": 2,
   "installCommand": "bun install",
   "buildCommand": "bun run build",
-  "functions": {
-    "api/index.mjs": {
-      "includeFiles": "dist/server/**"
-    }
-  },
   "builds": [
     {
       "src": "api/index.mjs",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "dist/server/**"
+        ]
+      }
     },
     {
       "src": "dist/client/**",
