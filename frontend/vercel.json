@@ -1,29 +1,16 @@
 {
-  "version": 2,
   "installCommand": "bun install",
   "buildCommand": "bun run build",
-  "builds": [
-    {
-      "src": "api/index.mjs",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": [
-          "dist/server/**"
-        ]
-      }
-    },
-    {
-      "src": "dist/client/**",
-      "use": "@vercel/static"
+  "outputDirectory": "dist/client",
+  "functions": {
+    "api/index.mjs": {
+      "includeFiles": "dist/server/**"
     }
-  ],
-  "routes": [
+  },
+  "rewrites": [
     {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/api/index.mjs"
+      "source": "/(.*)",
+      "destination": "/api/index.mjs"
     }
   ]
 }
