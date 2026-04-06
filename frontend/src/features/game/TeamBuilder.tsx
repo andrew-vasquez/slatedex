@@ -1742,7 +1742,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
         <main
           id="main-content"
-          className="mx-auto max-w-screen-xl px-4 pb-24 pt-4 sm:px-6 sm:pt-5 lg:pb-8"
+          className="mx-auto max-w-screen-xl px-4 pb-24 pt-2 sm:px-6 sm:pt-5 lg:pb-8"
           role="main"
         >
           <div
@@ -1752,32 +1752,32 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
               transition: "opacity 180ms ease",
             }}
           >
-          <section className="panel-soft mb-4 border px-3.5 py-3 sm:px-4 sm:py-3.5" style={{ borderColor: "var(--border)" }} aria-label="Team health summary">
-            <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <section className="panel-soft mb-3 border px-3 py-2.5 sm:mb-4 sm:px-4 sm:py-3.5" style={{ borderColor: "var(--border)" }} aria-label="Team health summary">
+            <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2.5">
               <div>
                 <p className="text-xs sm:text-[0.62rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
                   Team Health
                 </p>
-                <p className="text-sm sm:text-[0.76rem]" style={{ color: "var(--text-secondary)" }}>
+                <p className="text-[0.92rem] leading-snug sm:text-[0.76rem]" style={{ color: "var(--text-secondary)" }}>
                   Quick read on overlap, speed curve, and hazard posture.
                 </p>
               </div>
               {hasTeam ? (
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
                   <InfoTooltip
-                    label={<span className="rounded-full border px-2.5 py-1.5 text-xs sm:text-[0.64rem] font-semibold inline-flex items-center gap-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>Type overlap: {teamHealth.overlappingTypes}</span>}
+                    label={<span className="rounded-full border px-2.5 py-1.5 text-[0.78rem] leading-none sm:text-[0.64rem] font-semibold inline-flex items-center gap-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>Type overlap: {teamHealth.overlappingTypes}</span>}
                     description="Number of types shared by multiple team members. High overlap can leave gaps in coverage."
                   />
                   <InfoTooltip
-                    label={<span className="rounded-full border px-2.5 py-1.5 text-xs sm:text-[0.64rem] font-semibold inline-flex items-center gap-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>Speed: {teamHealth.speedCurveLabel} ({teamHealth.averageSpeed} avg)</span>}
+                    label={<span className="rounded-full border px-2.5 py-1.5 text-[0.78rem] leading-none sm:text-[0.64rem] font-semibold inline-flex items-center gap-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>Speed: {teamHealth.speedCurveLabel} ({teamHealth.averageSpeed} avg)</span>}
                     description="Your team's speed distribution. Balanced curves help with matchup flexibility."
                   />
                   <InfoTooltip
-                    label={<span className="rounded-full border px-2.5 py-1.5 text-xs sm:text-[0.64rem] font-semibold inline-flex items-center gap-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>Fast mons: {teamHealth.fastCount}</span>}
+                    label={<span className="rounded-full border px-2.5 py-1.5 text-[0.78rem] leading-none sm:text-[0.64rem] font-semibold inline-flex items-center gap-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>Fast mons: {teamHealth.fastCount}</span>}
                     description="Pokémon with Speed above 100. Useful for outspeeding threats."
                   />
                   <InfoTooltip
-                    label={<span className="rounded-full border px-2.5 py-1.5 text-xs sm:text-[0.64rem] font-semibold inline-flex items-center gap-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>Hazards: {teamHealth.hazardPlanLabel}</span>}
+                    label={<span className="rounded-full border px-2.5 py-1.5 text-[0.78rem] leading-none sm:text-[0.64rem] font-semibold inline-flex items-center gap-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>Hazards: {teamHealth.hazardPlanLabel}</span>}
                     description="Whether your team can set or remove entry hazards (Stealth Rock, Spikes, etc.)."
                   />
                 </div>
@@ -1918,17 +1918,17 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
             </div>
 
             {/* ── LEFT / MOBILE: selection column ────────────────────── */}
-            <div className="flex min-w-0 flex-col gap-4 lg:order-1">
+            <div className="flex min-w-0 flex-col gap-3 sm:gap-4 lg:order-1">
 
               {/* Mobile-only compact action bar */}
               <div className="lg:hidden">
-                <section className="panel p-3 sm:p-4" aria-label="Team controls">
-                  <div className="grid grid-cols-2 gap-1.5">
+                <section className="panel p-2.5 sm:p-4" aria-label="Team controls">
+                  <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                     <button
                       type="button"
                       onClick={handleUndo}
                       disabled={!historyState.canUndo}
-                      className="btn-secondary action-btn w-full disabled:pointer-events-none disabled:opacity-50"
+                      className="btn-secondary action-btn min-h-[44px] w-full disabled:pointer-events-none disabled:opacity-50"
                     >
                       <FiCornerDownLeft size={13} />
                       Undo
@@ -1937,7 +1937,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                       type="button"
                       onClick={handleRedo}
                       disabled={!historyState.canRedo}
-                      className="btn-secondary action-btn w-full disabled:pointer-events-none disabled:opacity-50"
+                      className="btn-secondary action-btn min-h-[44px] w-full disabled:pointer-events-none disabled:opacity-50"
                     >
                       <FiCornerDownRight size={13} />
                       Redo
@@ -1945,7 +1945,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                     <button
                       type="button"
                       onClick={() => { setReplaceMode((prev) => !prev); setReplaceTargetSlot(null); }}
-                      className="btn-secondary action-btn col-span-2 w-full"
+                      className="btn-secondary action-btn col-span-2 min-h-[44px] w-full"
                       style={{
                         borderColor: replaceMode ? "rgba(59, 130, 246, 0.34)" : "var(--border)",
                         background: replaceMode ? "rgba(59, 130, 246, 0.14)" : undefined,
@@ -1958,13 +1958,13 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                     <button
                       type="button"
                       onClick={openAiCoach}
-                      className="ai-coach-trigger action-btn col-span-2 w-full"
+                      className="ai-coach-trigger action-btn col-span-2 min-h-[44px] w-full"
                     >
                       <FiMessageCircle size={13} />
                       AI Coach
                     </button>
                     <div
-                      className="col-span-2 rounded-xl border px-3 py-1.5 text-[0.72rem] sm:py-2 sm:text-[0.78rem]"
+                      className="col-span-2 rounded-xl border px-3 py-1.5 text-[0.7rem] leading-relaxed sm:py-2 sm:text-[0.78rem]"
                       style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}
                     >
                       {replaceMode
