@@ -29,7 +29,8 @@ package-lock.json
 .wrangler/
 .dev.vars
 .dev.vars.*
-
+/frontend/.tanstack
+/frontend/.env
 
 # TestSprite generated output and secrets
 testsprite_tests/tmp/

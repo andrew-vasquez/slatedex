@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import { useSession } from "@/lib/auth-client";
 
 type AuthTab = "sign-in" | "sign-up";
@@ -27,15 +27,15 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { data: session, isPending } = useSession();
 
   const openAuthDialog = useCallback(
-    (tab: AuthTab = "sign-in") => {
-      const params = new URLSearchParams({ mode: tab });
-      router.push(`/auth?${params.toString()}`);
-    },
-    [router]
+      (tab: AuthTab = "sign-in") => {
+        const params = new URLSearchParams({ mode: tab });
+        void navigate({ to: `/auth?${params.toString()}` });
+      },
+    [navigate]
   );
 
   const value: AuthContextValue = {

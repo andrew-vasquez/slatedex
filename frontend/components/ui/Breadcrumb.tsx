@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 
 export interface BreadcrumbItem {
   label: string;
@@ -36,7 +36,7 @@ export default function Breadcrumb({ items, className = "" }: BreadcrumbProps) {
                   {item.label}
                 </span>
               ) : (
-                <Link href={item.href} className="breadcrumb-link">
+                <Link to={item.href} className="breadcrumb-link">
                   {isRoot && (
                     <svg
                       className="breadcrumb-home-icon"

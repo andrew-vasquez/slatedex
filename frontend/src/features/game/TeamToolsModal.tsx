@@ -1,0 +1,413 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import loadable from "~/lib/loadable";
+import { FiCopy, FiFolder, FiLink, FiShare2, FiTarget, FiUploadCloud, FiX } from "react-icons/fi";
+import SavedTeamsPanel from "./SavedTeamsPanel";
+import { encodeSharedTeamPayload, parseSharedTeamInput, type SharedTeamPayload } from "@/lib/teamShare";
+import { useAnimatedUnmount } from "~/features/game/hooks/useAnimatedUnmount";
+import { useToastContext } from "~/features/game/hooks/useToast";
+import { triggerHaptic } from "@/lib/haptics";
+import type { SavedTeam, TeamStoryCheckpoint } from "@/lib/api";
+import type { Pokemon } from "@/lib/types";
+
+const BattlePlannerTab = loadable(
+  () => import("./battle/BattlePlannerTab"),
+  { ssr: false, loading: () => <div className="py-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>Loading…</div> }
+);
+
+type TeamToolsTab = "saved" | "share" | "battle";
+
+interface VersionOption {
+  id: string;
+  label: string;
+}
+
+interface TeamToolsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  teamHasPokemon: boolean;
+  isAuthenticated: boolean;
+  savedTeams: SavedTeam[];
+  activeTeamId: string | null;
+  onSaveAs: (name: string, versionIds?: string[]) => Promise<void>;
+  onLoadSavedTeam: (teamId: string) => void;
+  onOverwriteSavedTeam: (teamId: string) => Promise<void>;
+  onDeleteSavedTeam: (teamId: string) => Promise<void>;
+  onRenameSavedTeam: (teamId: string, name: string) => Promise<void>;
+  onRefreshSavedTeams: () => Promise<void>;
+  isSaving: boolean;
+  payload: SharedTeamPayload;
+  onImport: (payload: SharedTeamPayload) => string;
+  gameVersions?: VersionOption[];
+  selectedVersionId?: string | null;
+  initialTab?: TeamToolsTab;
+  hapticsEnabled?: boolean;
+  // Battle Planner context
+  myTeam?: (Pokemon | null)[];
+  generation?: number;
+  gameId?: number;
+  pokemonPool?: Pokemon[];
+  allPokemonPool?: Pokemon[];
+  teamCheckpoint?: TeamStoryCheckpoint | null;
+  onTeamCheckpointChange?: (checkpoint: TeamStoryCheckpoint | null) => Promise<void>;
+}
+
+const TeamToolsModal = ({
+  isOpen,
+  onClose,
+  teamHasPokemon,
+  isAuthenticated,
+  savedTeams,
+  activeTeamId,
+  onSaveAs,
+  onLoadSavedTeam,
+  onOverwriteSavedTeam,
+  onDeleteSavedTeam,
+  onRenameSavedTeam,
+  onRefreshSavedTeams,
+  isSaving,
+  payload,
+  onImport,
+  gameVersions,
+  selectedVersionId,
+  initialTab = "saved",
+  hapticsEnabled = true,
+  myTeam = [],
+  generation = 1,
+  gameId = 1,
+  pokemonPool = [],
+  allPokemonPool = [],
+  teamCheckpoint = null,
+  onTeamCheckpointChange,
+}: TeamToolsModalProps) => {
+  const [activeTab, setActiveTab] = useState<TeamToolsTab>("saved");
+  const [battleMounted, setBattleMounted] = useState(false);
+  const [importInput, setImportInput] = useState("");
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
+  const [tabTransitionKey, setTabTransitionKey] = useState(0);
+  const modalRef = useRef<HTMLElement | null>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const toastCtx = useToastContext();
+
+  const token = useMemo(() => encodeSharedTeamPayload(payload), [payload]);
+  const { shouldRender, isAnimatingOut, onAnimationEnd } = useAnimatedUnmount(isOpen, 200);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    const focusFirstInteractive = () => {
+      if (!modalRef.current) return;
+      const firstFocusable = modalRef.current.querySelector<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (firstFocusable) {
+        firstFocusable.focus();
+      } else {
+        modalRef.current.focus();
+      }
+    };
+
+    const frame = window.requestAnimationFrame(focusFirstInteractive);
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+
+      if (event.key !== "Tab" || !modalRef.current) return;
+
+      const focusable = Array.from(
+        modalRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => !el.hasAttribute("disabled") && el.getAttribute("aria-hidden") !== "true");
+
+      if (focusable.length === 0) {
+        event.preventDefault();
+        modalRef.current.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", onKeyDown);
+      previousFocusRef.current?.focus();
+    };
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setActiveTab(initialTab);
+      setImportInput("");
+      setShareStatus(null);
+      setTabTransitionKey(0);
+      return;
+    }
+    setActiveTab(initialTab);
+  }, [initialTab, isOpen]);
+
+  useEffect(() => {
+    setTabTransitionKey((prev) => prev + 1);
+  }, [activeTab]);
+
+  const copyShareLink = async () => {
+    try {
+      const url = `${window.location.origin}${window.location.pathname}?team=${encodeURIComponent(token)}`;
+      await navigator.clipboard.writeText(url);
+      setShareStatus("Share link copied.");
+      toastCtx.success("Share link copied to clipboard");
+      triggerHaptic("success", { enabled: hapticsEnabled, mobileOnly: true });
+    } catch {
+      setShareStatus("Could not copy share link.");
+      toastCtx.error("Failed to copy share link");
+      triggerHaptic("error", { enabled: hapticsEnabled, mobileOnly: true });
+    }
+  };
+
+  const copyTeamJson = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+      setShareStatus("Team JSON copied.");
+      toastCtx.success("Team JSON copied to clipboard");
+      triggerHaptic("success", { enabled: hapticsEnabled, mobileOnly: true });
+    } catch {
+      setShareStatus("Could not copy JSON.");
+      toastCtx.error("Failed to copy JSON");
+      triggerHaptic("error", { enabled: hapticsEnabled, mobileOnly: true });
+    }
+  };
+
+  const importTeam = () => {
+    const parsed = parseSharedTeamInput(importInput);
+    if (!parsed) {
+      setShareStatus("Invalid share link or JSON payload.");
+      triggerHaptic("error", { enabled: hapticsEnabled, mobileOnly: true });
+      return;
+    }
+
+    const result = onImport(parsed);
+    setShareStatus(result);
+    if (result.toLowerCase().includes("invalid")) {
+      triggerHaptic("error", { enabled: hapticsEnabled, mobileOnly: true });
+      return;
+    }
+    triggerHaptic("success", { enabled: hapticsEnabled, mobileOnly: true });
+    if (!result.toLowerCase().includes("invalid")) {
+      setImportInput("");
+      onClose();
+    }
+  };
+
+  if (!shouldRender) return null;
+
+  return (
+    <div className="fixed inset-0 z-[95] grid place-items-center overflow-hidden p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="team-tools-modal-title">
+      <button
+        type="button"
+        onClick={onClose}
+        className="fixed inset-0 bg-[rgba(20,16,12,0.45)] backdrop-blur-[2px]"
+        style={{ animation: isAnimatingOut ? "backdropFadeOut 160ms ease-in both" : "backdropFadeIn 180ms ease-out both" }}
+        aria-label="Close team tools dialog"
+      />
+
+      <section
+        ref={modalRef}
+        tabIndex={-1}
+        className={`panel relative flex flex-col w-full max-w-3xl min-w-0 max-h-[min(88dvh,52rem)] overflow-hidden p-4 sm:p-5 ${isAnimatingOut ? "animate-scale-out" : "animate-scale-in"}`}
+        onAnimationEnd={onAnimationEnd}
+        aria-labelledby="team-tools-modal-title"
+      >
+        <div className="flex items-start justify-between gap-3 min-w-0">
+          <div className="min-w-0 flex-1">
+            <h3 id="team-tools-modal-title" className="font-display text-lg truncate" style={{ color: "var(--text-primary)" }}>
+              Team Tools
+            </h3>
+            <p className="mt-1 text-sm line-clamp-2" style={{ color: "var(--text-muted)" }}>
+              {activeTab === "battle"
+                ? "Analyze your team against a gym leader or custom opponent."
+                : "Manage saved teams or share/import your current team."}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-secondary !px-2 !py-1.5 shrink-0"
+            aria-label="Close team tools dialog"
+          >
+            <FiX size={14} />
+          </button>
+        </div>
+
+        <div
+          className="mt-4 grid w-full min-w-0 grid-cols-3 gap-1 rounded-xl border p-1"
+          style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("saved");
+              triggerHaptic("light", { enabled: hapticsEnabled, mobileOnly: true });
+            }}
+            className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[0.72rem] sm:text-[0.78rem] font-semibold transition-colors duration-200"
+            style={{
+              background: activeTab === "saved" ? "var(--version-color-soft, var(--accent-soft))" : "transparent",
+              border: activeTab === "saved" ? "1px solid var(--version-color-border, rgba(218, 44, 67, 0.34))" : "1px solid transparent",
+              color: activeTab === "saved" ? "var(--text-primary)" : "var(--text-muted)",
+            }}
+          >
+            <FiFolder size={12} />
+            <span className="text-center leading-tight">Saved Teams</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("share");
+              triggerHaptic("light", { enabled: hapticsEnabled, mobileOnly: true });
+            }}
+            className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[0.72rem] sm:text-[0.78rem] font-semibold transition-colors duration-200"
+            style={{
+              background: activeTab === "share" ? "var(--version-color-soft, var(--accent-soft))" : "transparent",
+              border: activeTab === "share" ? "1px solid var(--version-color-border, rgba(218, 44, 67, 0.34))" : "1px solid transparent",
+              color: activeTab === "share" ? "var(--text-primary)" : "var(--text-muted)",
+            }}
+          >
+            <FiShare2 size={12} />
+            <span className="text-center leading-tight">Share/Import</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("battle");
+              setBattleMounted(true);
+              triggerHaptic("light", { enabled: hapticsEnabled, mobileOnly: true });
+            }}
+            className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[0.72rem] sm:text-[0.78rem] font-semibold transition-colors duration-200"
+            style={{
+              background: activeTab === "battle" ? "var(--version-color-soft, var(--accent-soft))" : "transparent",
+              border: activeTab === "battle" ? "1px solid var(--version-color-border, rgba(218, 44, 67, 0.34))" : "1px solid transparent",
+              color: activeTab === "battle" ? "var(--text-primary)" : "var(--text-muted)",
+            }}
+          >
+            <FiTarget size={12} />
+            <span className="text-center leading-tight">Battle Planner</span>
+          </button>
+        </div>
+
+        <div key={tabTransitionKey} className="mt-4 animate-accordion-down flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden pr-1 custom-scrollbar">
+          {activeTab === "saved" ? (
+            isAuthenticated ? (
+              <SavedTeamsPanel
+                variant="embedded"
+                teamHasPokemon={teamHasPokemon}
+                savedTeams={savedTeams}
+                activeTeamId={activeTeamId}
+                onSaveAs={onSaveAs}
+                onLoad={(teamId) => { onLoadSavedTeam(teamId); onClose(); }}
+                onOverwrite={onOverwriteSavedTeam}
+                onDelete={onDeleteSavedTeam}
+                onRename={onRenameSavedTeam}
+                onRefresh={onRefreshSavedTeams}
+                isSaving={isSaving}
+                gameVersions={gameVersions}
+                selectedVersionId={selectedVersionId}
+              />
+            ) : (
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                Sign in to save and manage teams.
+              </p>
+            )
+          ) : activeTab === "battle" ? (
+            battleMounted ? (
+              <BattlePlannerTab
+                myTeam={myTeam}
+                generation={generation}
+                gameId={gameId}
+                selectedVersionId={selectedVersionId ?? null}
+                isAuthenticated={isAuthenticated}
+                pokemonPool={pokemonPool}
+                allPokemonPool={allPokemonPool}
+                teamCheckpoint={teamCheckpoint}
+                onTeamCheckpointChange={undefined}
+              />
+            ) : null
+          ) : (
+            <div className="min-w-0">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button type="button" onClick={copyShareLink} className="btn-secondary !justify-start !py-2">
+                  <FiLink size={13} />
+                  Copy Share Link
+                </button>
+                <button type="button" onClick={copyTeamJson} className="btn-secondary !justify-start !py-2">
+                  <FiCopy size={13} />
+                  Copy Team JSON
+                </button>
+              </div>
+
+              <label className="mt-4 block">
+                <span className="mb-1 block text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
+                  Import Payload
+                </span>
+                <textarea
+                  value={importInput}
+                  onChange={(event) => setImportInput(event.target.value)}
+                  rows={5}
+                  className="auth-input resize-y !text-sm"
+                  placeholder="Paste a share link, base64 token, or JSON payload"
+                />
+              </label>
+
+              <div className="mt-3 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" onClick={onClose} className="btn-secondary">
+                  Cancel
+                </button>
+                <button type="button" onClick={importTeam} className="btn-secondary !justify-center">
+                  <FiUploadCloud size={13} />
+                  Import Team
+                </button>
+              </div>
+
+              {shareStatus && (
+                <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>
+                  {shareStatus}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default TeamToolsModal;

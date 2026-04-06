@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, Suspense } from "react";
-import { usePathname } from "next/navigation";
+import { useRouterState } from "@tanstack/react-router";
 
 function Progress() {
-  const pathname = usePathname();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [visible, setVisible] = useState(false);
   const [width, setWidth] = useState(0);
   const [completing, setCompleting] = useState(false);
