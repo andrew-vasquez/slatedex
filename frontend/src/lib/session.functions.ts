@@ -1,23 +1,25 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest, getRequestHeader } from "@tanstack/react-start/server";
-import { BACKEND_PROXY_PATH } from "@/lib/backend-url";
+import { getRequestHeader } from "@tanstack/react-start/server";
+import { getExternalApiBaseUrl } from "@/lib/backend-url";
 
 async function fetchFromBackend(path: string) {
-  const request = getRequest();
-  const origin = request ? new URL(request.url).origin : "";
+  try {
+    const response = await fetch(`${getExternalApiBaseUrl()}${path}`, {
+      headers: {
+        cookie: getRequestHeader("cookie") ?? "",
+      },
+      cache: "no-store",
+    });
 
-  const response = await fetch(`${origin}${BACKEND_PROXY_PATH}${path}`, {
-    headers: {
-      cookie: getRequestHeader("cookie") ?? "",
-    },
-    cache: "no-store",
-  });
+    if (!response.ok) {
+      return null;
+    }
 
-  if (!response.ok) {
+    return response.json();
+  } catch (error) {
+    console.warn(`[session.functions] Failed backend request for ${path}`, error);
     return null;
   }
-
-  return response.json();
 }
 
 export const getCurrentSession = createServerFn({ method: "GET" }).handler(async () => {
