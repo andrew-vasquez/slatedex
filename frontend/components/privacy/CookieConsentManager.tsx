@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createConsent,
@@ -125,7 +125,7 @@ export default function CookieConsentManager() {
               You can choose what to allow.
             </p>
             <p className="mt-1 text-[0.68rem]" style={{ color: "var(--text-muted)" }}>
-              See our <Link href="/privacy" className="cookie-inline-link">Privacy Notice</Link>.
+              See our <Link to="/privacy" className="cookie-inline-link">Privacy Notice</Link>.
             </p>
           </div>
 

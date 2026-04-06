@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FiArrowRight, FiLogIn, FiLogOut, FiMenu, FiSettings, FiUser, FiX } from "react-icons/fi";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -18,7 +17,7 @@ interface MobileSiteMenuProps {
 }
 
 export default function MobileSiteMenu({ items }: MobileSiteMenuProps) {
-  const pathname = usePathname();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { user, isAuthenticated, isLoading, openAuthDialog } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const shellRef = useRef<HTMLDivElement | null>(null);
@@ -83,7 +82,7 @@ export default function MobileSiteMenu({ items }: MobileSiteMenuProps) {
               <small>{user?.email ?? "Signed in"}</small>
             </div>
             <Link
-              href={profileHref}
+              to={profileHref}
               className="site-mobile-nav-link"
               onClick={() => setIsOpen(false)}
             >
@@ -94,7 +93,7 @@ export default function MobileSiteMenu({ items }: MobileSiteMenuProps) {
               <FiUser size={16} aria-hidden="true" />
             </Link>
             <Link
-              href="/settings"
+              to="/settings"
               className="site-mobile-nav-link"
               onClick={() => setIsOpen(false)}
             >
@@ -137,7 +136,7 @@ export default function MobileSiteMenu({ items }: MobileSiteMenuProps) {
           ) : (
             <Link
               key={item.href}
-              href={item.href}
+                to={item.href}
               className="site-mobile-nav-link"
               onClick={() => setIsOpen(false)}
             >

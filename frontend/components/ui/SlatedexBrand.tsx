@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 
 interface SlatedexBrandProps {
   href?: string;
@@ -17,7 +17,7 @@ export default function SlatedexBrand({
 }: SlatedexBrandProps) {
   return (
     <Link
-      href={href}
+      to={href}
       className={`slatedex-brand ${compact ? "slatedex-brand--compact" : ""} ${shellClassName}`.trim()}
       style={{ textDecoration: "none" }}
       aria-label="Go to Slatedex home"

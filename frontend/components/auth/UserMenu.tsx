@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
 import { FiGrid, FiLogIn, FiLogOut, FiMoon, FiSettings, FiShield, FiSun, FiUser } from "react-icons/fi";
+import AppImage from "~/components/ui/AppImage";
+import AppLink from "~/components/ui/AppLink";
 import { signOut } from "@/lib/auth-client";
 import { fetchMyProfile, type MyProfile, type UserRoleValue } from "@/lib/api";
 import { normalizeAvatarUrl } from "@/lib/avatar";
@@ -283,7 +283,7 @@ const UserMenu = ({ className = "", compactOnMobile = false, betweenThemeAndAuth
                     style={{ opacity: avatarImageLoaded ? 0 : 1 }}
                     aria-hidden
                   />
-                  <Image
+                  <AppImage
                     src={effectiveAvatarUrl}
                     alt={user?.name ? `${user.name} avatar` : "User avatar"}
                     width={40}
@@ -307,7 +307,7 @@ const UserMenu = ({ className = "", compactOnMobile = false, betweenThemeAndAuth
                   <p className="user-menu-email">{user?.email}</p>
                 </div>
 
-                <Link
+                <AppLink
                   href="/teams"
                   className="user-menu-item"
                   role="menuitem"
@@ -315,9 +315,9 @@ const UserMenu = ({ className = "", compactOnMobile = false, betweenThemeAndAuth
                 >
                   <FiGrid size={14} aria-hidden="true" />
                   My Teams
-                </Link>
+                </AppLink>
 
-                <Link
+                <AppLink
                   href={user?.username ? `/u/${user.username}` : "/settings/profile"}
                   className="user-menu-item"
                   role="menuitem"
@@ -325,9 +325,9 @@ const UserMenu = ({ className = "", compactOnMobile = false, betweenThemeAndAuth
                 >
                   <FiUser size={14} aria-hidden="true" />
                   Profile
-                </Link>
+                </AppLink>
 
-                <Link
+                <AppLink
                   href="/settings"
                   className="user-menu-item"
                   role="menuitem"
@@ -335,10 +335,10 @@ const UserMenu = ({ className = "", compactOnMobile = false, betweenThemeAndAuth
                 >
                   <FiSettings size={14} aria-hidden="true" />
                   Settings
-                </Link>
+                </AppLink>
 
                 {canAccessAdmin && (
-                  <Link
+                  <AppLink
                     href="/settings/admin"
                     className="user-menu-item"
                     role="menuitem"
@@ -346,7 +346,7 @@ const UserMenu = ({ className = "", compactOnMobile = false, betweenThemeAndAuth
                   >
                     <FiShield size={14} aria-hidden="true" />
                     Admin Dashboard
-                  </Link>
+                  </AppLink>
                 )}
 
                 <button

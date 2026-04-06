@@ -1,12 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useId, useRef, useState } from "react";
 import { FiGrid, FiArrowRight } from "react-icons/fi";
 
 export default function DesktopToolsMenu() {
-  const pathname = usePathname();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
@@ -53,7 +52,7 @@ export default function DesktopToolsMenu() {
       {isOpen ? (
         <div id={menuId} className="desktop-tools-menu-panel" role="menu" aria-label="Tools menu">
           <Link
-            href="/weaknesses"
+            to="/weaknesses"
             className="desktop-tools-menu-item"
             data-current={currentTool === "weaknesses"}
             role="menuitem"
@@ -67,7 +66,7 @@ export default function DesktopToolsMenu() {
           </Link>
 
           <Link
-            href="/type-chart"
+            to="/type-chart"
             className="desktop-tools-menu-item"
             data-current={currentTool === "type-chart"}
             role="menuitem"

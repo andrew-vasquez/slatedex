@@ -1,5 +1,5 @@
 const LOCAL_API_FALLBACK = "http://localhost:3001";
-export const BACKEND_PROXY_PATH = "/_backend";
+export const BACKEND_PROXY_PATH = "/backend-proxy";
 export const AUTH_BASE_PATH = "/api/auth";
 
 function normalizeApiBaseUrl(rawUrl: string | undefined): string {
