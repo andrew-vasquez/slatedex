@@ -327,8 +327,8 @@ export default function TeamsPage() {
     <div className="min-h-screen pb-14 sm:pb-20" style={{ background: "var(--bg-gradient)" }}>
       {/* Header */}
       <header className="glass sticky top-0 z-40 border-b" style={{ borderColor: "var(--border)" }}>
-        <div className="mx-auto flex max-w-screen-lg items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-screen-lg items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <AppLink
               href="/play"
               className="inline-flex h-8 w-8 items-center justify-center rounded-xl cursor-pointer"
@@ -339,7 +339,7 @@ export default function TeamsPage() {
             </AppLink>
             <AppLink
               href="/"
-              className="font-display text-[0.95rem] leading-none"
+              className="truncate font-display text-[0.95rem] leading-none"
               style={{ letterSpacing: "-0.02em", color: "var(--text-primary)", textDecoration: "none" }}
             >
               Slate<span style={{ color: "var(--accent)" }}>dex</span>
@@ -351,7 +351,7 @@ export default function TeamsPage() {
               My Teams
             </span>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <MobileSiteMenu
               items={[
                 { href: "/play", label: "Launch Builder", description: "Choose a game and build" },
@@ -377,7 +377,7 @@ export default function TeamsPage() {
         />
 
         {/* Page title */}
-        <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="font-display text-2xl sm:text-3xl" style={{ color: "var(--text-primary)" }}>
               My Teams

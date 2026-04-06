@@ -233,9 +233,9 @@ const GameSelector = () => {
 
         <div className="relative mx-auto max-w-screen-xl px-4 py-5 sm:px-6 sm:py-7">
           {/* Top bar: logo + auth */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <SlatedexBrand titleClassName="text-3xl sm:text-4xl" />
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <MobileSiteMenu
                 items={[
                   { href: "/play", label: "Builder", description: "You are here" },

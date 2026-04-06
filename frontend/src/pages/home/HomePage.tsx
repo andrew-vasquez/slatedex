@@ -65,7 +65,7 @@ export default function LandingPage() {
       </div>
       {/* ── Sticky Nav ─────────────────────────────────────── */}
       <header className="glass sticky top-0 z-40 border-b" style={{ borderColor: "var(--border)" }}>
-        <div className="mx-auto flex max-w-screen-xl items-center justify-between px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-screen-xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <SlatedexBrand titleClassName="text-[1.6rem] sm:text-[1.9rem]" iconScaleClassName="h-[1.02rem] w-[1.02rem]" />
           <LandingNav />
         </div>

@@ -24,6 +24,11 @@ const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000;
 let cachedProfile: { profile: MyProfile; fetchedAt: number } | null = null;
 let inFlightProfileRequest: Promise<MyProfile> | null = null;
 let themeAnimationTimer: number | null = null;
+const THEME_CHANGE_EVENT = "slatedex-theme-change";
+
+function getResolvedTheme(): Theme {
+  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
+}
 
 function applyTheme(theme: Theme): void {
   const root = document.documentElement;
@@ -44,6 +49,8 @@ function applyTheme(theme: Theme): void {
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", theme === "dark" ? DARK_THEME_COLOR : LIGHT_THEME_COLOR);
 
+  window.dispatchEvent(new CustomEvent<Theme>(THEME_CHANGE_EVENT, { detail: theme }));
+
   if (!prefersReducedMotion) {
     themeAnimationTimer = window.setTimeout(() => {
       root.classList.remove("theme-animating");
@@ -62,6 +69,10 @@ interface UserMenuProps {
   className?: string;
   compactOnMobile?: boolean;
   betweenThemeAndAuth?: React.ReactNode;
+}
+
+interface ThemeToggleButtonProps {
+  className?: string;
 }
 
 function toAvatarFrame(value: string | null | undefined): AvatarFrameKey {
@@ -100,10 +111,45 @@ function fetchMyProfileCached(): Promise<MyProfile> {
   return inFlightProfileRequest;
 }
 
+export function ThemeToggleButton({ className = "" }: ThemeToggleButtonProps) {
+  const [theme, setTheme] = useState<Theme>("dark");
+
+  useEffect(() => {
+    const syncTheme = () => {
+      setTheme(getResolvedTheme());
+    };
+
+    syncTheme();
+    window.addEventListener(THEME_CHANGE_EVENT, syncTheme as EventListener);
+    window.addEventListener("storage", syncTheme);
+    return () => {
+      window.removeEventListener(THEME_CHANGE_EVENT, syncTheme as EventListener);
+      window.removeEventListener("storage", syncTheme);
+    };
+  }, []);
+
+  const toggleTheme = () => {
+    const next: Theme = theme === "dark" ? "light" : "dark";
+    applyTheme(next);
+    setTheme(next);
+  };
+
+  return (
+    <button
+      type="button"
+      className={["theme-toggle", className].filter(Boolean).join(" ")}
+      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+      onClick={toggleTheme}
+    >
+      <FiSun size={15} className={`theme-toggle-icon ${theme === "dark" ? "theme-toggle-icon--visible" : ""}`} aria-hidden="true" />
+      <FiMoon size={15} className={`theme-toggle-icon ${theme === "light" ? "theme-toggle-icon--visible" : ""}`} aria-hidden="true" />
+    </button>
+  );
+}
+
 const UserMenu = ({ className = "", compactOnMobile = false, betweenThemeAndAuth = null }: UserMenuProps) => {
   const { user, isAuthenticated, isLoading, openAuthDialog } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [theme, setTheme] = useState<Theme>("dark");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarFrame, setAvatarFrame] = useState<AvatarFrameKey>("classic");
   const [viewerRole, setViewerRole] = useState<UserRoleValue | null>(null);
@@ -111,11 +157,6 @@ const UserMenu = ({ className = "", compactOnMobile = false, betweenThemeAndAuth
   const [avatarImageError, setAvatarImageError] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
-
-  useEffect(() => {
-    const detected = document.documentElement.dataset.theme === "light" ? "light" : "dark";
-    setTheme(detected);
-  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -203,12 +244,6 @@ const UserMenu = ({ className = "", compactOnMobile = false, betweenThemeAndAuth
     setAvatarImageError(false);
   }, [avatarUrl, user?.image]);
 
-  const toggleTheme = () => {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    applyTheme(next);
-    setTheme(next);
-  };
-
   const handleSignOut = async () => {
     await signOut();
     clearProfileCache();
@@ -224,16 +259,7 @@ const UserMenu = ({ className = "", compactOnMobile = false, betweenThemeAndAuth
 
   return (
     <div className={`user-menu-shell${compactOnMobile ? " user-menu-shell--compact-mobile" : ""} ${className}`.trim()}>
-        {/* Theme Toggle */}
-        <button
-          type="button"
-          className="theme-toggle"
-          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-          onClick={toggleTheme}
-        >
-          <FiSun size={15} className={`theme-toggle-icon ${theme === "dark" ? "theme-toggle-icon--visible" : ""}`} aria-hidden="true" />
-          <FiMoon size={15} className={`theme-toggle-icon ${theme === "light" ? "theme-toggle-icon--visible" : ""}`} aria-hidden="true" />
-        </button>
+        <ThemeToggleButton />
 
         {betweenThemeAndAuth}
 
