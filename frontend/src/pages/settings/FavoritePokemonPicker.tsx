@@ -12,10 +12,11 @@ let allPokemonCache: PokemonEntry[] | null = null;
 let fetchInFlight: Promise<PokemonEntry[]> | null = null;
 
 async function fetchAllPokemon(): Promise<PokemonEntry[]> {
+  console.log("proxy url:", import.meta.env.VITE_POKEPROXY_URL);
   if (allPokemonCache) return allPokemonCache;
   if (fetchInFlight) return fetchInFlight;
 
-  fetchInFlight = fetch("https://pokeapi.co/api/v2/pokemon?limit=1302&offset=0")
+  fetchInFlight = fetch(`${import.meta.env.VITE_POKEPROXY_URL}/pokemon?limit=1302&offset=0`)
     .then((r) => r.json())
     .then((data: { results: Array<{ name: string; url: string }> }) => {
       const list: PokemonEntry[] = data.results

@@ -14,7 +14,7 @@ async function resolvePokemon(name: string): Promise<ResolvedPokemon | null> {
   if (spriteCache.has(key)) return spriteCache.get(key) ?? null;
 
   try {
-    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(key)}`);
+    const res = await fetch(`${import.meta.env.VITE_POKEPROXY_URL}/pokemon/${encodeURIComponent(key)}`);
     if (!res.ok) {
       spriteCache.set(key, null);
       return null;
