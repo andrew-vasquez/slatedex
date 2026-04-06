@@ -2,7 +2,6 @@
 
 import AppLink from "~/components/ui/AppLink";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { FiArrowLeft, FiChevronDown, FiSearch, FiSettings, FiShuffle, FiTrash2, FiX } from "react-icons/fi";
 import { GENERATION_META } from "@/lib/pokemon";
 import { getSelectedGameStorageKey } from "@/lib/storageKeys";
@@ -82,7 +81,6 @@ const TeamBuilderHeader = ({
   const [hoveredGenerationItem, setHoveredGenerationItem] = useState<number | null>(null);
   const [isDesktopCompact, setIsDesktopCompact] = useState(false);
   const [generationMenuQuery, setGenerationMenuQuery] = useState("");
-  const [portalReady, setPortalReady] = useState(false);
   const settingsRefMobile = useRef<HTMLDivElement | null>(null);
   const settingsRefDesktop = useRef<HTMLDivElement | null>(null);
   const generationRefMobile = useRef<HTMLDivElement | null>(null);
@@ -261,10 +259,6 @@ const TeamBuilderHeader = ({
   }, [isGenerationMenuOpen, isSettingsOpen]);
 
   useEffect(() => {
-    setPortalReady(true);
-  }, []);
-
-  useEffect(() => {
     const desktopQuery = window.matchMedia("(min-width: 1024px)");
     const updateCompactState = () => {
       setIsDesktopCompact(desktopQuery.matches && window.scrollY > 56);
@@ -375,13 +369,9 @@ const TeamBuilderHeader = ({
   const header = (
     <header
       id="team-builder-header"
-      className={`glass fixed top-0 z-40 w-screen border-b${isHiddenForAi ? " max-lg:hidden" : ""}`}
+      className={`glass sticky top-0 z-40 w-full border-b${isHiddenForAi ? " max-lg:hidden" : ""}`}
       style={{
         ...versionCssVars,
-        left: 0,
-        right: 0,
-        width: "100vw",
-        maxWidth: "100vw",
         borderColor: "var(--border)",
       }}
       role="banner"
@@ -725,10 +715,6 @@ const TeamBuilderHeader = ({
       </div>
     </header>
   );
-
-  if (portalReady) {
-    return createPortal(header, document.body);
-  }
 
   return header;
 };
