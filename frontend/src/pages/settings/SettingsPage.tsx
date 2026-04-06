@@ -150,8 +150,8 @@ export default function SettingsPage() {
     <div className="min-h-screen" style={{ background: "var(--bg-gradient)" }}>
       {/* Header */}
       <header className="glass sticky top-0 z-40 border-b" style={{ borderColor: "var(--border)" }}>
-        <div className="mx-auto flex max-w-screen-sm items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-screen-sm items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <AppLink
               href="/play"
               className="inline-flex h-8 w-8 items-center justify-center rounded-xl"
@@ -162,13 +162,13 @@ export default function SettingsPage() {
             </AppLink>
             <AppLink
               href="/"
-              className="font-display text-[0.95rem] leading-none"
+              className="truncate font-display text-[0.95rem] leading-none"
               style={{ letterSpacing: "-0.02em", color: "var(--text-primary)", textDecoration: "none" }}
             >
               Slate<span style={{ color: "var(--accent)" }}>dex</span>
             </AppLink>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <MobileSiteMenu
               items={[
                 { href: "/play", label: "Launch Builder", description: "Choose a game and build" },

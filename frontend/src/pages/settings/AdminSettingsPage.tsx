@@ -431,8 +431,8 @@ export default function AdminSettingsPage() {
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-gradient)" }}>
       <header className="glass sticky top-0 z-40 border-b" style={{ borderColor: "var(--border)" }}>
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <AppLink
               href="/settings"
               className="inline-flex h-8 w-8 items-center justify-center rounded-xl"
@@ -445,7 +445,7 @@ export default function AdminSettingsPage() {
               Admin Dashboard
             </h1>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <MobileSiteMenu
               items={[
                 { href: "/play", label: "Launch Builder", description: "Choose a game and build" },

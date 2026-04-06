@@ -1,7 +1,7 @@
 import AppLink from "~/components/ui/AppLink";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import UserMenu from "@/components/auth/UserMenu";
-import MobileHeaderMenu from "~/features/weaknesses/MobileHeaderMenu";
+import MobileSiteMenu from "@/components/ui/MobileSiteMenu";
 import DesktopToolsMenu from "@/components/ui/DesktopToolsMenu";
 
 interface WeaknessHeaderProps {
@@ -28,28 +28,41 @@ export default function WeaknessHeader({
           <div className="min-w-0">
             <AppLink
               href="/"
-              className="font-display text-lg leading-none"
+              className="truncate font-display text-lg leading-none"
               style={{ letterSpacing: "-0.02em", textDecoration: "none" }}
               aria-label="Slatedex home"
             >
               <span style={{ color: "var(--text-primary)" }}>Slate</span>
               <span style={{ color: "var(--accent)" }}>dex</span>
             </AppLink>
-            <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+            <p className="mt-1 truncate text-xs" style={{ color: "var(--text-muted)" }}>
               {subtitle}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <div className="hidden min-[820px]:flex min-[820px]:items-center min-[820px]:gap-3">
-            <DesktopToolsMenu />
-            <UserMenu />
+            <UserMenu betweenThemeAndAuth={<DesktopToolsMenu />} />
           </div>
-          <MobileHeaderMenu currentTool={currentTool} />
+          <MobileSiteMenu
+            items={[
+              { href: "/play", label: "Launch Builder", description: "Build a team with coverage tools" },
+              {
+                href: "/weaknesses",
+                label: "Weakness Tool",
+                description: currentTool === "weaknesses" ? "You are here" : "Check full Pokemon weaknesses fast",
+              },
+              {
+                href: "/type-chart",
+                label: "Type Chart",
+                description: currentTool === "type-chart" ? "You are here" : "See every type at a glance",
+              },
+            ]}
+          />
           <AppLink
             href="/play"
-            className="landing-cta-primary header-nav-button weakness-header-cta weakness-header-cta-desktop inline-flex items-center gap-1.5"
+            className="landing-cta-primary header-nav-button weakness-header-cta hidden min-[820px]:inline-flex items-center gap-1.5"
           >
             Launch Builder
             <FiArrowRight size={14} aria-hidden="true" />

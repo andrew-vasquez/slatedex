@@ -3166,7 +3166,6 @@ html[data-theme="light"] .landing-cta-secondary {
 }
 
 .header-nav-button {
-  display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 2.55rem;
@@ -4221,6 +4220,13 @@ html[data-theme="light"] .exclusive-badge::before {
   display: none;
 }
 
+.site-mobile-nav-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.site-mobile-nav-theme-toggle,
 .site-mobile-nav-trigger {
   display: inline-flex;
   align-items: center;
@@ -4235,12 +4241,24 @@ html[data-theme="light"] .exclusive-badge::before {
   -webkit-backdrop-filter: blur(14px) saturate(1.05);
 }
 
+.site-mobile-nav-theme-toggle:hover,
+.site-mobile-nav-trigger:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  color: var(--text-primary);
+}
+
 .site-mobile-nav-menu {
   position: absolute;
   top: calc(100% + 0.65rem);
   right: 0;
   display: grid;
-  min-width: min(17rem, calc(100vw - 1.25rem));
+  z-index: 70;
+  width: min(20rem, calc(100vw - 1rem));
+  max-width: calc(100vw - 1rem);
+  max-height: min(34rem, calc(100dvh - 5.75rem - env(safe-area-inset-bottom, 0px)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   gap: 0.5rem;
   padding: 0.75rem;
   opacity: 0;
@@ -4248,6 +4266,31 @@ html[data-theme="light"] .exclusive-badge::before {
   transform: translateY(-4px) scale(0.98);
   transform-origin: top right;
   transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+@media (max-width: 479px) {
+  .site-mobile-nav-menu {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 4.25rem);
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+    max-width: none;
+    transform-origin: top center;
+  }
+
+  .site-mobile-nav-link {
+    gap: 0.65rem;
+    padding: 0.78rem 0.82rem;
+  }
+
+  .site-mobile-nav-link strong {
+    font-size: 0.84rem;
+  }
+
+  .site-mobile-nav-link small {
+    font-size: 0.7rem;
+  }
 }
 
 .site-mobile-nav-menu[data-open="true"] {
@@ -4258,7 +4301,7 @@ html[data-theme="light"] .exclusive-badge::before {
 
 .site-mobile-nav-link {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.8rem;
   border-radius: 1rem;
@@ -4272,6 +4315,7 @@ html[data-theme="light"] .exclusive-badge::before {
 .site-mobile-nav-link span {
   display: grid;
   gap: 0.22rem;
+  min-width: 0;
 }
 
 .site-mobile-nav-link strong {

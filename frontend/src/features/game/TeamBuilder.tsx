@@ -1742,11 +1742,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
         <main
           id="main-content"
-          className="mx-auto max-w-screen-xl px-4 pb-24 sm:px-6 lg:pb-8"
+          className="mx-auto max-w-screen-xl px-4 pb-24 pt-4 sm:px-6 sm:pt-5 lg:pb-8"
           role="main"
-          style={{
-            paddingTop: `${Math.max(16, headerOffsetPx + 16)}px`,
-          }}
         >
           <div
             className={isGameContentTransitioning ? "animate-fade-in-up" : undefined}

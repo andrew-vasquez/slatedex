@@ -3,6 +3,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FiArrowRight, FiLogIn, FiLogOut, FiMenu, FiSettings, FiUser, FiX } from "react-icons/fi";
+import { ThemeToggleButton } from "@/components/auth/UserMenu";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { signOut } from "@/lib/auth-client";
 
@@ -44,35 +45,45 @@ export default function MobileSiteMenu({ items }: MobileSiteMenuProps) {
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
   const normalizedItems = useMemo(
     () =>
       items
         .filter((item) => {
           if (!isAuthenticated) return true;
-          if (item.href === "/settings") return false;
-          if (item.href === profileHref) return false;
+          const isCurrentRoute =
+            pathname === item.href ||
+            (item.href !== "/" && pathname?.startsWith(`${item.href}/`));
+          if (item.href === "/settings" && !isCurrentRoute) return false;
+          if (item.href === profileHref && !isCurrentRoute) return false;
           return true;
         })
         .map((item) => {
-        const isCurrent =
-          pathname === item.href ||
-          (item.href !== "/" && pathname?.startsWith(`${item.href}/`));
-        return { ...item, isCurrent };
-      }),
+          const isCurrent =
+            pathname === item.href ||
+            (item.href !== "/" && pathname?.startsWith(`${item.href}/`));
+          return { ...item, isCurrent };
+        }),
     [isAuthenticated, items, pathname, profileHref]
   );
 
   return (
-    <div ref={shellRef} className="site-mobile-nav md:hidden">
-      <button
-        type="button"
-        className="site-mobile-nav-trigger"
-        aria-label={isOpen ? "Close site navigation" : "Open site navigation"}
-        aria-expanded={isOpen}
-        onClick={() => setIsOpen((current) => !current)}
-      >
-        {isOpen ? <FiX size={18} aria-hidden="true" /> : <FiMenu size={18} aria-hidden="true" />}
-      </button>
+    <div ref={shellRef} className="site-mobile-nav">
+      <div className="site-mobile-nav-controls">
+        <ThemeToggleButton className="site-mobile-nav-theme-toggle" />
+        <button
+          type="button"
+          className="site-mobile-nav-trigger"
+          aria-label={isOpen ? "Close site navigation" : "Open site navigation"}
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((current) => !current)}
+        >
+          {isOpen ? <FiX size={18} aria-hidden="true" /> : <FiMenu size={18} aria-hidden="true" />}
+        </button>
+      </div>
 
       <div className="site-mobile-nav-menu panel" data-open={isOpen}>
         {isLoading ? null : isAuthenticated ? (

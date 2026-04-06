@@ -2,6 +2,7 @@ import { Link, createFileRoute, notFound } from "@tanstack/react-router";
 import RoutePageSkeleton from "~/components/ui/RoutePageSkeleton";
 import { FiArrowLeft } from "react-icons/fi";
 import FavoritePokemonDisplay from "~/features/public-profile/FavoritePokemonDisplay";
+import UserMenu from "@/components/auth/UserMenu";
 import DesktopToolsMenu from "@/components/ui/DesktopToolsMenu";
 import MobileSiteMenu from "@/components/ui/MobileSiteMenu";
 import { normalizeAvatarUrl } from "@/lib/avatar";
@@ -161,8 +162,8 @@ function PublicProfilePage() {
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-gradient)" }}>
       <header className="glass sticky top-0 z-40 border-b" style={{ borderColor: "var(--border)" }}>
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <Link
               to="/play"
               className="inline-flex h-8 w-8 items-center justify-center rounded-xl"
@@ -173,7 +174,7 @@ function PublicProfilePage() {
             </Link>
             <Link
               to="/"
-              className="font-display text-[0.95rem] leading-none"
+              className="truncate font-display text-[0.95rem] leading-none"
               style={{ letterSpacing: "-0.02em", color: "var(--text-primary)", textDecoration: "none" }}
               aria-label="Slatedex home"
             >
@@ -186,7 +187,7 @@ function PublicProfilePage() {
               Trainer Profile
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <MobileSiteMenu
               items={[
                 { href: "/play", label: "Launch Builder", description: "Choose a game and build" },
@@ -197,14 +198,20 @@ function PublicProfilePage() {
               ]}
             />
             <div className="hidden min-[820px]:flex min-[820px]:items-center min-[820px]:gap-2">
-              <DesktopToolsMenu />
-              <Link
-                to="/play"
-                className="landing-cta-secondary header-nav-button transition-colors hover:border-[var(--border-hover)] inline-flex items-center gap-1.5"
-                style={{ borderColor: "var(--border)", color: "var(--text-secondary)", background: "var(--surface-2)" }}
-              >
-                Open Builder
-              </Link>
+              <UserMenu
+                betweenThemeAndAuth={(
+                  <>
+                    <DesktopToolsMenu />
+                    <Link
+                      to="/play"
+                      className="landing-cta-secondary header-nav-button transition-colors hover:border-[var(--border-hover)] inline-flex items-center gap-1.5"
+                      style={{ borderColor: "var(--border)", color: "var(--text-secondary)", background: "var(--surface-2)" }}
+                    >
+                      Open Builder
+                    </Link>
+                  </>
+                )}
+              />
             </div>
           </div>
         </div>
