@@ -3,6 +3,10 @@ import { BACKEND_PROXY_PATH, getExternalApiBaseUrl } from "@/lib/backend-url";
 
 function getPokemonDataApiBaseUrl() {
   if (typeof window !== "undefined") {
+    if (process.env.NODE_ENV === "production") {
+      return getExternalApiBaseUrl();
+    }
+
     return `${window.location.origin}${BACKEND_PROXY_PATH}`;
   }
 
