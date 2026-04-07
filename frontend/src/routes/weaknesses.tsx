@@ -2,11 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import RoutePageSkeleton from "~/components/ui/RoutePageSkeleton";
 import WeaknessHeader from "~/features/weaknesses/WeaknessHeader";
 import WeaknessLookupClient from "~/features/weaknesses/WeaknessLookupClient";
-import { getGenerationPokemonList } from "~/lib/pokemon-data.functions";
+import { fetchGenerationPokemonList } from "~/lib/pokemon-data-api";
 
 export const Route = createFileRoute("/weaknesses")({
   loader: async () => {
-    return getGenerationPokemonList({ data: { generation: 9 } });
+    return fetchGenerationPokemonList(9);
   },
   head: () => ({
     meta: [

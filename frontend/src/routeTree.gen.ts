@@ -24,7 +24,6 @@ import { Route as SitemapXmlRouteImport } from './routes/sitemap.xml'
 import { Route as RobotsTxtRouteImport } from './routes/robots.txt'
 import { Route as GameGenerationRouteImport } from './routes/game.$generation'
 import { Route as BackendProxySplatRouteImport } from './routes/backend-proxy/$'
-import { Route as ApiPokemonPoolsRouteImport } from './routes/api.pokemon-pools'
 import { Route as ApiPokemonCaptureGuideRouteImport } from './routes/api.pokemon-capture-guide'
 import { Route as AuthenticatedTeamsRouteImport } from './routes/_authenticated/teams'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -106,11 +105,6 @@ const BackendProxySplatRoute = BackendProxySplatRouteImport.update({
   path: '/backend-proxy/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPokemonPoolsRoute = ApiPokemonPoolsRouteImport.update({
-  id: '/api/pokemon-pools',
-  path: '/api/pokemon-pools',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPokemonCaptureGuideRoute = ApiPokemonCaptureGuideRouteImport.update({
   id: '/api/pokemon-capture-guide',
   path: '/api/pokemon-capture-guide',
@@ -158,7 +152,6 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRouteWithChildren
   '/teams': typeof AuthenticatedTeamsRoute
   '/api/pokemon-capture-guide': typeof ApiPokemonCaptureGuideRoute
-  '/api/pokemon-pools': typeof ApiPokemonPoolsRoute
   '/backend-proxy/$': typeof BackendProxySplatRoute
   '/game/$generation': typeof GameGenerationRoute
   '/robots/txt': typeof RobotsTxtRoute
@@ -180,7 +173,6 @@ export interface FileRoutesByTo {
   '/weaknesses': typeof WeaknessesRoute
   '/teams': typeof AuthenticatedTeamsRoute
   '/api/pokemon-capture-guide': typeof ApiPokemonCaptureGuideRoute
-  '/api/pokemon-pools': typeof ApiPokemonPoolsRoute
   '/backend-proxy/$': typeof BackendProxySplatRoute
   '/game/$generation': typeof GameGenerationRoute
   '/robots/txt': typeof RobotsTxtRoute
@@ -205,7 +197,6 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteWithChildren
   '/_authenticated/teams': typeof AuthenticatedTeamsRoute
   '/api/pokemon-capture-guide': typeof ApiPokemonCaptureGuideRoute
-  '/api/pokemon-pools': typeof ApiPokemonPoolsRoute
   '/backend-proxy/$': typeof BackendProxySplatRoute
   '/game/$generation': typeof GameGenerationRoute
   '/robots/txt': typeof RobotsTxtRoute
@@ -230,7 +221,6 @@ export interface FileRouteTypes {
     | '/settings'
     | '/teams'
     | '/api/pokemon-capture-guide'
-    | '/api/pokemon-pools'
     | '/backend-proxy/$'
     | '/game/$generation'
     | '/robots/txt'
@@ -252,7 +242,6 @@ export interface FileRouteTypes {
     | '/weaknesses'
     | '/teams'
     | '/api/pokemon-capture-guide'
-    | '/api/pokemon-pools'
     | '/backend-proxy/$'
     | '/game/$generation'
     | '/robots/txt'
@@ -276,7 +265,6 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/teams'
     | '/api/pokemon-capture-guide'
-    | '/api/pokemon-pools'
     | '/backend-proxy/$'
     | '/game/$generation'
     | '/robots/txt'
@@ -299,7 +287,6 @@ export interface RootRouteChildren {
   TypeChartRoute: typeof TypeChartRoute
   WeaknessesRoute: typeof WeaknessesRoute
   ApiPokemonCaptureGuideRoute: typeof ApiPokemonCaptureGuideRoute
-  ApiPokemonPoolsRoute: typeof ApiPokemonPoolsRoute
   BackendProxySplatRoute: typeof BackendProxySplatRoute
   GameGenerationRoute: typeof GameGenerationRoute
   RobotsTxtRoute: typeof RobotsTxtRoute
@@ -414,13 +401,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BackendProxySplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/pokemon-pools': {
-      id: '/api/pokemon-pools'
-      path: '/api/pokemon-pools'
-      fullPath: '/api/pokemon-pools'
-      preLoaderRoute: typeof ApiPokemonPoolsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/pokemon-capture-guide': {
       id: '/api/pokemon-capture-guide'
       path: '/api/pokemon-capture-guide'
@@ -509,7 +489,6 @@ const rootRouteChildren: RootRouteChildren = {
   TypeChartRoute: TypeChartRoute,
   WeaknessesRoute: WeaknessesRoute,
   ApiPokemonCaptureGuideRoute: ApiPokemonCaptureGuideRoute,
-  ApiPokemonPoolsRoute: ApiPokemonPoolsRoute,
   BackendProxySplatRoute: BackendProxySplatRoute,
   GameGenerationRoute: GameGenerationRoute,
   RobotsTxtRoute: RobotsTxtRoute,

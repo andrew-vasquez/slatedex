@@ -10,10 +10,7 @@ import {
 import { FALLBACK_POKEMON_SPRITE } from "@/lib/image";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { fetchTeamCountsByGame } from "@/lib/api";
-import UserMenu from "@/components/auth/UserMenu";
-import SlatedexBrand from "@/components/ui/SlatedexBrand";
-import MobileSiteMenu from "@/components/ui/MobileSiteMenu";
-import DesktopToolsMenu from "@/components/ui/DesktopToolsMenu";
+import AppHeader from "@/components/ui/AppHeader";
 
 const SPRITE_IDS: Record<string, number> = {
   bulbasaur: 1,
@@ -215,69 +212,74 @@ const GameSelector = () => {
         </div>
       )}
 
-      {/* ── Header ──────────────────────────────────────────── */}
-      <header className="relative z-30 overflow-visible border-b" style={{ borderColor: "var(--border)" }}>
-        {/* Background atmosphere */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <div
-            className="absolute -top-32 -left-20 h-80 w-80 rounded-full opacity-50"
-            style={{ background: "radial-gradient(circle, rgba(218,44,67,0.15) 0%, transparent 70%)" }}
-          />
-          <div
-            className="absolute -top-20 right-0 h-96 w-96 rounded-full opacity-30"
-            style={{ background: "radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 65%)" }}
-          />
-        </div>
+      <AppHeader
+        mobileItems={[
+          { href: "/play", label: "Builder", description: "You are here" },
+          { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
+          { href: "/type-chart", label: "Type Chart", description: "See every type at a glance" },
+          { href: "/teams", label: "My Teams", description: "Open your saved teams" },
+        ]}
+        bottomSlot={(
+          <div className="app-intro-card p-4 sm:p-5">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="app-header-kicker">Builder</p>
+                <h1 className="app-header-title font-display">Choose your game</h1>
+                <p className="app-header-subtitle">
+                  Start with your exact version so every recommendation, legal pool, and AI note stays anchored to the run you are actually playing.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-1.5 lg:max-w-[24rem] lg:justify-end">
+                {["9 generations", "14 game titles", "18-type coverage", "AI team coach"].map((chip) => (
+                  <span
+                    key={chip}
+                    className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[0.7rem] font-medium"
+                    style={{ borderColor: "var(--border)", background: "var(--surface-2)", color: "var(--text-muted)" }}
+                  >
+                    <span className="inline-block h-1 w-1 rounded-full" style={{ background: "var(--accent)" }} aria-hidden="true" />
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            </div>
 
-        <div className="relative mx-auto max-w-screen-xl px-4 py-5 sm:px-6 sm:py-7">
-          {/* Top bar: logo + auth */}
-          <div className="flex items-center justify-between gap-3">
-            <SlatedexBrand titleClassName="text-3xl sm:text-4xl" />
-            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-              <MobileSiteMenu
-                items={[
-                  { href: "/play", label: "Builder", description: "You are here" },
-                  { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
-                  { href: "/type-chart", label: "Type Chart", description: "See every type at a glance" },
-                  { href: "/teams", label: "My Teams", description: "Open your saved teams" },
-                ]}
-              />
-              <div className="hidden min-[820px]:flex min-[820px]:items-center min-[820px]:gap-3">
-                <UserMenu
-                  betweenThemeAndAuth={<DesktopToolsMenu />}
+            <div className="mt-5 rounded-2xl border p-3 sm:p-4" style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface-2) 88%, transparent)" }}>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[0.64rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                  Search Games
+                </p>
+                <p className="text-[0.74rem]" style={{ color: "var(--text-muted)" }}>
+                  Filter by generation, game title, or region
+                </p>
+              </div>
+              <div className="flex items-center gap-2 rounded-xl border px-2.5 py-1.5" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+                <span className="text-[0.68rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
+                  /
+                </span>
+                <input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search generation, game, or region"
+                  className="w-full bg-transparent text-sm outline-none"
+                  style={{ color: "var(--text-primary)" }}
+                  aria-label="Search games"
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="rounded-md px-2 py-0.5 text-[0.66rem] font-semibold transition-colors hover:opacity-70"
+                    style={{ color: "var(--text-muted)" }}
+                    aria-label="Clear search"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
             </div>
           </div>
-
-          {/* Tagline + stat chips */}
-          <div className="mt-4">
-            <p className="text-sm leading-relaxed sm:text-base" style={{ color: "var(--text-secondary)" }}>
-              Pick your game — build your six — analyze coverage.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {["9 generations", "14 game titles", "18-type coverage", "AI team coach"].map((chip) => (
-                <span
-                  key={chip}
-                  className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[0.7rem] font-medium"
-                  style={{
-                    borderColor: "var(--border)",
-                    background: "var(--surface-2)",
-                    color: "var(--text-muted)",
-                  }}
-                >
-                  <span
-                    className="inline-block h-1 w-1 rounded-full"
-                    style={{ background: "var(--accent)" }}
-                    aria-hidden="true"
-                  />
-                  {chip}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </header>
+        )}
+      />
 
       {/* ── Game selection ───────────────────────────────────── */}
       <main
@@ -285,47 +287,12 @@ const GameSelector = () => {
         className="mx-auto mt-7 max-w-screen-xl px-4 sm:mt-9 sm:px-6"
         role="main"
       >
-        <div className="mb-4 rounded-2xl border p-3" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[0.64rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
-              Search Games
-            </p>
-            <p className="text-[0.7rem]" style={{ color: "var(--text-muted)" }}>
-              Filter by generation, game title, or region
-            </p>
-          </div>
-          <div className="flex items-center gap-2 rounded-xl border px-2.5 py-1.5" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
-            <span className="text-[0.68rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
-              /
-            </span>
-            <input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search generation, game, or region"
-              className="w-full bg-transparent text-xs outline-none sm:text-sm"
-              style={{ color: "var(--text-primary)" }}
-              aria-label="Search games"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="rounded-md px-2 py-0.5 text-[0.66rem] font-semibold transition-colors hover:opacity-70"
-                style={{ color: "var(--text-muted)" }}
-                aria-label="Clear search"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 mb-5">
+        <div className="mb-5 flex items-center gap-3">
           <h2
             className="font-display text-lg font-semibold uppercase tracking-[0.08em]"
             style={{ color: "var(--text-muted)", letterSpacing: "0.1em" }}
           >
-            Select a Game
+            All Supported Games
           </h2>
           <div
             className="h-px flex-1"

@@ -36,6 +36,7 @@ import { triggerHaptic, type HapticTone } from "@/lib/haptics";
 import { getTeamDefensiveCoverage, getTeamOffensiveCoverage } from "@/lib/teamAnalysis";
 import { useTeamPersistence } from "~/features/game/hooks/useTeamPersistence";
 import { useBuilderSettings } from "~/features/game/hooks/useBuilderSettings";
+import { fetchGamePokemonPools } from "~/lib/pokemon-data-api";
 import { useAuth } from "@/components/providers/AuthProvider";
 import {
   getAiConversationTeamStorageKey,
@@ -269,7 +270,6 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const [hasMountedCommandPalette, setHasMountedCommandPalette] = useState(false);
   const [shouldMountOnboardingTour, setShouldMountOnboardingTour] = useState(false);
   const [headerOffsetPx, setHeaderOffsetPx] = useState(0);
-  const [isGameContentTransitioning, setIsGameContentTransitioning] = useState(false);
 
   const pastTeamsRef = useRef<(Pokemon | null)[][]>([]);
   const futureTeamsRef = useRef<(Pokemon | null)[][]>([]);
@@ -370,17 +370,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
       const request = (async () => {
         try {
-          const response = await fetch(`/api/pokemon-pools?generation=${generation}&gameId=${gameId}`, {
-            method: "GET",
-            cache: "force-cache",
-          });
-          if (!response.ok) {
-            throw new Error(`Failed to load Pokemon pools for game ${gameId}`);
-          }
-
-          const payload = (await response.json()) as { pools?: PokemonPools };
-          const nextPools = payload.pools;
-          if (!nextPools) throw new Error("Pokemon pool payload is missing");
+          const nextPools = await fetchGamePokemonPools(generation, gameId);
 
           setPoolsByGame((prev) => (prev[gameId] ? prev : { ...prev, [gameId]: nextPools }));
           setPoolLoadErrorByGame((prev) => {
@@ -830,12 +820,6 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     setReplaceMode(false);
     setReplaceTargetSlot(null);
   }, [resetHistory, selectedGame.id]);
-
-  useEffect(() => {
-    setIsGameContentTransitioning(true);
-    const timeoutId = window.setTimeout(() => setIsGameContentTransitioning(false), 220);
-    return () => window.clearTimeout(timeoutId);
-  }, [selectedGame.id]);
 
   useEffect(() => {
     if (!replaceMode) {
@@ -1744,10 +1728,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           role="main"
         >
           <div
-            className={isGameContentTransitioning ? "animate-fade-in-up" : undefined}
             style={{
               opacity: isSelectedGameLoading ? 0.72 : 1,
-              transition: "opacity 180ms ease",
             }}
           >
           <section className="panel-soft mb-3 border px-3 py-2.5 sm:mb-4 sm:px-4 sm:py-3.5" style={{ borderColor: "var(--border)" }} aria-label="Team health summary">
@@ -2082,6 +2064,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                   canReplaceWeakest={canReplaceWeakest}
                   onReplaceTargeted={handleReplaceTargeted}
                   canReplaceTargeted={canReplaceTargeted}
+                  replaceModeActive={replaceMode}
                   replaceTargetLabel={
                     canReplaceTargeted && replaceTargetSlot !== null ? `slot ${replaceTargetSlot + 1}` : null
                   }

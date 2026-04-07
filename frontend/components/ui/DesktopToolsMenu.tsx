@@ -1,6 +1,23 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useId, useRef, useState } from "react";
-import { FiGrid, FiArrowRight } from "react-icons/fi";
+import { FiArrowRight } from "react-icons/fi";
+
+function ToolsGridIcon() {
+  return (
+    <svg
+      className="desktop-tools-menu-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <rect x="4.5" y="4.5" width="5" height="5" rx="1.25" stroke="currentColor" strokeWidth="2" />
+      <rect x="14.5" y="4.5" width="5" height="5" rx="1.25" stroke="currentColor" strokeWidth="2" />
+      <rect x="4.5" y="14.5" width="5" height="5" rx="1.25" stroke="currentColor" strokeWidth="2" />
+      <rect x="14.5" y="14.5" width="5" height="5" rx="1.25" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
 
 export default function DesktopToolsMenu() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -36,15 +53,16 @@ export default function DesktopToolsMenu() {
     <div ref={menuRef} className="desktop-tools-menu">
       <button
         type="button"
-        className="landing-cta-secondary header-nav-button desktop-tools-menu-trigger"
+        className="header-nav-button desktop-tools-menu-trigger"
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-controls={menuId}
         aria-label="Open tools menu"
+        title="Tools"
         onClick={() => setIsOpen((prev) => !prev)}
       >
-        <FiGrid size={16} aria-hidden="true" />
-        Tools
+        <ToolsGridIcon />
+        <span className="sr-only">Tools</span>
       </button>
 
       {isOpen ? (

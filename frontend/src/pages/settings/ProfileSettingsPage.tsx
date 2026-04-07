@@ -22,6 +22,7 @@ import AvatarPickerModal from "~/pages/settings/AvatarPickerModal";
 import FavoritePokemonPicker from "~/pages/settings/FavoritePokemonPicker";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 import DesktopToolsMenu from "@/components/ui/DesktopToolsMenu";
+import AppHeader from "@/components/ui/AppHeader";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 type CopyStatus = "idle" | "copied" | "error";
@@ -82,7 +83,7 @@ function TeamPreviewCard({
                 className="flex h-9 w-9 items-center justify-center rounded-lg border"
                 style={{
                   borderColor: "var(--border)",
-                  background: "rgba(8, 15, 34, 0.6)",
+                  background: "color-mix(in srgb, var(--surface-3) 66%, var(--surface-2))",
                 }}
                 title={pokemon.name}
               >
@@ -308,54 +309,72 @@ export default function ProfileSettingsPage() {
   const avatarFrameStyles = getAvatarFrameStyles(avatarFrame);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-      <Breadcrumb
-        items={[{ label: "Slatedex", href: "/play" }, { label: "Settings", href: "/settings" }, { label: "Profile" }]}
-        className="mb-4"
+    <div className="min-h-screen" style={{ background: "var(--bg-gradient)" }}>
+      <AppHeader
+        maxWidthClassName="max-w-6xl"
+        backHref="/settings"
+        backLabel="Back to settings"
+        badge="Profile"
+        mobileItems={[
+          { href: "/play", label: "Launch Builder", description: "Choose a game and build" },
+          { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
+          { href: "/type-chart", label: "Type Chart", description: "See type strengths and weaknesses" },
+          { href: "/teams", label: "My Teams", description: "Open your saved teams" },
+          { href: "/settings", label: "Settings", description: "Manage your account" },
+          { href: "/settings/profile", label: "Profile Settings", description: "You are here" },
+        ]}
       />
 
-      <header className="mb-4 rounded-2xl border p-4 sm:p-5" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+      <main className="app-page-main mx-auto max-w-6xl px-4 sm:px-6">
+      <Breadcrumb
+        items={[{ label: "Slatedex", href: "/play" }, { label: "Settings", href: "/settings" }, { label: "Profile" }]}
+        className="app-page-breadcrumb"
+      />
+
+      <header className="app-page-intro app-intro-card app-page-intro-card border" style={{ borderColor: "var(--border)" }}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
-              Trainer Profile Control Room
+            <p className="app-header-kicker">
+              Public Presence
             </p>
-            <h1 className="font-display mt-1 text-2xl sm:text-3xl" style={{ color: "var(--text-primary)" }}>
+            <h1 className="font-display mt-2 text-2xl sm:text-3xl" style={{ color: "var(--text-primary)" }}>
               Profile Settings
             </h1>
-            <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-              Edit your profile and preview exactly what other users will see.
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+              Edit your public trainer identity, tune how your page reads, and preview exactly what other players will see.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <DesktopToolsMenu />
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <div className="hidden min-[820px]:block">
+              <DesktopToolsMenu />
+            </div>
             <AppLink
               href={publicPath}
               target="_blank"
-              className="landing-cta-secondary header-nav-button inline-flex items-center gap-1.5 border"
+              className="landing-cta-secondary header-nav-button inline-flex w-full items-center justify-center gap-1.5 border sm:w-auto"
               style={{
                 borderColor: "rgba(218, 44, 67, 0.4)",
                 background: "var(--accent-soft)",
                 color: "var(--text-primary)",
               }}
             >
-              <FiExternalLink size={14} />
-              Open Public Page
+              <FiExternalLink size={13} />
+              View Public Page
             </AppLink>
             <button
               type="button"
               onClick={copyPublicUrl}
-              className="landing-cta-secondary header-nav-button inline-flex items-center gap-1.5 border"
+              className="landing-cta-secondary header-nav-button inline-flex w-full items-center justify-center gap-1.5 border sm:w-auto"
               style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
             >
-              {copyStatus === "copied" ? <FiCheck size={14} /> : <FiCopy size={14} />}
+              {copyStatus === "copied" ? <FiCheck size={13} /> : <FiCopy size={13} />}
               {copyStatus === "copied" ? "Copied" : "Copy Link"}
             </button>
           </div>
         </div>
       </header>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.3fr_0.9fr]">
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.24fr_0.88fr]">
         <form className="panel space-y-5 p-4 sm:p-5" onSubmit={onSubmit}>
           {loadingProfile && (
             <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -372,7 +391,7 @@ export default function ProfileSettingsPage() {
           {!loadingProfile && !loadError && (
             <>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-[0.9fr_1.1fr]">
-                <div className="rounded-2xl border p-3" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+                <div className="rounded-2xl border p-3" style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface-2) 92%, transparent)" }}>
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
                       Avatar Preview
@@ -392,7 +411,7 @@ export default function ProfileSettingsPage() {
                       style={{
                         borderColor: avatarFrameStyles.border,
                         boxShadow: avatarFrameStyles.glow,
-                        background: "rgba(11, 20, 46, 0.7)",
+                        background: "color-mix(in srgb, var(--surface-3) 74%, var(--surface-2))",
                       }}
                     >
                       {previewAvatar ? (
@@ -620,7 +639,7 @@ export default function ProfileSettingsPage() {
                 style={{
                   borderColor: avatarFrameStyles.border,
                   boxShadow: avatarFrameStyles.glow,
-                  background: "rgba(11, 20, 46, 0.72)",
+                  background: "color-mix(in srgb, var(--surface-3) 74%, var(--surface-2))",
                 }}
               >
                 {previewAvatar ? (
@@ -657,7 +676,7 @@ export default function ProfileSettingsPage() {
             </p>
 
             {favoriteTeamId && profile?.savedTeams && (
-              <div className="mt-3 rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "rgba(8, 15, 34, 0.45)" }}>
+              <div className="mt-3 rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface-3) 58%, var(--surface-2))" }}>
                 <p className="text-xs font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
                   Featured Team
                 </p>
@@ -683,5 +702,6 @@ export default function ProfileSettingsPage() {
         }}
       />
     </main>
+    </div>
   );
 }

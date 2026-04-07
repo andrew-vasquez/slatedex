@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { FiSearch, FiX } from "react-icons/fi";
+import { getClientSafeApiBaseUrl } from "@/lib/backend-url";
 
 const MAX_SLOTS = 6;
 const SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon";
 
 function getPokeProxyBaseUrl() {
-  const raw = import.meta.env.VITE_POKEPROXY_URL?.trim();
-  if (!raw) return "";
-  return raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
+  return `${getClientSafeApiBaseUrl()}/api`;
 }
 
 type PokemonEntry = { name: string; id: number };

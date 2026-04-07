@@ -2,7 +2,7 @@ import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import TeamBuilder from "~/features/game/TeamBuilder";
 import GameLoadingSkeleton from "~/features/game/GameLoadingSkeleton";
 import { getGenerationMeta, parseGenerationSlug } from "@/lib/pokemon";
-import { getGameInitialPool } from "~/lib/pokemon-data.functions";
+import { fetchGamePokemonPools } from "~/lib/pokemon-data-api";
 
 export const Route = createFileRoute("/game/$generation")({
   loader: async ({ params }) => {
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/game/$generation")({
       throw notFound();
     }
 
-    const initialPool = await getGameInitialPool({ data: { game: initialGame } });
+    const initialPool = await fetchGamePokemonPools(generation, initialGame.id);
 
     return {
       generation,

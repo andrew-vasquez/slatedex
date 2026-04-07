@@ -170,9 +170,13 @@ export interface AdminOverview {
   kpis: {
     totalUsers: number;
     newUsersInRange: number;
+    proUsers: number;
+    adminUsers: number;
     totalTeams: number;
     totalChats: number;
     totalAnalyzes: number;
+    totalAiActionsInRange: number;
+    averageTeamsPerUser: number;
     activeUsersLast30d: number;
     usersAtQuotaCurrentMonth: number;
   };
@@ -191,6 +195,15 @@ export interface AdminOverview {
     chatCount: number;
     analyzeCount: number;
     total: number;
+  }>;
+  recentUsers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    username: string | null;
+    createdAt: string;
+    plan: UserPlanValue;
+    role: UserRoleValue;
   }>;
 }
 
@@ -640,5 +653,16 @@ export function updateAdminUserRole(
   return apiFetch(`/api/admin/users/${encodeURIComponent(userId)}/role`, {
     method: "PATCH",
     body: JSON.stringify({ role }),
+  });
+}
+
+export function deleteAdminUser(
+  userId: string
+): Promise<{
+  success: true;
+  deletedUserId: string;
+}> {
+  return apiFetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+    method: "DELETE",
   });
 }
