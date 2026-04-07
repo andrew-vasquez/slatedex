@@ -12,7 +12,6 @@ let allPokemonCache: PokemonEntry[] | null = null;
 let fetchInFlight: Promise<PokemonEntry[]> | null = null;
 
 async function fetchAllPokemon(): Promise<PokemonEntry[]> {
-  console.log("proxy url:", import.meta.env.VITE_POKEPROXY_URL);
   if (allPokemonCache) return allPokemonCache;
   if (fetchInFlight) return fetchInFlight;
 
