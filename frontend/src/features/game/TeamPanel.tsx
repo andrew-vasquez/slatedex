@@ -1,5 +1,3 @@
-"use client";
-
 import { FiTool } from "react-icons/fi";
 import InfoTooltip from "@/components/ui/InfoTooltip";
 import TeamSlot from "./TeamSlot";

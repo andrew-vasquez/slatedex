@@ -1,6 +1,10 @@
-"use client";
-
 import { useEffect, useState } from "react";
+
+function getPokeProxyBaseUrl() {
+  const raw = import.meta.env.VITE_POKEPROXY_URL?.trim();
+  if (!raw) return "";
+  return raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
+}
 
 type ResolvedPokemon = {
   name: string;
@@ -14,7 +18,7 @@ async function resolvePokemon(name: string): Promise<ResolvedPokemon | null> {
   if (spriteCache.has(key)) return spriteCache.get(key) ?? null;
 
   try {
-    const res = await fetch(`${import.meta.env.VITE_POKEPROXY_URL}/pokemon/${encodeURIComponent(key)}`);
+    const res = await fetch(`${getPokeProxyBaseUrl()}/pokemon/${encodeURIComponent(key)}`);
     if (!res.ok) {
       spriteCache.set(key, null);
       return null;

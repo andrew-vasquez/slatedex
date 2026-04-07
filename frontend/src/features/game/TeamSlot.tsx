@@ -1,5 +1,3 @@
-"use client";
-
 import { useRef, useEffect, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { FiLock, FiUnlock, FiX } from "react-icons/fi";

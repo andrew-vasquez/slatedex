@@ -1,5 +1,3 @@
-"use client";
-
 import { openCookiePreferences } from "@/lib/privacy";
 
 export default function OpenCookiePreferencesButton() {

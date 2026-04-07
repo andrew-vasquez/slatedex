@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "~/components/ui/AppImage";
 import { useState } from "react";
 import { FiPlay, FiTrash2, FiEdit2, FiCheck, FiX, FiRefreshCw } from "react-icons/fi";

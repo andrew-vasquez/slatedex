@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect } from "react";
 import {
   COOKIE_CONSENT_UPDATED_EVENT,

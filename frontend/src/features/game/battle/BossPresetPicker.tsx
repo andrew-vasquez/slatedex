@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useMemo } from "react";
 import Image from "~/components/ui/AppImage";
 import { FiSearch, FiAlertCircle } from "react-icons/fi";

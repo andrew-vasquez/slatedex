@@ -1,5 +1,3 @@
-"use client";
-
 import { startTransition, useDeferredValue, useMemo, useState } from "react";
 import { FiSearch, FiX } from "react-icons/fi";
 import MatchupBucketCard from "@/components/ui/MatchupBucketCard";

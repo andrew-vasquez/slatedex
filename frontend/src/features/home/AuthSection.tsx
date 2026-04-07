@@ -1,5 +1,3 @@
-"use client";
-
 import { useAuth } from "@/components/providers/AuthProvider";
 import { FiArrowRight, FiGrid } from "react-icons/fi";
 import AppLink from "~/components/ui/AppLink";

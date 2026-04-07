@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect, useRef } from "react";
 import { loginWithIdentifier, registerWithEmail } from "@/lib/api";
 import { FiX, FiEye, FiEyeOff } from "react-icons/fi";

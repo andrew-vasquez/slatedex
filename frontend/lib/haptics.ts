@@ -1,5 +1,3 @@
-"use client";
-
 export type HapticTone = "light" | "medium" | "success" | "error";
 
 interface TriggerHapticOptions {

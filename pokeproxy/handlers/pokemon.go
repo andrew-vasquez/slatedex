@@ -42,7 +42,7 @@ func GetPokemon(w http.ResponseWriter, r *http.Request) {
 
 	//Tries to cache first
 	cached, err := cache.Get(name)
-	if err != nil {
+	if err == nil {
 		fmt.Println("cache hit:", name)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(cached))

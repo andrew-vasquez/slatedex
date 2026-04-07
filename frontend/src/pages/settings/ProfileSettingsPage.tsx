@@ -1,5 +1,3 @@
-"use client";
-
 import { FormEvent, useEffect, useState } from "react";
 import { FiCheck, FiCopy, FiExternalLink, FiImage, FiSave, FiStar } from "react-icons/fi";
 import AppImage from "~/components/ui/AppImage";

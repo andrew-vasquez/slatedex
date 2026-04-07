@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { fetchTeams, createTeam, updateTeam, deleteTeam } from "@/lib/api";

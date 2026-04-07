@@ -1,5 +1,3 @@
-"use client";
-
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useId, useRef, useState } from "react";
 import { FiGrid, FiArrowRight } from "react-icons/fi";

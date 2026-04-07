@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "~/components/ui/AppImage";
 import type { RecommendedAssignment, Pokemon } from "@/lib/types";
 import { pokemonSpriteSrc } from "@/lib/image";

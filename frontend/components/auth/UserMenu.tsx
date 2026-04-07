@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useId, useRef, useState } from "react";
 import { FiGrid, FiLogIn, FiLogOut, FiMoon, FiSettings, FiShield, FiSun, FiUser } from "react-icons/fi";
 import AppImage from "~/components/ui/AppImage";

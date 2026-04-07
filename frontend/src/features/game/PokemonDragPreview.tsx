@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "~/components/ui/AppImage";
 import { PokemonTypeBadge } from "@/components/ui/PokemonTypeBadge";
 import { pokemonSpriteSrc } from "@/lib/image";

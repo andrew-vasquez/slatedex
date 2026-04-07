@@ -1,5 +1,3 @@
-"use client";
-
 import { FiChevronDown, FiSearch, FiX } from "react-icons/fi";
 import InfoTooltip from "@/components/ui/InfoTooltip";
 import { type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";

@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Image from "~/components/ui/AppImage";
 import { FiPlay, FiSave, FiAlertCircle, FiArrowRight } from "react-icons/fi";

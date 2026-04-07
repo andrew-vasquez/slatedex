@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { FiArrowLeft, FiPlus, FiTrash2, FiLoader, FiExternalLink } from "react-icons/fi";

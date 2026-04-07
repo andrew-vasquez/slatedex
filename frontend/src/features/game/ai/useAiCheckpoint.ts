@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { fetchAiBossGuidance, type AiBossGuidanceEntry, type TeamStoryCheckpoint } from "@/lib/api";
 import {

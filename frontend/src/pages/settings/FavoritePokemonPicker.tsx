@@ -1,10 +1,14 @@
-"use client";
-
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { FiSearch, FiX } from "react-icons/fi";
 
 const MAX_SLOTS = 6;
 const SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon";
+
+function getPokeProxyBaseUrl() {
+  const raw = import.meta.env.VITE_POKEPROXY_URL?.trim();
+  if (!raw) return "";
+  return raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
+}
 
 type PokemonEntry = { name: string; id: number };
 
@@ -15,7 +19,7 @@ async function fetchAllPokemon(): Promise<PokemonEntry[]> {
   if (allPokemonCache) return allPokemonCache;
   if (fetchInFlight) return fetchInFlight;
 
-  fetchInFlight = fetch(`${import.meta.env.VITE_POKEPROXY_URL}/pokemon?limit=1302&offset=0`)
+  fetchInFlight = fetch(`${getPokeProxyBaseUrl()}/pokemon?limit=1302&offset=0`)
     .then((r) => r.json())
     .then((data: { results: Array<{ name: string; url: string }> }) => {
       const list: PokemonEntry[] = data.results
