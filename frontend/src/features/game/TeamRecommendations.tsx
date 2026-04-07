@@ -35,6 +35,7 @@ interface TeamRecommendationsProps {
   canReplaceWeakest: boolean;
   onReplaceTargeted?: (pokemon: Pokemon) => void;
   canReplaceTargeted?: boolean;
+  replaceModeActive?: boolean;
   replaceTargetLabel?: string | null;
 }
 
@@ -57,6 +58,7 @@ const TeamRecommendations = ({
   canReplaceWeakest,
   onReplaceTargeted,
   canReplaceTargeted = false,
+  replaceModeActive = false,
   replaceTargetLabel = null,
 }: TeamRecommendationsProps) => {
   const isSmartPicksOn = recommendationsEnabled;
@@ -82,6 +84,14 @@ const TeamRecommendations = ({
     },
     [toggleRecommendations]
   );
+
+  const targetedReplaceStatus = onReplaceTargeted
+    ? !replaceModeActive
+      ? "Turn on Replace, then pick the team slot you want this recommendation to overwrite."
+      : replaceTargetLabel
+        ? `Target locked in: ${replaceTargetLabel}. You can now apply any recommendation directly into that slot.`
+        : "Replace is on. Tap the Target button on one of your team slots to choose where the recommendation should go."
+    : null;
 
   return (
     <section className="animate-section-reveal panel mb-4 p-4 sm:mb-5 sm:p-5" aria-labelledby="smart-picks-heading">
@@ -217,6 +227,19 @@ const TeamRecommendations = ({
           ))}
         </div>
       )}
+
+      {targetedReplaceStatus ? (
+        <div
+          className="mt-2 rounded-xl border px-3 py-2 text-[0.72rem] leading-relaxed"
+          style={{
+            borderColor: replaceTargetLabel ? "rgba(59, 130, 246, 0.28)" : "var(--border)",
+            background: replaceTargetLabel ? "rgba(59, 130, 246, 0.1)" : "var(--surface-2)",
+            color: replaceTargetLabel ? "#bfdbfe" : "var(--text-muted)",
+          }}
+        >
+          {targetedReplaceStatus}
+        </div>
+      ) : null}
 
       <div className="mt-3">
         <div className="mb-1.5 flex items-center gap-1.5">
@@ -363,7 +386,11 @@ const TeamRecommendations = ({
                     disabled={!canReplaceTargeted}
                     className="btn-secondary team-rec-action team-rec-action--targeted mt-2 w-full disabled:pointer-events-none disabled:opacity-50"
                   >
-                    {replaceTargetLabel ? `Replace ${replaceTargetLabel}` : "Replace targeted slot"}
+                    {replaceTargetLabel
+                      ? `Replace ${replaceTargetLabel}`
+                      : replaceModeActive
+                        ? "Pick target slot first"
+                        : "Turn on Replace first"}
                   </button>
                 )}
               </div>

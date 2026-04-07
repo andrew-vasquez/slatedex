@@ -9,6 +9,8 @@ import profiles from "./routes/profiles";
 import ai from "./routes/ai";
 import admin from "./routes/admin";
 import battle from "./routes/battle";
+import pokemon from "./routes/pokemon";
+import pokemonData from "./routes/pokemon-data";
 
 const app = new Hono();
 const API_CSP = "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'";
@@ -125,6 +127,8 @@ app.route("/api/profiles", profiles);
 app.route("/api/ai", ai);
 app.route("/api/admin", admin);
 app.route("/api/battle", battle);
+app.route("/api", pokemonData);
+app.route("/api", pokemon);
 
 app.onError((error, c) => {
   const url = new URL(c.req.url);

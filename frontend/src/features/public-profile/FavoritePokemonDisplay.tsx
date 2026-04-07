@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
+import { getClientSafeApiBaseUrl } from "@/lib/backend-url";
 
 function getPokeProxyBaseUrl() {
-  const raw = import.meta.env.VITE_POKEPROXY_URL?.trim();
-  if (!raw) return "";
-  return raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
+  return `${getClientSafeApiBaseUrl()}/api`;
 }
 
 type ResolvedPokemon = {

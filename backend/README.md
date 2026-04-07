@@ -8,6 +8,7 @@
 - `BETTER_AUTH_URL`: Public base URL of this API (e.g. `https://api.example.com`).
 - `BETTER_AUTH_SECRET`: Session secret (min 32 characters in production).
 - `PORT` (optional): Bun server port; defaults to `3001`. Railway injects this automatically.
+- `POKEPROXY_URL` (optional): Internal base URL for the Go Pokemon proxy. Defaults to `http://localhost:8080`.
 - `PRISMA_RUNTIME_CONNECTION` (optional): Force runtime DB mode. Allowed values: `accelerate` or `direct`.
 - `ENABLE_AI_COACH` (optional): Enable AI chat/analysis endpoints. Defaults to `true`.
 - `OPENAI_API_KEY` (required when AI is enabled in production): OpenAI API key for chat completions.

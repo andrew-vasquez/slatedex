@@ -7,6 +7,7 @@ import type { CSSProperties } from "react";
 import type { BuilderSettings, CardDensity, DexMode, DragBehavior, Game } from "@/lib/types";
 import BuilderSettingsPanel from "./BuilderSettingsPanel";
 import UserMenu from "@/components/auth/UserMenu";
+import DesktopToolsMenu from "@/components/ui/DesktopToolsMenu";
 
 interface TeamBuilderHeaderProps {
   game: Game;
@@ -544,7 +545,7 @@ const TeamBuilderHeader = ({
               Clear Team
             </button>
             <div className="hidden sm:block">
-              <UserMenu />
+              <UserMenu betweenThemeAndAuth={<DesktopToolsMenu />} />
             </div>
           </div>
         </div>
@@ -707,7 +708,7 @@ const TeamBuilderHeader = ({
               Clear Team
             </button>
 
-            <UserMenu />
+            <UserMenu betweenThemeAndAuth={<DesktopToolsMenu />} />
           </div>
         </div>
       </div>

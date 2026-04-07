@@ -1,0 +1,473 @@
+import Pokedex from "pokedex-promise-v2";
+import type { Game, Pokemon, PokemonPools } from "./types";
+import { resolveVersionExclusivity } from "./versionExclusives";
+import { GENERATION_META } from "./pokemon";
+import { FALLBACK_POKEMON_SPRITE } from "./image";
+
+const pokedex = new Pokedex({
+  cacheLimit: 300 * 1000,
+});
+
+const TYPE_INTRO_GENERATION: Partial<Record<string, number>> = {
+  dark: 2,
+  steel: 2,
+  fairy: 6,
+};
+
+const GENERATION_NAME_TO_ID: Record<string, number> = {
+  "generation-i": 1,
+  "generation-ii": 2,
+  "generation-iii": 3,
+  "generation-iv": 4,
+  "generation-v": 5,
+  "generation-vi": 6,
+  "generation-vii": 7,
+  "generation-viii": 8,
+  "generation-ix": 9,
+};
+
+interface ResolvedRegionalDex {
+  dexName: string;
+  speciesNames: Set<string>;
+  orderBySpecies: Map<string, number>;
+}
+
+const pokemonByGenerationCache = new Map<number, Promise<Pokemon[]>>();
+const pokemonPoolsByGameCache = new Map<number, Promise<PokemonPools>>();
+
+async function fetchPokemonByGeneration(maxGeneration: number): Promise<Pokemon[]> {
+  const generationIds = Array.from({ length: maxGeneration }, (_, i) => i + 1);
+  const generations: any[] = await Promise.all(generationIds.map((genId) => pokedex.getGenerationByName(genId)));
+  const speciesList: { name: string; generation: number }[] = generations.flatMap((gen: any, i: number) =>
+    gen.pokemon_species.map((species: any) => ({
+      name: species.name,
+      generation: i + 1,
+    }))
+  );
+
+  const BATCH_SIZE = 100;
+  const pokemonWithSpeciesData: Array<{
+    pokemon: Omit<Pokemon, "isFinalEvolution">;
+    speciesName: string;
+    evolvesFrom: string | null;
+    isLegendary: boolean;
+    isMythical: boolean;
+  }> = [];
+
+  for (let i = 0; i < speciesList.length; i += BATCH_SIZE) {
+    const batch = speciesList.slice(i, i + BATCH_SIZE);
+    const results = await Promise.all(
+      batch.map(async (species) => {
+        try {
+          const [pokemonData, speciesData]: any[] = await Promise.all([
+            pokedex.getPokemonByName(species.name),
+            pokedex.getPokemonSpeciesByName(species.name),
+          ]);
+
+          return {
+            pokemon: mapPokemonData(
+              pokemonData,
+              species.generation,
+              maxGeneration,
+              Boolean(speciesData?.is_legendary),
+              Boolean(speciesData?.is_mythical)
+            ),
+            speciesName: species.name,
+            evolvesFrom: speciesData.evolves_from_species?.name ?? null,
+            isLegendary: Boolean(speciesData?.is_legendary),
+            isMythical: Boolean(speciesData?.is_mythical),
+          };
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    pokemonWithSpeciesData.push(...(results.filter(Boolean) as NonNullable<(typeof results)[number]>[]));
+  }
+
+  const evolvesFromBySpecies = new Map<string, string | null>(
+    pokemonWithSpeciesData.map((entry) => [entry.speciesName.toLowerCase(), entry.evolvesFrom?.toLowerCase() ?? null])
+  );
+  const rootSpeciesCache = new Map<string, string>();
+  const evolutionLineCache = new Map<string, string[]>();
+  const starterRoots = new Set(
+    GENERATION_META
+      .filter((meta) => meta.generation <= maxGeneration)
+      .flatMap((meta) => meta.games.flatMap((game) => game.starters))
+      .map((name) => name.toLowerCase())
+  );
+
+  const getRootSpecies = (speciesName: string): string => {
+    const normalized = speciesName.toLowerCase();
+    const cachedRoot = rootSpeciesCache.get(normalized);
+    if (cachedRoot) return cachedRoot;
+
+    let current = normalized;
+    const seen = new Set<string>();
+
+    while (!seen.has(current)) {
+      seen.add(current);
+      const evolvesFrom = evolvesFromBySpecies.get(current);
+      if (!evolvesFrom) break;
+      current = evolvesFrom;
+    }
+
+    rootSpeciesCache.set(normalized, current);
+    return current;
+  };
+
+  const getEvolutionLine = (speciesName: string): string[] => {
+    const normalized = speciesName.toLowerCase();
+    const cached = evolutionLineCache.get(normalized);
+    if (cached) return cached;
+
+    const lineage: string[] = [];
+    let current: string | null = normalized;
+    const seen = new Set<string>();
+
+    while (current && !seen.has(current)) {
+      seen.add(current);
+      lineage.push(current);
+      current = evolvesFromBySpecies.get(current) ?? null;
+    }
+
+    const ordered = lineage.reverse();
+    evolutionLineCache.set(normalized, ordered);
+    return ordered;
+  };
+
+  const speciesWithEvolutions = new Set(
+    pokemonWithSpeciesData.map((entry) => entry.evolvesFrom).filter((value): value is string => value !== null)
+  );
+
+  const allPokemon: Pokemon[] = pokemonWithSpeciesData.map((entry) => {
+    const evolutionLine = getEvolutionLine(entry.speciesName);
+    return {
+      ...entry.pokemon,
+      isFinalEvolution: !speciesWithEvolutions.has(entry.speciesName),
+      isLegendary: entry.isLegendary,
+      isMythical: entry.isMythical,
+      isStarterLine: starterRoots.has(getRootSpecies(entry.speciesName)),
+      evolutionLine: evolutionLine.map((speciesName) => speciesName.charAt(0).toUpperCase() + speciesName.slice(1)),
+      evolutionStage: evolutionLine.length,
+    };
+  });
+
+  return allPokemon.sort((a, b) => a.id - b.id);
+}
+
+export async function getPokemonByGeneration(maxGeneration: number): Promise<Pokemon[]> {
+  const cached = pokemonByGenerationCache.get(maxGeneration);
+  if (cached) return cached;
+
+  const request = fetchPokemonByGeneration(maxGeneration);
+  pokemonByGenerationCache.set(maxGeneration, request);
+
+  try {
+    return await request;
+  } catch (error) {
+    pokemonByGenerationCache.delete(maxGeneration);
+    throw error;
+  }
+}
+
+function getOrderedSpeciesFromDexEntries(entries: any[]): string[] {
+  return [...entries]
+    .sort((a, b) => a.entry_number - b.entry_number)
+    .map((entry: any) => entry.pokemon_species.name);
+}
+
+function createSpeciesOrderMap(species: string[]): Map<string, number> {
+  return new Map(species.map((name, index) => [name, index]));
+}
+
+async function resolveRegionalDexSpecies(candidates: string[]): Promise<ResolvedRegionalDex | null> {
+  const results = await Promise.all(
+    candidates.map(async (dexName): Promise<ResolvedRegionalDex | null> => {
+      try {
+        const dexData: any = await pokedex.getPokedexByName(dexName);
+        const orderedSpecies = getOrderedSpeciesFromDexEntries(dexData.pokemon_entries);
+        const speciesNames = new Set<string>(orderedSpecies);
+
+        if (speciesNames.size > 0) {
+          return {
+            dexName,
+            speciesNames,
+            orderBySpecies: createSpeciesOrderMap(orderedSpecies),
+          };
+        }
+      } catch {
+        return null;
+      }
+
+      return null;
+    })
+  );
+
+  return results.find((result) => result !== null) ?? null;
+}
+
+async function resolveRegionalDexSpeciesUnion(candidates: string[]): Promise<ResolvedRegionalDex | null> {
+  const uniqueCandidates = [...new Set(candidates)];
+  const dexResults = await Promise.all(
+    uniqueCandidates.map(async (dexName) => {
+      try {
+        const dexData: any = await pokedex.getPokedexByName(dexName);
+        const dexSpecies = getOrderedSpeciesFromDexEntries(dexData.pokemon_entries);
+        return dexSpecies.length > 0 ? { dexName, dexSpecies } : null;
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  const mergedSpecies = new Set<string>();
+  const orderedSpecies: string[] = [];
+  const resolvedDexNames: string[] = [];
+
+  for (const result of dexResults) {
+    if (!result) continue;
+    result.dexSpecies.forEach((name) => {
+      if (mergedSpecies.has(name)) return;
+      mergedSpecies.add(name);
+      orderedSpecies.push(name);
+    });
+    resolvedDexNames.push(result.dexName);
+  }
+
+  if (mergedSpecies.size === 0) return null;
+
+  return {
+    dexName: resolvedDexNames.join(" + "),
+    speciesNames: mergedSpecies,
+    orderBySpecies: createSpeciesOrderMap(orderedSpecies),
+  };
+}
+
+async function resolveRegionalDexFromVersionGroups(versionGroupCandidates: string[]): Promise<ResolvedRegionalDex | null> {
+  const dexNameArrays = await Promise.all(
+    versionGroupCandidates.map(async (versionGroupName) => {
+      try {
+        const versionGroup: any = await pokedex.getVersionGroupByName(versionGroupName);
+        return (versionGroup.pokedexes as Array<{ name: string }>).map((dex) => dex.name).filter((name) => name !== "national");
+      } catch {
+        return [];
+      }
+    })
+  );
+
+  const uniqueDexNames = [...new Set(dexNameArrays.flat())];
+  if (uniqueDexNames.length === 0) return null;
+
+  return resolveRegionalDexSpeciesUnion(uniqueDexNames);
+}
+
+async function resolveRegionalDexFromRegions(regionCandidates: string[]): Promise<ResolvedRegionalDex | null> {
+  const dexNameArrays = await Promise.all(
+    regionCandidates.map(async (rawRegionName) => {
+      const regionName = rawRegionName.toLowerCase().replace(/\s+/g, "-");
+      try {
+        const region: any = await pokedex.getRegionByName(regionName);
+        return (region.pokedexes as Array<{ name: string }>).map((dex) => dex.name).filter((name) => name !== "national");
+      } catch {
+        return [];
+      }
+    })
+  );
+
+  const uniqueDexNames = [...new Set(dexNameArrays.flat())];
+  if (uniqueDexNames.length === 0) return null;
+
+  return resolveRegionalDexSpeciesUnion(uniqueDexNames);
+}
+
+async function resolveRegionalDexFromVersionGroupRegions(
+  versionGroupCandidates: string[]
+): Promise<ResolvedRegionalDex | null> {
+  const regionNameArrays = await Promise.all(
+    versionGroupCandidates.map(async (versionGroupName) => {
+      try {
+        const versionGroup: any = await pokedex.getVersionGroupByName(versionGroupName);
+        return (versionGroup.regions as Array<{ name: string }>).map((region) => region.name);
+      } catch {
+        return [];
+      }
+    })
+  );
+
+  const uniqueRegionNames = [...new Set(regionNameArrays.flat())];
+  if (uniqueRegionNames.length === 0) return null;
+
+  return resolveRegionalDexFromRegions(uniqueRegionNames);
+}
+
+async function resolveRegionalDexForGame(game: Game): Promise<ResolvedRegionalDex | null> {
+  const [fromSpecies, fromVersionGroups, fromVersionGroupRegions, fromRegions] = await Promise.all([
+    resolveRegionalDexSpecies(game.regionalDexCandidates),
+    resolveRegionalDexFromVersionGroups(game.versionGroupCandidates),
+    resolveRegionalDexFromVersionGroupRegions(game.versionGroupCandidates),
+    resolveRegionalDexFromRegions([game.region]),
+  ]);
+
+  return fromSpecies ?? fromVersionGroups ?? fromVersionGroupRegions ?? fromRegions ?? null;
+}
+
+async function resolvePreMainStoryDexForGame(game: Game): Promise<ResolvedRegionalDex | null> {
+  const curatedCandidates = game.preMainStoryDexCandidates?.filter((candidate) => candidate.trim().length > 0) ?? [];
+  if (curatedCandidates.length === 0) return null;
+  return resolveRegionalDexSpeciesUnion(curatedCandidates);
+}
+
+async function resolvePostgameDexForGame(game: Game): Promise<ResolvedRegionalDex | null> {
+  const candidates = game.postgameDexCandidates?.filter((candidate) => candidate.trim().length > 0) ?? [];
+  if (candidates.length === 0) return null;
+  return resolveRegionalDexSpeciesUnion(candidates);
+}
+
+async function fetchPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
+  const [baseNational, regionalDex, preMainStoryDex, postgameDex] = await Promise.all([
+    getPokemonByGeneration(game.generation),
+    resolveRegionalDexForGame(game),
+    resolvePreMainStoryDexForGame(game),
+    resolvePostgameDexForGame(game),
+  ]);
+
+  const preMainStorySpecies = preMainStoryDex?.speciesNames ?? null;
+  const explicitPostgameSpecies = postgameDex?.speciesNames ?? null;
+  const gameVersionIds = game.versions.map((version) => version.id.toLowerCase());
+  const national = baseNational.map((pokemon) => {
+    const { gameIndexVersionIds, ...pokemonWithoutGameIndexVersionIds } = pokemon;
+    const exclusivity = resolveVersionExclusivity({
+      gameId: game.id,
+      speciesName: pokemon.name.toLowerCase(),
+      gameVersionIds,
+      gameIndexVersionIds,
+    });
+    const speciesName = pokemon.name.toLowerCase();
+    const isOutsidePreMainStoryDex = preMainStorySpecies ? !preMainStorySpecies.has(speciesName) : false;
+    const isExplicitPostgameDex = explicitPostgameSpecies?.has(speciesName) ?? false;
+
+    return {
+      ...pokemonWithoutGameIndexVersionIds,
+      ...exclusivity,
+      isPostgame: isOutsidePreMainStoryDex || isExplicitPostgameDex,
+    };
+  });
+
+  if (!regionalDex) {
+    return {
+      national,
+      regional: [],
+      regionalResolved: false,
+      regionalDexName: null,
+    };
+  }
+
+  const starterOrder = new Map(game.starters.map((speciesName, index) => [speciesName.toLowerCase(), index]));
+  const regional = national
+    .filter((pokemon) => regionalDex.speciesNames.has(pokemon.name.toLowerCase()))
+    .sort((a, b) => {
+      const aStarterIndex = starterOrder.get(a.name.toLowerCase());
+      const bStarterIndex = starterOrder.get(b.name.toLowerCase());
+      const aIsStarter = aStarterIndex !== undefined;
+      const bIsStarter = bStarterIndex !== undefined;
+
+      if (aIsStarter || bIsStarter) {
+        if (aIsStarter && bIsStarter) return aStarterIndex - bStarterIndex;
+        return aIsStarter ? -1 : 1;
+      }
+
+      const aIndex = regionalDex.orderBySpecies.get(a.name.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
+      const bIndex = regionalDex.orderBySpecies.get(b.name.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
+      if (aIndex !== bIndex) return aIndex - bIndex;
+      return a.id - b.id;
+    });
+
+  return {
+    national,
+    regional,
+    regionalResolved: regional.length > 0,
+    regionalDexName: regional.length > 0 ? regionalDex.dexName : null,
+  };
+}
+
+export async function getPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
+  const cached = pokemonPoolsByGameCache.get(game.id);
+  if (cached) return cached;
+
+  const request = fetchPokemonPoolsForGame(game);
+  pokemonPoolsByGameCache.set(game.id, request);
+
+  try {
+    return await request;
+  } catch (error) {
+    pokemonPoolsByGameCache.delete(game.id);
+    throw error;
+  }
+}
+
+function mapPokemonData(
+  pokemon: any,
+  generation: number,
+  rulesGeneration: number,
+  isLegendary: boolean,
+  isMythical: boolean
+): Omit<Pokemon, "isFinalEvolution"> {
+  const stats: {
+    hp?: number;
+    attack?: number;
+    defense?: number;
+    specialAttack?: number;
+    specialDefense?: number;
+    speed?: number;
+  } = {};
+
+  for (const stat of pokemon.stats) {
+    const name: string = stat.stat.name;
+    if (name === "hp") stats.hp = stat.base_stat;
+    else if (name === "attack") stats.attack = stat.base_stat;
+    else if (name === "defense") stats.defense = stat.base_stat;
+    else if (name === "special-attack") stats.specialAttack = stat.base_stat;
+    else if (name === "special-defense") stats.specialDefense = stat.base_stat;
+    else if (name === "speed") stats.speed = stat.base_stat;
+  }
+
+  const currentTypes: string[] = pokemon.types.map((t: any) => t.type.name);
+  const pastTypes: Array<{ generation?: { name?: string }; types?: Array<{ type: { name: string } }> }> =
+    Array.isArray(pokemon.past_types) ? pokemon.past_types : [];
+
+  const matchingPastType = pastTypes
+    .map((entry) => ({
+      types: (entry.types ?? []).map((item) => item.type.name),
+      lastGenerationWithTypes: GENERATION_NAME_TO_ID[entry.generation?.name ?? ""],
+    }))
+    .filter((entry) => Number.isFinite(entry.lastGenerationWithTypes) && rulesGeneration <= entry.lastGenerationWithTypes)
+    .sort((a, b) => a.lastGenerationWithTypes - b.lastGenerationWithTypes)[0];
+
+  const generationTypes = matchingPastType?.types.length ? matchingPastType.types : currentTypes;
+  const generationFilteredTypes = generationTypes.filter((type: string) => {
+    const introducedIn = TYPE_INTRO_GENERATION[type] ?? 1;
+    return introducedIn <= rulesGeneration;
+  });
+  const finalTypes = generationFilteredTypes.length > 0 ? generationFilteredTypes : generationTypes;
+
+  return {
+    id: pokemon.id,
+    name: pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1),
+    types: finalTypes,
+    generation,
+    hp: stats.hp || 0,
+    attack: stats.attack || 0,
+    defense: stats.defense || 0,
+    specialAttack: stats.specialAttack || 0,
+    specialDefense: stats.specialDefense || 0,
+    speed: stats.speed || 0,
+    sprite: pokemon.sprites.front_default || FALLBACK_POKEMON_SPRITE,
+    isLegendary,
+    isMythical,
+    gameIndexVersionIds: ((pokemon.game_indices ?? []) as Array<{ version?: { name?: string } }>)
+      .map((entry) => entry.version?.name)
+      .filter((name): name is string => typeof name === "string"),
+  };
+}

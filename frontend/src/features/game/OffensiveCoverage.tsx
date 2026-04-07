@@ -18,6 +18,39 @@ interface OffensiveTypeSummary {
   isLocked: boolean;
 }
 
+type CoverageMode = "simple" | "advanced";
+
+function CoverageModeToggle({
+  mode,
+  onModeChange,
+}: {
+  mode: CoverageMode;
+  onModeChange: (mode: CoverageMode) => void;
+}) {
+  return (
+    <div className="coverage-mode-toggle" role="tablist" aria-label="Coverage detail level">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={mode === "simple"}
+        className={`coverage-mode-button ${mode === "simple" ? "is-active" : ""}`}
+        onClick={() => onModeChange("simple")}
+      >
+        Simple
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={mode === "advanced"}
+        className={`coverage-mode-button ${mode === "advanced" ? "is-active" : ""}`}
+        onClick={() => onModeChange("advanced")}
+      >
+        Advanced
+      </button>
+    </div>
+  );
+}
+
 function TypeSummaryChip({
   type,
   meta,
@@ -66,11 +99,7 @@ function TypeSummaryChip({
       style={toneStyles}
       aria-pressed={isActive}
     >
-      <span
-        className="coverage-summary-chip-dot"
-        style={{ background: palette.darkTint }}
-        aria-hidden="true"
-      />
+      <span className="coverage-summary-chip-dot" style={{ background: palette.darkTint }} aria-hidden="true" />
       <span className="coverage-summary-chip-label">{formatPokemonType(type)}</span>
       <span className="coverage-summary-chip-meta">{meta}</span>
     </button>
@@ -147,11 +176,22 @@ export default function OffensiveCoverage({ coverage, generation }: OffensiveCov
     ALL_TYPES[0];
 
   const [selectedType, setSelectedType] = useState(fallbackType);
+  const [mode, setMode] = useState<CoverageMode>("simple");
 
   const activeSummary =
     typeSummaries.find((entry) => entry.type === selectedType) ||
     typeSummaries.find((entry) => entry.type === fallbackType) ||
     typeSummaries[0];
+
+  const noCoverageTypes = noCoverage.slice(0, 4).map((entry) => entry.type);
+  const thinCoverageTypes = thinCoverage.slice(0, 4).map((entry) => entry.type);
+  const bestPressureTypes = bestPressure.slice(0, 4).map((entry) => entry.type);
+  const summaryLead =
+    noCoverage.length > 0
+      ? `${noCoverage.length} type${noCoverage.length !== 1 ? "s" : ""} still have no clean STAB answer.`
+      : thinCoverage.length > 0
+        ? `${thinCoverage.length} type${thinCoverage.length !== 1 ? "s" : ""} are covered by only one teammate.`
+        : "Your team has broad offensive pressure with no obvious coverage hole.";
 
   return (
     <section className="animate-section-reveal panel p-4 sm:p-5">
@@ -161,140 +201,198 @@ export default function OffensiveCoverage({ coverage, generation }: OffensiveCov
             Offensive Coverage
           </h3>
           <p className="mt-0.5 text-[0.78rem]" style={{ color: "var(--text-muted)" }}>
-            Focus on what you cannot hit, what only one teammate handles, and where your pressure is strongest.
+            See what your team still struggles to break cleanly.
           </p>
         </div>
 
-        <div className="coverage-stat-row" aria-label="Offensive coverage summary">
-          <div className="coverage-stat-card">
-            <span className="coverage-stat-label">Covered</span>
-            <span className="coverage-stat-value" style={{ color: coveredCount > 0 ? "var(--success-text)" : "var(--text-primary)" }}>
-              {coveredCount}
-            </span>
-          </div>
-          <div className="coverage-stat-card">
-            <span className="coverage-stat-label">Uncovered</span>
-            <span className="coverage-stat-value" style={{ color: uncoveredCount > 0 ? "var(--danger-text)" : "var(--text-primary)" }}>
-              {uncoveredCount}
-            </span>
-          </div>
-          {lockedCount > 0 ? (
+        <div className="coverage-header-actions">
+          <div className="coverage-stat-row" aria-label="Offensive coverage summary">
             <div className="coverage-stat-card">
-              <span className="coverage-stat-label">Locked</span>
-              <span className="coverage-stat-value" style={{ color: "var(--text-muted)" }}>
-                {lockedCount}
+              <span className="coverage-stat-label">Covered</span>
+              <span className="coverage-stat-value" style={{ color: coveredCount > 0 ? "var(--success-text)" : "var(--text-primary)" }}>
+                {coveredCount}
               </span>
             </div>
-          ) : null}
+            <div className="coverage-stat-card">
+              <span className="coverage-stat-label">Uncovered</span>
+              <span className="coverage-stat-value" style={{ color: uncoveredCount > 0 ? "var(--danger-text)" : "var(--text-primary)" }}>
+                {uncoveredCount}
+              </span>
+            </div>
+            {lockedCount > 0 ? (
+              <div className="coverage-stat-card">
+                <span className="coverage-stat-label">Locked</span>
+                <span className="coverage-stat-value" style={{ color: "var(--text-muted)" }}>
+                  {lockedCount}
+                </span>
+              </div>
+            ) : null}
+          </div>
+
+          <CoverageModeToggle mode={mode} onModeChange={setMode} />
         </div>
       </div>
 
-      <div className="weakness-bucket-grid">
-        <MatchupBucketCard
-          title="No answer"
-          multiplier="0"
-          items={noCoverage.map((entry) => entry.type)}
-          tone="danger"
-        />
-        <MatchupBucketCard
-          title="One answer"
-          multiplier="1"
-          items={thinCoverage.map((entry) => entry.type)}
-          tone="danger"
-        />
-        <MatchupBucketCard
-          title="Reliable coverage"
-          multiplier="2"
-          items={reliableCoverage}
-          tone="success"
-        />
-        <MatchupBucketCard
-          title="Strong pressure"
-          multiplier="3+"
-          items={strongCoverage}
-          tone="success"
-        />
-        <MatchupBucketCard
-          title="Covered targets"
-          multiplier="Any"
-          items={solidCoverage.map((entry) => entry.type)}
-          tone="neutral"
-        />
-        <MatchupBucketCard
-          title="Locked types"
-          multiplier="Later gen"
-          items={typeSummaries.filter((entry) => entry.isLocked).map((entry) => entry.type)}
-          tone="neutral"
-          compactSummary={`${typeSummaries.filter((entry) => entry.isLocked).length} types are not active in this generation.`}
-        />
-      </div>
+      <div key={mode} className="coverage-mode-panel animate-section-reveal">
+      {mode === "simple" ? (
+        <>
+          <div className="panel-soft coverage-summary-banner">
+            <p className="coverage-summary-copy">{summaryLead}</p>
+          </div>
 
-      <div className="panel-soft coverage-focus-card">
-        <div className="coverage-focus-header">
-          <div className="flex items-center gap-2">
-            <span
-              className="coverage-focus-dot"
-              style={{ background: getPokemonTypePalette(activeSummary.type).darkTint }}
-              aria-hidden="true"
-            />
-            <div>
-              <h4 className="font-display text-base" style={{ color: "var(--text-primary)" }}>
-                {formatPokemonType(activeSummary.type)}
-              </h4>
-              <p className="coverage-focus-copy">
-                {activeSummary.isLocked
-                  ? `This type is not active in Generation ${generation ?? "this ruleset"}.`
-                  : activeSummary.hitCount === 0
-                    ? `No current team member hits ${activeSummary.type} super-effectively with STAB.`
-                    : activeSummary.hitCount === 1
-                      ? `Only one teammate gives you a clean STAB answer into ${activeSummary.type}.`
-                      : `${activeSummary.hitCount} teammates can pressure ${activeSummary.type} super-effectively.`}
+          <div className="coverage-summary-grid-simple">
+            <div className="panel-soft coverage-summary-card-simple coverage-summary-card-polished">
+              <p className="coverage-summary-title" style={{ color: "var(--danger-text)" }}>
+                No answer
               </p>
-            </div>
-          </div>
-
-          {!activeSummary.isLocked ? (
-            <div className="coverage-focus-stats">
-              <span className={`coverage-focus-pill ${activeSummary.hitCount === 0 ? "coverage-focus-pill--danger" : activeSummary.hitCount === 1 ? "" : "coverage-focus-pill--success"}`}>
-                {activeSummary.hitCount === 0 ? "no answer" : `${activeSummary.hitCount} hitter${activeSummary.hitCount !== 1 ? "s" : ""}`}
-              </span>
-            </div>
-          ) : null}
-        </div>
-
-        {activeSummary.isLocked ? (
-          <p className="coverage-summary-empty">This type is excluded from the current generation, so it does not affect offensive coverage here.</p>
-        ) : activeSummary.hitters.length > 0 ? (
-          <div className="coverage-focus-section">
-            <p className="coverage-focus-label" style={{ color: "var(--success-text)" }}>
-              Best STAB Answers
-            </p>
-            <div className="coverage-sprite-list">
-              {activeSummary.hitters.map((entry) => (
-                <div
-                  key={`${activeSummary.type}-${entry.id}`}
-                  className="coverage-sprite-card"
-                  style={{
-                    borderColor: "var(--success-border)",
-                    background: "var(--success-bg)",
-                  }}
-                  title={`${entry.name}${entry.effectiveness > 1 ? ` • ${entry.effectiveness}x` : ""}`}
-                >
-                  <Image
-                    src={pokemonSpriteSrc(entry.sprite, entry.id)}
-                    alt={entry.name}
-                    width={32}
-                    height={32}
-                    unoptimized
-                    className="h-8 w-8 object-contain"
-                  />
+              {noCoverageTypes.length > 0 ? (
+                <div className="coverage-summary-chip-list">
+                  {noCoverageTypes.map((type) => (
+                    <TypeSummaryChip
+                      key={`simple-none-${type}`}
+                      type={type}
+                      meta="0 hitters"
+                      tone="danger"
+                      isActive={false}
+                      onSelect={setSelectedType}
+                    />
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <p className="coverage-summary-empty">Every active type has at least one answer from your current team.</p>
+              )}
+            </div>
+
+            <div className="panel-soft coverage-summary-card-simple coverage-summary-card-polished">
+              <p className="coverage-summary-title" style={{ color: "var(--warning-text)" }}>
+                One answer
+              </p>
+              {thinCoverageTypes.length > 0 ? (
+                <div className="coverage-summary-chip-list">
+                  {thinCoverageTypes.map((type) => (
+                    <TypeSummaryChip
+                      key={`simple-thin-${type}`}
+                      type={type}
+                      meta="1 hitter"
+                      tone="warning"
+                      isActive={false}
+                      onSelect={setSelectedType}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="coverage-summary-empty">No type relies on just one teammate for offensive pressure.</p>
+              )}
+            </div>
+
+            <div className="panel-soft coverage-summary-card-simple coverage-summary-card-polished">
+              <p className="coverage-summary-title" style={{ color: "var(--success-text)" }}>
+                Best pressure
+              </p>
+              {bestPressureTypes.length > 0 ? (
+                <div className="coverage-summary-chip-list">
+                  {bestPressureTypes.map((type) => {
+                    const summary = typeSummaries.find((entry) => entry.type === type);
+                    return (
+                      <TypeSummaryChip
+                        key={`simple-pressure-${type}`}
+                        type={type}
+                        meta={`${summary?.hitCount ?? 0} hitters`}
+                        tone="success"
+                        isActive={false}
+                        onSelect={setSelectedType}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="coverage-summary-empty">Add more overlap in STAB pressure to make your coverage safer.</p>
+              )}
             </div>
           </div>
-        ) : (
-          <p className="coverage-summary-empty">You do not currently have a STAB answer here. Adding one would help immediately.</p>
-        )}
+        </>
+      ) : (
+        <>
+          <div className="weakness-bucket-grid">
+            <MatchupBucketCard title="No Answer" multiplier="0" items={noCoverage.map((entry) => entry.type)} tone="danger" />
+            <MatchupBucketCard title="One Answer" multiplier="1" items={thinCoverage.map((entry) => entry.type)} tone="danger" />
+            <MatchupBucketCard title="Reliable" multiplier="2" items={reliableCoverage} tone="success" />
+            <MatchupBucketCard title="Strong Pressure" multiplier="3+" items={strongCoverage} tone="success" />
+          </div>
+
+          <div className="panel-soft coverage-focus-card">
+            <div className="coverage-focus-header">
+              <div className="flex items-center gap-2">
+                <span className="coverage-focus-dot" style={{ background: getPokemonTypePalette(activeSummary.type).darkTint }} aria-hidden="true" />
+                <div>
+                  <h4 className="font-display text-base" style={{ color: "var(--text-primary)" }}>
+                    {formatPokemonType(activeSummary.type)}
+                  </h4>
+                  <p className="coverage-focus-copy">
+                    {activeSummary.isLocked
+                      ? `This type is not active in Generation ${generation ?? "this ruleset"}.`
+                      : activeSummary.hitCount === 0
+                        ? `No current team member hits ${activeSummary.type} super-effectively with STAB.`
+                        : activeSummary.hitCount === 1
+                          ? `Only one teammate gives you a clean STAB answer into ${activeSummary.type}.`
+                          : `${activeSummary.hitCount} teammates can pressure ${activeSummary.type} super-effectively.`}
+                  </p>
+                </div>
+              </div>
+
+              {!activeSummary.isLocked ? (
+                <div className="coverage-focus-stats">
+                  <span className={`coverage-focus-pill ${activeSummary.hitCount === 0 ? "coverage-focus-pill--danger" : activeSummary.hitCount === 1 ? "" : "coverage-focus-pill--success"}`}>
+                    {activeSummary.hitCount === 0 ? "No Answer" : `${activeSummary.hitCount} hitter${activeSummary.hitCount !== 1 ? "s" : ""}`}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+
+            {activeSummary.isLocked ? (
+              <p className="coverage-summary-empty">This type is excluded from the current generation, so it does not affect offensive coverage here.</p>
+            ) : activeSummary.hitters.length > 0 ? (
+              <div className="coverage-focus-section">
+                <p className="coverage-focus-label" style={{ color: "var(--success-text)" }}>
+                  Best STAB Answers
+                </p>
+                <div className="coverage-sprite-list">
+                  {activeSummary.hitters.map((entry) => (
+                    <div
+                      key={`${activeSummary.type}-${entry.id}`}
+                      className="coverage-sprite-card"
+                      style={{
+                        borderColor: "var(--success-border)",
+                        background: "var(--success-bg)",
+                      }}
+                      title={`${entry.name}${entry.effectiveness > 1 ? ` • ${entry.effectiveness}x` : ""}`}
+                    >
+                      <Image
+                        src={pokemonSpriteSrc(entry.sprite, entry.id)}
+                        alt={entry.name}
+                        width={32}
+                        height={32}
+                        unoptimized
+                        className="h-8 w-8 object-contain"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="coverage-summary-empty">You do not currently have a STAB answer here. Adding one would help immediately.</p>
+            )}
+          </div>
+
+          {(solidCoverage.length > 0 || lockedCount > 0) ? (
+            <p className="coverage-advanced-note">
+              {solidCoverage.length > 0 ? `${coveredCount} active types are covered overall.` : ""}
+              {solidCoverage.length > 0 && lockedCount > 0 ? " " : ""}
+              {lockedCount > 0 ? `${lockedCount} later-gen types are excluded here.` : ""}
+            </p>
+          ) : null}
+        </>
+      )}
       </div>
     </section>
   );

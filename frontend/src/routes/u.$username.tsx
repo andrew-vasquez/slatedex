@@ -1,10 +1,7 @@
-import { Link, createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import RoutePageSkeleton from "~/components/ui/RoutePageSkeleton";
-import { FiArrowLeft } from "react-icons/fi";
 import FavoritePokemonDisplay from "~/features/public-profile/FavoritePokemonDisplay";
-import UserMenu from "@/components/auth/UserMenu";
-import DesktopToolsMenu from "@/components/ui/DesktopToolsMenu";
-import MobileSiteMenu from "@/components/ui/MobileSiteMenu";
+import AppHeader from "@/components/ui/AppHeader";
 import { normalizeAvatarUrl } from "@/lib/avatar";
 import { safeImageSrc } from "@/lib/image";
 import { getVersionLabel } from "@/lib/pokemon";
@@ -161,65 +158,23 @@ function PublicProfilePage() {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-gradient)" }}>
-      <header className="glass sticky top-0 z-40 border-b" style={{ borderColor: "var(--border)" }}>
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <Link
-              to="/play"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-xl"
-              style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-              aria-label="Back to builder"
-            >
-              <FiArrowLeft size={14} aria-hidden="true" />
-            </Link>
-            <Link
-              to="/"
-              className="truncate font-display text-[0.95rem] leading-none"
-              style={{ letterSpacing: "-0.02em", color: "var(--text-primary)", textDecoration: "none" }}
-              aria-label="Slatedex home"
-            >
-              Slate<span style={{ color: "var(--accent)" }}>dex</span>
-            </Link>
-            <span
-              className="hidden rounded-md px-2 py-0.5 text-[0.7rem] font-semibold uppercase tracking-[0.08em] sm:inline-block"
-              style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
-            >
-              Trainer Profile
-            </span>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <MobileSiteMenu
-              items={[
-                { href: "/play", label: "Launch Builder", description: "Choose a game and build" },
-                { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
-                { href: "/type-chart", label: "Type Chart", description: "See type strengths and weaknesses" },
-                { href: "/teams", label: "My Teams", description: "Open your saved teams" },
-                { href: `/u/${profile.username}`, label: "Trainer Profile", description: "You are here" },
-              ]}
-            />
-            <div className="hidden min-[820px]:flex min-[820px]:items-center min-[820px]:gap-2">
-              <UserMenu
-                betweenThemeAndAuth={(
-                  <>
-                    <DesktopToolsMenu />
-                    <Link
-                      to="/play"
-                      className="landing-cta-secondary header-nav-button transition-colors hover:border-[var(--border-hover)] inline-flex items-center gap-1.5"
-                      style={{ borderColor: "var(--border)", color: "var(--text-secondary)", background: "var(--surface-2)" }}
-                    >
-                      Open Builder
-                    </Link>
-                  </>
-                )}
-              />
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader
+        maxWidthClassName="max-w-6xl"
+        backHref="/play"
+        backLabel="Back to builder"
+        badge="Trainer Profile"
+        mobileItems={[
+          { href: "/play", label: "Launch Builder", description: "Choose a game and build" },
+          { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
+          { href: "/type-chart", label: "Type Chart", description: "See type strengths and weaknesses" },
+          { href: "/teams", label: "My Teams", description: "Open your saved teams" },
+          { href: `/u/${profile.username}`, label: "Trainer Profile", description: "You are here" },
+        ]}
+      />
 
-      <main className="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-9">
+      <main className="app-page-main mx-auto max-w-6xl px-4 sm:px-6">
         <section
-          className="relative overflow-hidden rounded-2xl border p-5 sm:p-6"
+          className="app-page-intro app-intro-card app-page-intro-card relative overflow-hidden border"
           style={{
             borderColor: "var(--border)",
             background:

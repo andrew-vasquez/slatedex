@@ -201,9 +201,12 @@ admin.get("/overview", async (c) => {
   const [
     totalUsers,
     newUsersInRange,
+    proUsers,
+    adminUsers,
     totalTeams,
     totalChats,
     totalAnalyzes,
+    totalAiActionsInRange,
     activeUsersRows,
     usersByPlan,
     usersByRole,
@@ -212,15 +215,21 @@ admin.get("/overview", async (c) => {
     dailyNewTeams,
     dailyAiUsage,
     topUsersCurrentPeriod,
+    recentUsers,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: start } } }),
+    prisma.user.count({ where: { plan: UserPlan.PRO } }),
+    prisma.user.count({ where: { role: { in: [UserRole.ADMIN, UserRole.OWNER] } } }),
     prisma.team.count(),
     prisma.aiMessage.count({
       where: { role: "USER", kind: "CHAT" },
     }),
     prisma.aiMessage.count({
       where: { role: "USER", kind: "ANALYSIS" },
+    }),
+    prisma.aiMessage.count({
+      where: { role: "USER", createdAt: { gte: start } },
     }),
     prisma.aiConversation.findMany({
       where: { updatedAt: { gte: last30Days } },
@@ -284,6 +293,19 @@ admin.get("/overview", async (c) => {
         LIMIT 10
       `
     ),
+    prisma.user.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        username: true,
+        createdAt: true,
+        plan: true,
+        role: true,
+      },
+    }),
   ]);
 
   return c.json({
@@ -295,9 +317,13 @@ admin.get("/overview", async (c) => {
     kpis: {
       totalUsers,
       newUsersInRange,
+      proUsers,
+      adminUsers,
       totalTeams,
       totalChats,
       totalAnalyzes,
+      totalAiActionsInRange,
+      averageTeamsPerUser: totalUsers > 0 ? Number((totalTeams / totalUsers).toFixed(1)) : 0,
       activeUsersLast30d: activeUsersRows.length,
       usersAtQuotaCurrentMonth: Number(usersAtQuotaCurrentMonth[0]?.count ?? 0),
     },
@@ -322,6 +348,15 @@ admin.get("/overview", async (c) => {
       chatCount: entry.chatCount,
       analyzeCount: entry.analyzeCount,
       total: entry.chatCount + entry.analyzeCount,
+    })),
+    recentUsers: recentUsers.map((entry) => ({
+      id: entry.id,
+      name: entry.name,
+      email: entry.email,
+      username: entry.username,
+      createdAt: entry.createdAt.toISOString(),
+      plan: entry.plan,
+      role: entry.role,
     })),
   });
 });
@@ -581,6 +616,45 @@ admin.patch("/users/:id/role", async (c) => {
   });
 
   return c.json({ success: true, user: updated });
+});
+
+admin.delete("/users/:id", async (c) => {
+  const viewer = c.get("viewer");
+  const userId = c.req.param("id");
+  if (!userId) return c.json({ error: "User id is required." }, 400);
+
+  if (viewer.id === userId) {
+    return c.json({ error: "You cannot delete your own account from the admin dashboard." }, 409);
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, name: true, email: true },
+  });
+  if (!target) return c.json({ error: "User not found." }, 404);
+
+  if (target.role === UserRole.ADMIN && viewer.role !== UserRole.OWNER) {
+    return c.json({ error: "Only owners can delete admin accounts." }, 403);
+  }
+
+  if (target.role === UserRole.OWNER) {
+    if (viewer.role !== UserRole.OWNER) {
+      return c.json({ error: "Only owners can delete owner accounts." }, 403);
+    }
+
+    const otherOwners = await prisma.user.count({
+      where: {
+        role: UserRole.OWNER,
+        id: { not: target.id },
+      },
+    });
+    if (otherOwners < 1) {
+      return c.json({ error: "Cannot delete the last owner. Assign another owner first." }, 409);
+    }
+  }
+
+  await prisma.user.delete({ where: { id: target.id } });
+  return c.json({ success: true, deletedUserId: target.id });
 });
 
 export default admin;

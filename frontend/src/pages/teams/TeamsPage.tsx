@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { FiArrowLeft, FiPlus, FiTrash2, FiLoader, FiExternalLink } from "react-icons/fi";
+import { FiPlus, FiTrash2, FiLoader, FiExternalLink } from "react-icons/fi";
 import { useAuth } from "@/components/providers/AuthProvider";
 import AppImage from "~/components/ui/AppImage";
 import AppLink from "~/components/ui/AppLink";
@@ -13,11 +13,9 @@ import {
   getSelectedVersionStorageKey,
   LAST_VISITED_GENERATION_KEY,
 } from "@/lib/storageKeys";
-import UserMenu from "@/components/auth/UserMenu";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 import { PokemonTypeBadge } from "@/components/ui/PokemonTypeBadge";
-import MobileSiteMenu from "@/components/ui/MobileSiteMenu";
-import DesktopToolsMenu from "@/components/ui/DesktopToolsMenu";
+import AppHeader from "@/components/ui/AppHeader";
 
 // Region color theming — mirrors the game selector palette
 const REGION_COLORS: Record<string, { accent: string; soft: string; edge: string }> = {
@@ -323,81 +321,49 @@ export default function TeamsPage() {
 
   return (
     <div className="min-h-screen pb-14 sm:pb-20" style={{ background: "var(--bg-gradient)" }}>
-      {/* Header */}
-      <header className="glass sticky top-0 z-40 border-b" style={{ borderColor: "var(--border)" }}>
-        <div className="mx-auto flex max-w-screen-lg items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <AppLink
-              href="/play"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-xl cursor-pointer"
-              style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-              aria-label="Back to game selector"
-            >
-              <FiArrowLeft size={14} />
-            </AppLink>
-            <AppLink
-              href="/"
-              className="truncate font-display text-[0.95rem] leading-none"
-              style={{ letterSpacing: "-0.02em", color: "var(--text-primary)", textDecoration: "none" }}
-            >
-              Slate<span style={{ color: "var(--accent)" }}>dex</span>
-            </AppLink>
-            <span
-              className="hidden rounded-md px-2 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em] sm:inline-block"
-              style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
-            >
-              My Teams
-            </span>
-          </div>
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <MobileSiteMenu
-              items={[
-                { href: "/play", label: "Launch Builder", description: "Choose a game and build" },
-                { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
-                { href: "/type-chart", label: "Type Chart", description: "See type strengths and weaknesses" },
-                { href: "/teams", label: "My Teams", description: "You are here" },
-                { href: "/settings", label: "Settings", description: "Manage your account" },
-              ]}
-            />
-            <div className="hidden min-[820px]:flex min-[820px]:items-center min-[820px]:gap-3">
-              <UserMenu
-                betweenThemeAndAuth={<DesktopToolsMenu />}
-              />
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader
+        maxWidthClassName="max-w-screen-lg"
+        backHref="/play"
+        backLabel="Back to game selector"
+        badge="My Teams"
+        mobileItems={[
+          { href: "/play", label: "Launch Builder", description: "Choose a game and build" },
+          { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
+          { href: "/type-chart", label: "Type Chart", description: "See type strengths and weaknesses" },
+          { href: "/teams", label: "My Teams", description: "You are here" },
+          { href: "/settings", label: "Settings", description: "Manage your account" },
+        ]}
+      />
 
-      <main className="mx-auto max-w-screen-lg px-4 pt-6 sm:px-6 sm:pt-8">
+      <main className="app-page-main mx-auto max-w-screen-lg px-4 sm:px-6">
         <Breadcrumb
           items={[{ label: "Slatedex", href: "/play" }, { label: "My Teams" }]}
-          className="mb-5"
+          className="app-page-breadcrumb"
         />
 
-        {/* Page title */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <section className="app-page-intro app-intro-card app-page-intro-card border" style={{ borderColor: "var(--border)" }}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="font-display text-2xl sm:text-3xl" style={{ color: "var(--text-primary)" }}>
-              My Teams
-            </h1>
-            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-              {user?.name ? `${user.name}'s` : "Your"} saved Pokémon teams
+            <p className="app-header-kicker">Collection</p>
+            <h1 className="app-header-title font-display">My Teams</h1>
+            <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
+              {user?.name ? `${user.name}'s` : "Your"} saved Pokémon teams, organized by generation and ready to reopen in the builder.
             </p>
           </div>
-          {/* Fixed: was linking to "/" (landing page) — should go to game selector */}
           <AppLink
             href="/play"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.08em] cursor-pointer"
+            className="inline-flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3.5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.08em] cursor-pointer sm:w-auto"
             style={{
               background: "var(--accent-soft)",
               borderColor: "rgba(218,44,67,0.28)",
               color: "var(--text-primary)",
             }}
           >
-            <FiPlus size={13} />
+            <FiPlus size={14} />
             New Team
           </AppLink>
         </div>
+        </section>
 
         {/* Stats bar */}
         {teams.length > 0 && (

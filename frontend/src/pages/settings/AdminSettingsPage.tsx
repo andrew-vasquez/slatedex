@@ -5,13 +5,17 @@ import {
   FiAlertCircle,
   FiArrowLeft,
   FiBarChart2,
+  FiClock,
   FiCpu,
   FiRefreshCw,
   FiSave,
   FiSearch,
   FiShield,
+  FiTrash2,
   FiTrendingUp,
   FiUser,
+  FiUserCheck,
+  FiUserPlus,
   FiUsers,
   FiZap,
 } from "react-icons/fi";
@@ -21,22 +25,19 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Legend,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import AppLink from "~/components/ui/AppLink";
-import UserMenu from "@/components/auth/UserMenu";
 import Breadcrumb from "@/components/ui/Breadcrumb";
-import MobileSiteMenu from "@/components/ui/MobileSiteMenu";
+import AppHeader from "@/components/ui/AppHeader";
 import { useAuth } from "@/components/providers/AuthProvider";
 import {
   ApiError,
+  deleteAdminUser,
   fetchAdminOverview,
   fetchAdminUsers,
   fetchMyProfile,
@@ -126,15 +127,118 @@ function fmtNum(n: number): string {
   return n.toLocaleString();
 }
 
+function formatDateTime(value: string): string {
+  return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function OverviewSignalCard({
+  label,
+  value,
+  icon,
+  color,
+  description,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  color: string;
+  description: string;
+}) {
+  return (
+    <div
+      className="group relative overflow-hidden rounded-2xl border p-4 transition-transform duration-200 ease-out hover:-translate-y-0.5"
+      style={{ borderColor: "var(--border)", background: "linear-gradient(160deg, var(--surface-1) 0%, var(--surface-2) 100%)" }}
+    >
+      <div className="absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100" style={{ background: `radial-gradient(circle at top right, ${color}20 0%, transparent 42%)` }} />
+      <div className="relative flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>{label}</p>
+          <p className="mt-2 font-display text-2xl tabular-nums" style={{ color: "var(--text-primary)" }}>{value}</p>
+          <p className="mt-2 max-w-[18rem] text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>{description}</p>
+        </div>
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border" style={{ borderColor: `${color}50`, background: `${color}20`, color }}>
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompactAdminStat({ label, value, icon, color }: { label: string; value: string; icon: React.ReactNode; color: string }) {
+  return (
+    <div className="rounded-xl border px-3 py-3" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+      <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>
+        <span style={{ color }}>{icon}</span>
+        {label}
+      </div>
+      <p className="mt-2 text-lg font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{value}</p>
+    </div>
+  );
+}
+
+function DistributionCard({
+  title,
+  items,
+}: {
+  title: string;
+  items: Array<{ key: string; value: number }>;
+}) {
+  const total = items.reduce((sum, item) => sum + item.value, 0);
+
+  return (
+    <article className="rounded-2xl border p-4" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{title}</h3>
+      {items.length === 0 ? (
+        <div className="flex h-48 items-center justify-center">
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>No distribution data yet</p>
+        </div>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {items.map((entry, index) => {
+            const color = PIE_COLORS[index % PIE_COLORS.length];
+            const share = total > 0 ? Math.round((entry.value / total) * 100) : 0;
+
+            return (
+              <div key={entry.key} className="rounded-xl border px-3 py-3" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+                    <span className="truncate text-sm font-medium uppercase" style={{ color: "var(--text-secondary)" }}>{entry.key}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs tabular-nums" style={{ color: "var(--text-muted)" }}>{share}%</span>
+                    <span className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{entry.value}</span>
+                  </div>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full" style={{ background: "var(--stat-track)" }}>
+                  <div
+                    className="h-full rounded-full transition-[width] duration-300 ease-out"
+                    style={{ width: `${share}%`, background: color }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </article>
+  );
+}
+
 /* ── KPI card config ── */
-const KPI_META: { key: string; label: string; icon: React.ReactNode; color: string }[] = [
-  { key: "totalUsers", label: "Total Users", icon: <FiUsers size={14} />, color: "#da2c43" },
-  { key: "newUsersInRange", label: "New Users", icon: <FiTrendingUp size={14} />, color: "#22c55e" },
+const PRIMARY_KPI_META: { key: keyof AdminOverview["kpis"]; label: string; icon: React.ReactNode; color: string; description: string }[] = [
+  { key: "totalUsers", label: "Total Users", icon: <FiUsers size={14} />, color: "#da2c43", description: "All accounts currently in the system." },
+  { key: "newUsersInRange", label: "New in Range", icon: <FiUserPlus size={14} />, color: "#22c55e", description: "New accounts created in the selected window." },
+  { key: "activeUsersLast30d", label: "Active 30d", icon: <FiActivity size={14} />, color: "#34d399", description: "Users with recent AI conversation activity." },
+  { key: "usersAtQuotaCurrentMonth", label: "At Quota", icon: <FiAlertCircle size={14} />, color: "#fbbf24", description: "Accounts currently hitting monthly AI limits." },
+];
+
+const SECONDARY_KPI_META: { key: keyof AdminOverview["kpis"]; label: string; icon: React.ReactNode; color: string }[] = [
+  { key: "proUsers", label: "Pro Users", icon: <FiUserCheck size={14} />, color: "#8b5cf6" },
+  { key: "adminUsers", label: "Admins + Owners", icon: <FiShield size={14} />, color: "#38bdf8" },
   { key: "totalTeams", label: "Teams Built", icon: <FiBarChart2 size={14} />, color: "#f97316" },
-  { key: "totalChats", label: "AI Chats", icon: <FiZap size={14} />, color: "#38bdf8" },
-  { key: "totalAnalyzes", label: "Analyzes", icon: <FiCpu size={14} />, color: "#a78bfa" },
-  { key: "activeUsersLast30d", label: "Active (30d)", icon: <FiActivity size={14} />, color: "#34d399" },
-  { key: "usersAtQuotaCurrentMonth", label: "At Quota", icon: <FiAlertCircle size={14} />, color: "#fbbf24" },
+  { key: "totalAiActionsInRange", label: "AI Actions in Range", icon: <FiZap size={14} />, color: "#14b8a6" },
+  { key: "averageTeamsPerUser", label: "Avg Teams / User", icon: <FiCpu size={14} />, color: "#fb7185" },
 ];
 
 /* ── Skeleton block ── */
@@ -161,6 +265,8 @@ export default function AdminSettingsPage() {
   const [query, setQuery] = useState("");
   const [drafts, setDrafts] = useState<Record<string, UserDraft>>({});
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
+  const [confirmDeleteUserId, setConfirmDeleteUserId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   const canAccessAdmin = !adminAccessDenied;
 
@@ -275,6 +381,18 @@ export default function AdminSettingsPage() {
     [overview]
   );
 
+  const operationsSignal = useMemo(() => {
+    if (!overview) return null;
+    const quotaRate = overview.kpis.totalUsers > 0
+      ? Math.round((overview.kpis.usersAtQuotaCurrentMonth / overview.kpis.totalUsers) * 100)
+      : 0;
+    if (quotaRate >= 20) return { tone: "warning", label: "Quota pressure is elevated", copy: `${quotaRate}% of users are already hitting limits this month.` };
+    if (overview.kpis.newUsersInRange >= Math.max(25, Math.round(overview.kpis.totalUsers * 0.05))) {
+      return { tone: "success", label: "Growth is healthy", copy: `Signups are strong for this range, with ${fmtNum(overview.kpis.newUsersInRange)} new accounts.` };
+    }
+    return { tone: "neutral", label: "System is steady", copy: "Usage and growth are stable. Review quota pressure and recent signups for anomalies." };
+  }, [overview]);
+
   const onSearch = () => setQuery(searchInput.trim());
 
   const onDraftChange = (userId: string, patch: Partial<UserDraft>) => {
@@ -364,6 +482,26 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const deleteUser = async (row: AdminUserRow) => {
+    setDeletingUserId(row.id);
+    setUsersError(null);
+    try {
+      await deleteAdminUser(row.id);
+      setUsers((current) => current.filter((entry) => entry.id !== row.id));
+      setDrafts((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
+      setConfirmDeleteUserId(null);
+      await loadOverview(range);
+    } catch (error: unknown) {
+      setUsersError(error instanceof Error ? error.message : "Failed to delete user.");
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
+
   if (isLoading || (viewerLoading && !overview && !users.length && !adminAccessDenied)) {
     return (
       <div className="min-h-screen" style={{ background: "var(--bg-gradient)" }}>
@@ -428,41 +566,30 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-gradient)" }}>
-      <header className="glass sticky top-0 z-40 border-b" style={{ borderColor: "var(--border)" }}>
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <AppLink
-              href="/settings"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-xl"
-              style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-              aria-label="Back to settings"
-            >
-              <FiArrowLeft size={14} />
-            </AppLink>
-            <h1 className="font-display text-lg" style={{ color: "var(--text-primary)" }}>
-              Admin Dashboard
-            </h1>
+      <AppHeader
+        maxWidthClassName="max-w-7xl"
+        backHref="/settings"
+        backLabel="Back to settings"
+        badge="Admin"
+        mobileItems={[
+          { href: "/play", label: "Launch Builder", description: "Choose a game and build" },
+          { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
+          { href: "/type-chart", label: "Type Chart", description: "See type strengths and weaknesses" },
+          { href: "/teams", label: "My Teams", description: "Open your saved teams" },
+          { href: "/settings", label: "Settings", description: "Manage your account" },
+          { href: "/settings/admin", label: "Admin", description: "You are here" },
+        ]}
+        bottomSlot={(
+          <div className="app-intro-card p-4 sm:p-5">
+            <p className="app-header-kicker">Operations</p>
+            <h1 className="app-header-title font-display">Admin Dashboard</h1>
+            <p className="app-header-subtitle">Track account growth, AI usage, and quota pressure with one operational surface.</p>
           </div>
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <MobileSiteMenu
-              items={[
-                { href: "/play", label: "Launch Builder", description: "Choose a game and build" },
-                { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
-                { href: "/type-chart", label: "Type Chart", description: "See type strengths and weaknesses" },
-                { href: "/teams", label: "My Teams", description: "Open your saved teams" },
-                { href: "/settings", label: "Settings", description: "Manage your account" },
-                { href: "/settings/admin", label: "Admin", description: "You are here" },
-              ]}
-            />
-            <div className="hidden min-[820px]:flex min-[820px]:items-center min-[820px]:gap-3">
-              <UserMenu />
-            </div>
-          </div>
-        </div>
-      </header>
+        )}
+      />
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        <Breadcrumb items={[{ label: "Slatedex", href: "/play" }, { label: "Settings", href: "/settings" }, { label: "Admin" }]} className="mb-5" />
+      <main className="app-page-main mx-auto max-w-7xl px-4 sm:px-6">
+        <Breadcrumb items={[{ label: "Slatedex", href: "/play" }, { label: "Settings", href: "/settings" }, { label: "Admin" }]} className="app-page-breadcrumb" />
 
         <section className="panel p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -471,7 +598,7 @@ export default function AdminSettingsPage() {
                 Overview
               </p>
               <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                Track user growth, AI load, and quota pressure.
+                Track account growth, operational pressure, and recent admin signals.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -494,31 +621,66 @@ export default function AdminSettingsPage() {
 
           {overviewError && <p className="mt-3 text-sm text-red-300">{overviewError}</p>}
 
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
-            {KPI_META.map((kpi) => {
-              const value = (overview?.kpis as Record<string, number> | undefined)?.[kpi.key] ?? 0;
+          {operationsSignal ? (
+            <div
+              className="mt-4 rounded-2xl border px-4 py-3"
+              style={{
+                borderColor:
+                  operationsSignal.tone === "warning"
+                    ? "rgba(245, 158, 11, 0.32)"
+                    : operationsSignal.tone === "success"
+                      ? "rgba(34, 197, 94, 0.26)"
+                      : "var(--border)",
+                background:
+                  operationsSignal.tone === "warning"
+                    ? "rgba(161, 98, 7, 0.12)"
+                    : operationsSignal.tone === "success"
+                      ? "rgba(22, 163, 74, 0.1)"
+                      : "var(--surface-2)",
+              }}
+            >
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+                Operations signal
+              </p>
+              <p className="mt-1 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{operationsSignal.label}</p>
+              <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>{operationsSignal.copy}</p>
+            </div>
+          ) : null}
+
+          <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-4">
+            {PRIMARY_KPI_META.map((kpi) => {
+              const value = overview ? overview.kpis[kpi.key] : 0;
               return (
-                <div
+                <OverviewSignalCard
                   key={kpi.key}
-                  className="group relative overflow-hidden rounded-xl border p-3 transition-colors hover:border-opacity-60"
-                  style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
-                >
-                  <div className="absolute -right-2 -top-2 opacity-[0.06] transition-opacity group-hover:opacity-[0.12]">
-                    <span style={{ color: kpi.color, fontSize: 48 }}>{kpi.icon}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span style={{ color: kpi.color }}>{kpi.icon}</span>
-                    <p className="text-[0.68rem] font-medium" style={{ color: "var(--text-muted)" }}>{kpi.label}</p>
-                  </div>
-                  <span className="mt-1 block font-display text-xl tabular-nums" style={{ color: "var(--text-primary)" }}>
-                    {overviewLoading ? <SkeletonBlock className="mt-1 h-6 w-12" /> : fmtNum(value)}
-                  </span>
-                </div>
+                  label={kpi.label}
+                  value={overviewLoading ? "..." : fmtNum(Number(value ?? 0))}
+                  icon={kpi.icon}
+                  color={kpi.color}
+                  description={kpi.description}
+                />
               );
             })}
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-5">
+            {SECONDARY_KPI_META.map((kpi) => {
+              const value = overview ? overview.kpis[kpi.key] : 0;
+              return (
+                <CompactAdminStat
+                  key={kpi.key}
+                  label={kpi.label}
+                  value={overviewLoading ? "..." : fmtNum(Number(value ?? 0))}
+                  icon={kpi.icon}
+                  color={kpi.color}
+                />
+              );
+            })}
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[1.45fr_0.95fr]">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <article className="rounded-2xl border p-3" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
               <h3 className="mb-2 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>AI Usage by Day</h3>
               <div className="h-64">
@@ -581,78 +743,12 @@ export default function AdminSettingsPage() {
                 )}
               </div>
             </article>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <article className="rounded-2xl border p-3" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
-              <h3 className="mb-2 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Users by Plan</h3>
-              <div className="h-56">
-                {(overview?.charts.usersByPlan ?? []).length === 0 && !overviewLoading ? (
-                  <div className="flex h-full items-center justify-center">
-                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>No plan data</p>
-                  </div>
-                ) : (
-                  <div className="flex h-full items-center gap-2">
-                    <div className="flex-1">
-                      <ResponsiveContainer width="100%" height={180}>
-                        <PieChart>
-                          <Pie data={overview?.charts.usersByPlan ?? []} dataKey="value" nameKey="key" outerRadius={72} innerRadius={40} paddingAngle={2} strokeWidth={0}>
-                            {(overview?.charts.usersByPlan ?? []).map((entry, index) => (
-                              <Cell key={entry.key} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip content={<ChartTooltip />} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="flex flex-col gap-2 pr-1">
-                      {(overview?.charts.usersByPlan ?? []).map((entry, index) => (
-                        <div key={entry.key} className="flex items-center gap-2">
-                          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: PIE_COLORS[index % PIE_COLORS.length] }} />
-                          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{entry.key}</span>
-                          <span className="ml-auto font-mono text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{entry.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
-            </article>
 
-            <article className="rounded-2xl border p-3" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
-              <h3 className="mb-2 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Users by Role</h3>
-              <div className="h-56">
-                {(overview?.charts.usersByRole ?? []).length === 0 && !overviewLoading ? (
-                  <div className="flex h-full items-center justify-center">
-                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>No role data</p>
-                  </div>
-                ) : (
-                  <div className="flex h-full items-center gap-2">
-                    <div className="flex-1">
-                      <ResponsiveContainer width="100%" height={180}>
-                        <PieChart>
-                          <Pie data={overview?.charts.usersByRole ?? []} dataKey="value" nameKey="key" outerRadius={72} innerRadius={40} paddingAngle={2} strokeWidth={0}>
-                            {(overview?.charts.usersByRole ?? []).map((entry, index) => (
-                              <Cell key={entry.key} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip content={<ChartTooltip />} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="flex flex-col gap-2 pr-1">
-                      {(overview?.charts.usersByRole ?? []).map((entry, index) => (
-                        <div key={entry.key} className="flex items-center gap-2">
-                          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: PIE_COLORS[index % PIE_COLORS.length] }} />
-                          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{entry.key}</span>
-                          <span className="ml-auto font-mono text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{entry.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </article>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <DistributionCard title="Users by Plan" items={overview?.charts.usersByPlan ?? []} />
+
+            <DistributionCard title="Users by Role" items={overview?.charts.usersByRole ?? []} />
 
             <article className="rounded-2xl border p-3" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
               <h3 className="mb-2 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Top AI Users (Month)</h3>
@@ -676,6 +772,39 @@ export default function AdminSettingsPage() {
                 )}
               </div>
             </article>
+              </div>
+            </div>
+
+            <aside className="space-y-4">
+              <article className="rounded-2xl border p-4" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+                <div className="flex items-center gap-2">
+                  <FiClock size={14} style={{ color: "var(--text-muted)" }} />
+                  <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Recent signups</h3>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                  Newest accounts, useful for spotting invite spikes and suspicious registration patterns.
+                </p>
+                <div className="mt-3 space-y-2">
+                  {(overview?.recentUsers ?? []).map((user) => (
+                    <div key={user.id} className="rounded-xl border px-3 py-2.5" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{user.name}</p>
+                          <p className="truncate text-xs" style={{ color: "var(--text-secondary)" }}>{user.email}{user.username ? ` · @${user.username}` : ""}</p>
+                        </div>
+                        <span className="rounded-full border px-2 py-0.5 text-[0.64rem] font-semibold" style={badgeStyles(user.role === "OWNER" ? "Owner" : user.role === "ADMIN" ? "Admin" : user.plan === "PRO" ? "Pro" : null)}>
+                          {user.role === "OWNER" ? "Owner" : user.role === "ADMIN" ? "Admin" : user.plan}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-[0.72rem]" style={{ color: "var(--text-muted)" }}>{formatDateTime(user.createdAt)}</p>
+                    </div>
+                  ))}
+                  {(overview?.recentUsers ?? []).length === 0 && !overviewLoading ? (
+                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>No recent signups in this environment yet.</p>
+                  ) : null}
+                </div>
+              </article>
+            </aside>
           </div>
         </section>
 
@@ -686,7 +815,7 @@ export default function AdminSettingsPage() {
                 User Management
               </p>
               <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                Change plan, monthly limits, unlimited AI access, and roles.
+                Search accounts, tune entitlements, update roles, and remove users safely.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -714,9 +843,24 @@ export default function AdminSettingsPage() {
                   </button>
                 )}
               </div>
-              <button type="button" className="btn-secondary" onClick={onSearch}>
-                Search
-              </button>
+                  <button type="button" className="btn-secondary" onClick={onSearch}>
+                    Search
+                  </button>
+            </div>
+          </div>
+
+          <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="rounded-xl border px-3 py-2.5" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+              <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>Loaded</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{users.length}</p>
+            </div>
+            <div className="rounded-xl border px-3 py-2.5" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+              <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>Role edits</p>
+              <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>{viewer?.role === "OWNER" ? "You can change all roles." : "Only owners can change roles."}</p>
+            </div>
+            <div className="rounded-xl border px-3 py-2.5" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+              <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>Danger actions</p>
+              <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>{viewer?.role === "OWNER" ? "You can delete admins and users, except yourself and the last owner." : "You can delete standard users only."}</p>
             </div>
           </div>
 
@@ -738,18 +882,20 @@ export default function AdminSettingsPage() {
                 role: row.role,
               };
               const isSaving = savingUserId === row.id;
+              const isDeleting = deletingUserId === row.id;
               const badgeStyle = badgeStyles(row.badge);
               const chatPct = row.usage.chat.limit ? Math.min(100, Math.round((row.usage.chat.used / row.usage.chat.limit) * 100)) : 0;
               const analyzePct = row.usage.analyze.limit ? Math.min(100, Math.round((row.usage.analyze.used / row.usage.analyze.limit) * 100)) : 0;
+              const canDeleteUser = viewer?.role === "OWNER" || row.role === "USER";
 
               return (
                 <article
                   key={row.id}
                   className="rounded-2xl border p-4 transition-colors"
                   style={{
-                    borderColor: isSaving ? "var(--border-active)" : "var(--border)",
+                    borderColor: isSaving || isDeleting ? "var(--border-active)" : "var(--border)",
                     background: "var(--surface-2)",
-                    opacity: isSaving ? 0.7 : 1,
+                    opacity: isSaving || isDeleting ? 0.7 : 1,
                   }}
                 >
                   {/* Row 1: Identity + badge */}
@@ -767,6 +913,10 @@ export default function AdminSettingsPage() {
                       <p className="truncate text-xs" style={{ color: "var(--text-secondary)" }}>
                         {row.email}{row.username ? ` · @${row.username}` : ""}
                       </p>
+                      <div className="mt-1 flex flex-wrap gap-2 text-[0.68rem]" style={{ color: "var(--text-muted)" }}>
+                        <span>Joined {formatDateTime(row.createdAt)}</span>
+                        <span>Updated {formatDateTime(row.updatedAt)}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -892,7 +1042,7 @@ export default function AdminSettingsPage() {
                   </div>
 
                   {/* Row 4: Role */}
-                  <div className="mt-2 flex items-center gap-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
                     <FiUsers size={12} style={{ color: "var(--text-muted)" }} />
                     <select
                       value={draft.role}
@@ -914,6 +1064,43 @@ export default function AdminSettingsPage() {
                       <FiUser size={12} />
                       Save Role
                     </button>
+
+                    {canDeleteUser ? (
+                      confirmDeleteUserId === row.id ? (
+                        <div className="ml-auto flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="btn-secondary inline-flex items-center gap-1.5 text-xs"
+                            onClick={() => void deleteUser(row)}
+                            disabled={isDeleting}
+                            style={{ borderColor: "rgba(248, 113, 113, 0.42)", background: "rgba(185, 28, 28, 0.14)", color: "#fecaca" }}
+                          >
+                            <FiTrash2 size={12} />
+                            {isDeleting ? "Deleting..." : "Confirm Delete"}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary inline-flex items-center gap-1.5 text-xs"
+                            onClick={() => setConfirmDeleteUserId(null)}
+                            disabled={isDeleting}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn-secondary ml-auto inline-flex items-center gap-1.5 text-xs"
+                          onClick={() => setConfirmDeleteUserId(row.id)}
+                          disabled={isSaving || isDeleting}
+                          style={{ borderColor: "rgba(248, 113, 113, 0.32)", color: "#fca5a5" }}
+                          title={viewer?.role === "OWNER" ? "Delete user" : "Delete standard user"}
+                        >
+                          <FiTrash2 size={12} />
+                          Delete User
+                        </button>
+                      )
+                    ) : null}
                   </div>
                 </article>
               );

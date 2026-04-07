@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { FiArrowLeft, FiUser, FiShield, FiFileText, FiChevronRight } from "react-icons/fi";
+import { FiUser, FiShield, FiFileText, FiChevronRight } from "react-icons/fi";
 import AppLink from "~/components/ui/AppLink";
 import { useAuth } from "@/components/providers/AuthProvider";
-import UserMenu from "@/components/auth/UserMenu";
 import Breadcrumb from "@/components/ui/Breadcrumb";
-import MobileSiteMenu from "@/components/ui/MobileSiteMenu";
+import AppHeader from "@/components/ui/AppHeader";
 import { fetchMyProfile, type UserRoleValue } from "@/lib/api";
 import {
   COOKIE_CONSENT_UPDATED_EVENT,
@@ -146,59 +145,38 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-gradient)" }}>
-      {/* Header */}
-      <header className="glass sticky top-0 z-40 border-b" style={{ borderColor: "var(--border)" }}>
-        <div className="mx-auto flex max-w-screen-sm items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <AppLink
-              href="/play"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-xl"
-              style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-              aria-label="Back to builder"
-            >
-              <FiArrowLeft size={14} />
-            </AppLink>
-            <AppLink
-              href="/"
-              className="truncate font-display text-[0.95rem] leading-none"
-              style={{ letterSpacing: "-0.02em", color: "var(--text-primary)", textDecoration: "none" }}
-            >
-              Slate<span style={{ color: "var(--accent)" }}>dex</span>
-            </AppLink>
+      <AppHeader
+        maxWidthClassName="max-w-screen-sm"
+        backHref="/play"
+        backLabel="Back to builder"
+        badge="Settings"
+        mobileItems={[
+          { href: "/play", label: "Launch Builder", description: "Choose a game and build" },
+          { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
+          { href: "/type-chart", label: "Type Chart", description: "See type strengths and weaknesses" },
+          { href: "/teams", label: "My Teams", description: "Open your saved teams" },
+          { href: "/settings", label: "Settings", description: "You are here" },
+        ]}
+        bottomSlot={(
+          <div className="app-intro-card p-4 sm:p-5">
+            <p className="app-header-kicker">Account</p>
+            <h1 className="app-header-title font-display">Settings</h1>
+            <p className="app-header-subtitle">Manage your account, profile, saved teams, and privacy preferences from one place.</p>
           </div>
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <MobileSiteMenu
-              items={[
-                { href: "/play", label: "Launch Builder", description: "Choose a game and build" },
-                { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
-                { href: "/type-chart", label: "Type Chart", description: "See type strengths and weaknesses" },
-                { href: "/teams", label: "My Teams", description: "Open your saved teams" },
-                { href: "/settings", label: "Settings", description: "You are here" },
-              ]}
-            />
-            <div className="hidden min-[820px]:flex min-[820px]:items-center min-[820px]:gap-3">
-              <UserMenu />
-            </div>
-          </div>
-        </div>
-      </header>
+        )}
+      />
 
-      <main className="mx-auto max-w-screen-sm px-4 py-8 sm:px-6">
+      <main className="app-page-main mx-auto max-w-screen-sm px-4 sm:px-6">
         <Breadcrumb
           items={[{ label: "Slatedex", href: "/play" }, { label: "Settings" }]}
-          className="mb-5"
+          className="app-page-breadcrumb"
         />
 
-        <div className="mb-6">
-          <h1 className="font-display text-2xl sm:text-3xl" style={{ color: "var(--text-primary)" }}>
-            Settings
-          </h1>
-          {user?.email && (
-            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-              {user.email}
-            </p>
-          )}
-        </div>
+        {user?.email && (
+          <p className="mb-6 text-sm" style={{ color: "var(--text-muted)" }}>
+            Signed in as {user.email}
+          </p>
+        )}
 
         <div className="space-y-6">
           {SETTINGS_SECTIONS.map((section) => (
@@ -235,7 +213,7 @@ export default function SettingsPage() {
                         {item.description}
                       </p>
                     </div>
-                    <FiChevronRight size={16} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                    <FiChevronRight size={16} className="settings-item-chevron" style={{ color: "var(--text-muted)", flexShrink: 0 }} />
                   </AppLink>
                 ))}
               </div>
@@ -269,7 +247,7 @@ export default function SettingsPage() {
                       User plans, quotas, roles, and platform metrics.
                     </p>
                   </div>
-                  <FiChevronRight size={16} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                  <FiChevronRight size={16} className="settings-item-chevron" style={{ color: "var(--text-muted)", flexShrink: 0 }} />
                 </AppLink>
               </div>
             </section>

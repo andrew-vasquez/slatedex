@@ -16,10 +16,7 @@ export function LandingNav() {
         ]}
       />
       <div className="hidden min-[820px]:flex min-[820px]:items-center min-[820px]:gap-3">
-        <UserMenu />
-      </div>
-      <div className="hidden min-[820px]:block">
-        <DesktopToolsMenu />
+        <UserMenu betweenThemeAndAuth={<DesktopToolsMenu />} />
       </div>
       <AppLink
         href="/play"
