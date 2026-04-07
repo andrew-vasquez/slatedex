@@ -1,5 +1,3 @@
-"use client";
-
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { FiCheck, FiEye, FiEyeOff, FiLoader, FiX } from "react-icons/fi";

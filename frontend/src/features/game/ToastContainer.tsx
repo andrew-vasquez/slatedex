@@ -1,5 +1,3 @@
-"use client";
-
 import { FiCheck, FiAlertCircle, FiInfo, FiX } from "react-icons/fi";
 import type { Toast } from "./hooks/useToast";
 import type { CSSProperties } from "react";

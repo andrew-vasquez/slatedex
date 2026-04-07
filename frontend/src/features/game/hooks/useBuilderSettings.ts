@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useEffect, useState } from "react";
 import { getBuilderSettingsStorageKey } from "@/lib/storageKeys";
 import type { BuilderSettings, CardDensity, DexMode, DragBehavior } from "@/lib/types";

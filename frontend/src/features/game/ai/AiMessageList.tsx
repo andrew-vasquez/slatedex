@@ -1,5 +1,3 @@
-"use client";
-
 import { FiArrowRight, FiCheck, FiChevronDown, FiCopy, FiLoader, FiMessageCircle, FiZap } from "react-icons/fi";
 import type { AiMessage } from "@/lib/api";
 import {

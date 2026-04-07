@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "~/components/ui/AppImage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FiChevronDown, FiMapPin } from "react-icons/fi";

@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useRef, useState, useCallback, Suspense } from "react";
 import { useRouterState } from "@tanstack/react-router";
 

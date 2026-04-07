@@ -1,5 +1,3 @@
-"use client";
-
 import { FiSettings } from "react-icons/fi";
 import type { BuilderSettings, CardDensity, DexMode, DragBehavior } from "@/lib/types";
 

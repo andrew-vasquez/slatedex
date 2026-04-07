@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useDeferredValue, useMemo } from "react";
 import Image from "~/components/ui/AppImage";
 import { FiSearch, FiX, FiPlus } from "react-icons/fi";

@@ -1,5 +1,3 @@
-"use client";
-
 import { FiBookOpen, FiEdit3, FiFolder } from "react-icons/fi";
 
 export type OpponentSourceMode = "preset" | "manual" | "saved";

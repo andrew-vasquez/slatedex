@@ -1,5 +1,3 @@
-"use client";
-
 import { FiChevronDown } from "react-icons/fi";
 import { AUTO_CHECKPOINT_KEY, type CheckpointOption, type UseAiCheckpointReturn } from "./useAiCheckpoint";
 import { checkpointLabel } from "./aiMessageParser";

@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { FiArrowLeft, FiUser, FiShield, FiFileText, FiChevronRight } from "react-icons/fi";
 import AppLink from "~/components/ui/AppLink";

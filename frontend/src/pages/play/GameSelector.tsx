@@ -1,5 +1,3 @@
-"use client";
-
 import { Link, useRouterState } from "@tanstack/react-router";
 import Image from "~/components/ui/AppImage";
 import { startTransition, useEffect, useMemo, useState } from "react";

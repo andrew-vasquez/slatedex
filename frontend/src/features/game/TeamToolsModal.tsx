@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import loadable from "~/lib/loadable";
 import { FiCopy, FiFolder, FiLink, FiShare2, FiTarget, FiUploadCloud, FiX } from "react-icons/fi";

@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "~/components/ui/AppImage";
 import { useDraggable } from "@dnd-kit/core";
 import { memo, useCallback, useEffect, useRef, useState } from "react";

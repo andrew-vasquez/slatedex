@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/andrew-vasquez/pokeproxy/cache"
 	"github.com/andrew-vasquez/pokeproxy/handlers"
@@ -13,7 +14,16 @@ import (
 
 func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", os.Getenv("ALLOWED_ORIGIN"))
+		origin := r.Header.Get("Origin")
+		allowedOrigins := strings.Split(os.Getenv("ALLOWED_ORIGIN"), ",")
+		for _, allowedOrigin := range allowedOrigins {
+			normalized := strings.TrimSpace(allowedOrigin)
+			if normalized != "" && origin == normalized {
+				w.Header().Set("Access-Control-Allow-Origin", normalized)
+				w.Header().Set("Vary", "Origin")
+				break
+			}
+		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		if r.Method == http.MethodOptions {

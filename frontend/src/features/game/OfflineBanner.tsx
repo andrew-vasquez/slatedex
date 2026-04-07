@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { FiWifiOff } from "react-icons/fi";
 

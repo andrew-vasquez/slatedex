@@ -1,5 +1,3 @@
-"use client";
-
 import { createContext, useContext, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useSession } from "@/lib/auth-client";

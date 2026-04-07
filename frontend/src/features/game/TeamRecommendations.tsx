@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "~/components/ui/AppImage";
 import { useCallback, useState } from "react";
 import type { Dispatch, KeyboardEvent, SetStateAction } from "react";

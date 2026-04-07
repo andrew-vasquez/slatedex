@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useEffect, useState } from "react";
 
 const TOUR_KEY_BASE = "poke-builder:tour-completed";

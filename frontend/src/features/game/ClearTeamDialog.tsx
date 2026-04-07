@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect } from "react";
 import { FiAlertTriangle } from "react-icons/fi";
 

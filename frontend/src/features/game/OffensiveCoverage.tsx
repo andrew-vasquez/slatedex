@@ -1,5 +1,3 @@
-"use client";
-
 import { useMemo, useState } from "react";
 import Image from "~/components/ui/AppImage";
 import MatchupBucketCard from "@/components/ui/MatchupBucketCard";
