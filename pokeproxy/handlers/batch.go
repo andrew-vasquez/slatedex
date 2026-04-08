@@ -2,12 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
+	"strings"
 	"sync"
 
-	"github.com/andrew-vasquez/pokeproxy/cache"
+	"github.com/andrew-vasquez/pokeproxy/services"
 )
 
 type BatchRequest struct {
@@ -20,6 +19,10 @@ type BatchResponse struct {
 }
 
 func BatchPokemon(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	var req BatchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -45,52 +48,28 @@ func BatchPokemon(w http.ResponseWriter, r *http.Request) {
 	var wg sync.WaitGroup
 
 	for _, name := range req.Names {
+		normalizedName := strings.ToLower(strings.TrimSpace(name))
 		wg.Add(1)
+
 		go func(name string) {
 			defer wg.Done()
 
-			// try cache first
-			cached, err := cache.Get("pokemon:" + name)
-			if err == nil {
-				fmt.Println("cache hit - batch:", name)
-				mu.Lock()
-				response.Results[name] = json.RawMessage(cached)
-				mu.Unlock()
-				return
-			}
-
-			// cache miss — hit PokeAPI
-			fmt.Println("cache miss - batch:", name)
-			resp, err := http.Get(fmt.Sprintf("https://pokeapi.co/api/v2/pokemon/%s", name))
+			body, err := services.GetPokemon(name)
 			if err != nil {
 				mu.Lock()
-				response.Errors[name] = "Failed to fetch"
+				if err.Error() == "pokemon not found" {
+					response.Errors[name] = "Not found"
+				} else {
+					response.Errors[name] = "Failed to fetch"
+				}
 				mu.Unlock()
 				return
 			}
-			defer resp.Body.Close()
-
-			if resp.StatusCode == 404 {
-				mu.Lock()
-				response.Errors[name] = "Not found"
-				mu.Unlock()
-				return
-			}
-
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				mu.Lock()
-				response.Errors[name] = "Failed to read response"
-				mu.Unlock()
-				return
-			}
-
-			cache.Set("pokemon:"+name, string(body))
 
 			mu.Lock()
 			response.Results[name] = json.RawMessage(body)
 			mu.Unlock()
-		}(name)
+		}(normalizedName)
 	}
 
 	wg.Wait()

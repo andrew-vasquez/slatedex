@@ -9,6 +9,7 @@ import (
 
 	"github.com/andrew-vasquez/pokeproxy/cache"
 	"github.com/andrew-vasquez/pokeproxy/handlers"
+	"github.com/andrew-vasquez/pokeproxy/warm"
 	"github.com/joho/godotenv"
 )
 
@@ -37,6 +38,8 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 func main() {
 	godotenv.Load()
 	cache.Init()
+
+	go warm.Preload()
 
 	port := os.Getenv("PORT")
 	if port == "" {
