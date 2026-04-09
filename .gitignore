@@ -31,7 +31,8 @@ package-lock.json
 .dev.vars.*
 /frontend/.tanstack
 /frontend/.env
-
+/pokeproxy/tmp/
+/pokeproxy/.env
 # TestSprite generated output and secrets
 testsprite_tests/tmp/
 backend/testsprite_tests/tmp/
