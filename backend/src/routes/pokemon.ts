@@ -12,10 +12,32 @@ function getPokeProxyBaseUrl(): string {
   return raw.replace(/\/+$/, "");
 }
 
-async function proxyJsonRequest(upstreamUrl: URL, init?: RequestInit) {
-  const response = await fetch(upstreamUrl, init);
+async function proxyJsonRequest(routeLabel: string, upstreamUrl: URL, init?: RequestInit) {
+  const startedAt = Date.now();
+
+  let response: Response;
+  try {
+    response = await fetch(upstreamUrl, init);
+  } catch (error) {
+    console.error(`[pokemon-proxy] ${routeLabel} upstream fetch failed`, {
+      upstreamUrl: upstreamUrl.toString(),
+      method: init?.method ?? "GET",
+      error,
+    });
+    throw error;
+  }
+
   const contentType = response.headers.get("content-type") ?? "application/json";
   const body = await response.text();
+
+  if (!response.ok) {
+    console.error(`[pokemon-proxy] ${routeLabel} upstream returned ${response.status}`, {
+      upstreamUrl: upstreamUrl.toString(),
+      method: init?.method ?? "GET",
+      durationMs: Date.now() - startedAt,
+      responseBody: body.slice(0, 400),
+    });
+  }
 
   return new Response(body, {
     status: response.status,
@@ -43,7 +65,7 @@ function normalizeBatchNames(searchParams: URLSearchParams): string[] {
 pokemon.get("/pokemon", async (c) => {
   const upstreamUrl = new URL(`${getPokeProxyBaseUrl()}/pokemon`);
   upstreamUrl.search = new URL(c.req.url).search;
-  return proxyJsonRequest(upstreamUrl);
+  return proxyJsonRequest("GET /api/pokemon", upstreamUrl);
 });
 
 pokemon.get("/pokemon/batch", async (c) => {
@@ -56,7 +78,7 @@ pokemon.get("/pokemon/batch", async (c) => {
   }
 
   const upstreamUrl = new URL(`${getPokeProxyBaseUrl()}/pokemon/batch`);
-  return proxyJsonRequest(upstreamUrl, {
+  return proxyJsonRequest("GET /api/pokemon/batch", upstreamUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -85,7 +107,7 @@ pokemon.post("/pokemon/batch", async (c) => {
   }
 
   const upstreamUrl = new URL(`${getPokeProxyBaseUrl()}/pokemon/batch`);
-  return proxyJsonRequest(upstreamUrl, {
+  return proxyJsonRequest("POST /api/pokemon/batch", upstreamUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -98,14 +120,14 @@ pokemon.get("/pokemon/:name", async (c) => {
   const upstreamUrl = new URL(
     `${getPokeProxyBaseUrl()}/pokemon/${encodeURIComponent(c.req.param("name"))}`
   );
-  return proxyJsonRequest(upstreamUrl);
+  return proxyJsonRequest("GET /api/pokemon/:name", upstreamUrl);
 });
 
 pokemon.get("/type/:name", async (c) => {
   const upstreamUrl = new URL(
     `${getPokeProxyBaseUrl()}/type/${encodeURIComponent(c.req.param("name"))}`
   );
-  return proxyJsonRequest(upstreamUrl);
+  return proxyJsonRequest("GET /api/type/:name", upstreamUrl);
 });
 
 export default pokemon;

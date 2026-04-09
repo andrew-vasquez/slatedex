@@ -27,6 +27,11 @@ func Init() {
 func Get(key string) (string, error) {
 	return client.Get(ctx, key).Result()
 }
+
+func IsMiss(err error) bool {
+	return err == redis.Nil
+}
+
 func Set(key string, value string) error {
 	return client.Set(ctx, key, value, 24*time.Hour).Err()
 
@@ -34,4 +39,8 @@ func Set(key string, value string) error {
 
 func SetWithTTL(key string, value string, ttl time.Duration) error {
 	return client.Set(ctx, key, value, ttl).Err()
+}
+
+func Ping() error {
+	return client.Ping(ctx).Err()
 }

@@ -51,6 +51,7 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	}))
+	http.HandleFunc("/readyz", corsMiddleware(handlers.Readiness))
 	http.HandleFunc("/pokemon", corsMiddleware(handlers.GetPokemonList))
 
 	http.HandleFunc("/pokemon/{name}", corsMiddleware(handlers.GetPokemon))

@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -17,11 +18,18 @@ func GetPokemonList() ([]byte, error) {
 	if err == nil {
 		return []byte(cached), nil
 	}
+	if !cache.IsMiss(err) {
+		log.Printf("cache read failed for %s: %v", cacheKey, err)
+	}
 	resp, err := http.Get("https://pokeapi.co/api/v2/pokemon?limit=1302&offset=0")
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("pokeapi returned status %d", resp.StatusCode)
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -29,7 +37,7 @@ func GetPokemonList() ([]byte, error) {
 	}
 	err = cache.SetWithTTL(cacheKey, string(body), 7*24*time.Hour)
 	if err != nil {
-		return nil, err
+		log.Printf("cache write failed for %s: %v", cacheKey, err)
 	}
 
 	return body, nil
@@ -42,6 +50,9 @@ func GetPokemon(name string) ([]byte, error) {
 	cached, err := cache.Get(cacheKey)
 	if err == nil {
 		return []byte(cached), nil
+	}
+	if !cache.IsMiss(err) {
+		log.Printf("cache read failed for %s: %v", cacheKey, err)
 	}
 	resp, err := http.Get(fmt.Sprintf("https://pokeapi.co/api/v2/pokemon/%s", name))
 	if err != nil {
@@ -61,7 +72,7 @@ func GetPokemon(name string) ([]byte, error) {
 	}
 	err = cache.SetWithTTL(cacheKey, string(body), 24*time.Hour)
 	if err != nil {
-		return nil, err
+		log.Printf("cache write failed for %s: %v", cacheKey, err)
 	}
 	return body, nil
 }
