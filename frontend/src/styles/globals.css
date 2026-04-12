@@ -4922,13 +4922,14 @@ html[data-theme="light"] .exclusive-badge::before {
     flex-direction: column;
     border-top: 1px solid var(--border);
     border-radius: 22px 22px 0 0;
-    background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+    background: var(--surface-1);
     box-shadow: 0 -18px 42px rgba(2, 6, 20, 0.3);
     backdrop-filter: blur(18px) saturate(1.04);
     -webkit-backdrop-filter: blur(18px) saturate(1.04);
     transform: translateY(calc(100% - 5rem - env(safe-area-inset-bottom, 0px)));
     transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1);
     overflow: hidden;
+    isolation: isolate;
     will-change: transform;
   }
 
@@ -5041,6 +5042,8 @@ html[data-theme="light"] .exclusive-badge::before {
 
   .weakness-mobile-sheet-content {
     overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--surface-1);
     padding: 0.95rem 0.95rem calc(1rem + env(safe-area-inset-bottom, 0px));
   }
 }
