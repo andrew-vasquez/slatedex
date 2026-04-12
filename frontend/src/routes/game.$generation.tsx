@@ -1,6 +1,5 @@
 import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import TeamBuilder from "~/features/game/TeamBuilder";
-import GameLoadingSkeleton from "~/features/game/GameLoadingSkeleton";
 import { getGenerationMeta, parseGenerationSlug } from "@/lib/pokemon";
 import { fetchGamePokemonPools } from "~/lib/pokemon-data-api";
 
@@ -53,7 +52,6 @@ export const Route = createFileRoute("/game/$generation")({
       ],
     };
   },
-  pendingComponent: GenerationRoutePending,
   component: GenerationPage,
 });
 
@@ -62,17 +60,11 @@ function GenerationPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--surface-0)" }}>
-      <TeamBuilder generation={generation} games={gen.games} initialPoolsByGame={initialPoolsByGame} />
-    </div>
-  );
-}
-
-function GenerationRoutePending() {
-  return (
-    <div className="min-h-screen" style={{ background: "var(--surface-0)" }}>
-      <GameLoadingSkeleton
-        title="Loading this generation."
-        subtitle="Loading the next builder, regional dex data, and generation-specific game roster."
+      <TeamBuilder
+        key={`generation-${generation}`}
+        generation={generation}
+        games={gen.games}
+        initialPoolsByGame={initialPoolsByGame}
       />
     </div>
   );
