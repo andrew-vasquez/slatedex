@@ -26,6 +26,7 @@ if (globalWithServer[SHUTDOWN_HANDLER_SYMBOL]) {
 
 const server = Bun.serve({
   port: cfg.port,
+  idleTimeout: 30,
   fetch: app.fetch,
 });
 globalWithServer[SERVER_SYMBOL] = server;

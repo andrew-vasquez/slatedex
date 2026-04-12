@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import SiteFooter from "@/components/ui/SiteFooter";
 import RoutePageSkeleton from "~/components/ui/RoutePageSkeleton";
 import WeaknessHeader from "~/features/weaknesses/WeaknessHeader";
 import WeaknessLookupClient from "~/features/weaknesses/WeaknessLookupClient";
@@ -46,6 +47,8 @@ function WeaknessesPage() {
       <main className="relative z-[1] mx-auto max-w-screen-xl px-4 py-8 sm:px-6 sm:py-10">
         <WeaknessLookupClient pokemon={pokemon} />
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

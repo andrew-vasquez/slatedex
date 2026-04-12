@@ -6,12 +6,14 @@ import {
   Outlet,
   Scripts,
   createRootRouteWithContext,
+  useRouterState,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import type { ReactNode } from "react";
 import CookieConsentManager from "@/components/privacy/CookieConsentManager";
 import PrivacyScriptLoader from "@/components/privacy/PrivacyScriptLoader";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { FeedbackProvider } from "@/components/feedback/FeedbackWidget";
 import NavigationProgress from "@/components/ui/NavigationProgress";
 import PageTransitionWrapper from "@/components/ui/PageTransitionWrapper";
 import { METADATA_BASE, SITE_URL } from "@/lib/site";
@@ -72,7 +74,6 @@ export const Route = createRootRouteWithContext<{
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "canonical", href: SITE_URL },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
       {
@@ -99,9 +100,11 @@ function RootComponent() {
     <RootDocument>
       <NavigationProgress />
       <AuthProvider>
-        <PageTransitionWrapper>
-          <Outlet />
-        </PageTransitionWrapper>
+        <FeedbackProvider>
+          <PageTransitionWrapper>
+            <Outlet />
+          </PageTransitionWrapper>
+        </FeedbackProvider>
       </AuthProvider>
       <PrivacyScriptLoader />
       <CookieConsentManager />
@@ -110,6 +113,10 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const search = useRouterState({ select: (state) => state.location.searchStr });
+  const currentUrl = `${SITE_URL}${pathname}${search ?? ""}`;
+
   return (
     <html
       lang="en"
@@ -127,8 +134,9 @@ function RootDocument({ children }: { children: ReactNode }) {
         <HeadContent />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: webAppJsonLd }} />
+        <link rel="canonical" href={currentUrl} />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content={SITE_URL} />
+        <meta property="og:url" content={currentUrl} />
         <meta property="og:site_name" content="Slatedex" />
         <meta property="og:title" content="Slatedex - Pokemon Team Builder" />
         <meta property="og:description" content="Build your ideal Pokemon team with Slatedex." />

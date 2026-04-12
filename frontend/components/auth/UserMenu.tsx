@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { FiGrid, FiLogIn, FiLogOut, FiMoon, FiSettings, FiShield, FiSun, FiUser } from "react-icons/fi";
+import { FiGrid, FiLogIn, FiLogOut, FiMessageSquare, FiMoon, FiSettings, FiShield, FiSun, FiUser } from "react-icons/fi";
 import AppImage from "~/components/ui/AppImage";
 import AppLink from "~/components/ui/AppLink";
 import { signOut } from "@/lib/auth-client";
@@ -12,6 +12,7 @@ import {
   type AvatarFrameKey,
 } from "@/lib/profile";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { useFeedback } from "@/components/feedback/FeedbackWidget";
 
 type Theme = "dark" | "light";
 
@@ -147,6 +148,7 @@ export function ThemeToggleButton({ className = "" }: ThemeToggleButtonProps) {
 
 const UserMenu = ({ className = "", compactOnMobile = false, betweenThemeAndAuth = null }: UserMenuProps) => {
   const { user, isAuthenticated, isLoading, openAuthDialog } = useAuth();
+  const { openFeedback } = useFeedback();
   const [isOpen, setIsOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarFrame, setAvatarFrame] = useState<AvatarFrameKey>("classic");
@@ -360,6 +362,19 @@ const UserMenu = ({ className = "", compactOnMobile = false, betweenThemeAndAuth
                   <FiSettings size={14} aria-hidden="true" />
                   Settings
                 </AppLink>
+
+                <button
+                  type="button"
+                  className="user-menu-item"
+                  role="menuitem"
+                  onClick={() => {
+                    setIsOpen(false);
+                    openFeedback();
+                  }}
+                >
+                  <FiMessageSquare size={14} aria-hidden="true" />
+                  Feedback
+                </button>
 
                 {canAccessAdmin && (
                   <AppLink

@@ -82,6 +82,7 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [gridColumns, setGridColumns] = useState(1);
   const [windowRange, setWindowRange] = useState({ startRow: 0, endRow: 10 });
+  const [isGridWindowPending, setIsGridWindowPending] = useState(true);
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const gridRef = useRef<HTMLDivElement | null>(null);
 
@@ -264,12 +265,17 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
       const node = gridRef.current;
       if (!node) return;
 
-      const rect = node.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
       const overscan = rowHeight * GRID_OVERSCAN_ROWS;
       const totalHeight = totalRows * rowHeight;
-      const visibleTop = Math.max(0, -rect.top - overscan);
-      const visibleBottom = Math.max(0, Math.min(totalHeight, viewportHeight - rect.top + overscan));
+      const usesInternalScroll = node.scrollHeight > node.clientHeight + 1;
+      const rect = node.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const visibleTop = usesInternalScroll
+        ? Math.max(0, node.scrollTop - overscan)
+        : Math.max(0, -rect.top - overscan);
+      const visibleBottom = usesInternalScroll
+        ? Math.max(0, Math.min(totalHeight, node.scrollTop + node.clientHeight + overscan))
+        : Math.max(0, Math.min(totalHeight, viewportHeight - rect.top + overscan));
       const nextStartRow = Math.max(0, Math.floor(visibleTop / rowHeight));
       const nextEndRow = Math.max(nextStartRow + 1, Math.min(totalRows, Math.ceil(visibleBottom / rowHeight)));
 
@@ -278,6 +284,7 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
           ? current
           : { startRow: nextStartRow, endRow: nextEndRow }
       );
+      setIsGridWindowPending(false);
     };
 
     let ticking = false;
@@ -291,20 +298,24 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
     };
 
     updateWindowRange();
+    const node = gridRef.current;
+    node?.addEventListener("scroll", requestUpdate, { passive: true });
     window.addEventListener("scroll", requestUpdate, { passive: true });
     window.addEventListener("resize", requestUpdate, { passive: true });
     return () => {
+      node?.removeEventListener("scroll", requestUpdate);
       window.removeEventListener("scroll", requestUpdate);
       window.removeEventListener("resize", requestUpdate);
     };
   }, [filteredPokemon.length, gridColumns, rowHeight, totalRows]);
 
   useEffect(() => {
+    setIsGridWindowPending(true);
     setWindowRange((current) => {
       const nextEndRow = Math.min(totalRows, Math.max(1, current.endRow));
       return { startRow: 0, endRow: nextEndRow || 1 };
     });
-  }, [deferredSearchTerm, generationFilter, totalRows]);
+  }, [compactCards, deferredSearchTerm, generationFilter, totalRows]);
 
   const startIndex = windowRange.startRow * Math.max(1, gridColumns);
   const endIndex = Math.min(filteredPokemon.length, windowRange.endRow * Math.max(1, gridColumns));
@@ -312,6 +323,7 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
   const topSpacerHeight = windowRange.startRow * rowHeight;
   const bottomSpacerHeight = Math.max(0, (totalRows - windowRange.endRow) * rowHeight);
   const eagerSpriteCount = Math.max(gridColumns * 2, 12);
+  const skeletonTileCount = Math.max(gridColumns * 3, 12);
 
   const detailContent = selectedPokemon && matchup ? (
     <>
@@ -498,52 +510,64 @@ export default function WeaknessLookupClient({ pokemon }: WeaknessLookupClientPr
                 role="list"
                 aria-label="Pokemon sprite browser"
               >
-                {topSpacerHeight > 0 ? (
-                  <div
-                    className="weakness-sprite-spacer"
-                    style={{ height: `${topSpacerHeight}px` }}
-                    aria-hidden="true"
-                  />
-                ) : null}
-                {visiblePokemon.map((entry, index) => {
-                  const isActive = entry.id === selectedPokemon?.id;
-                  const absoluteIndex = startIndex + index;
-                  return (
-                    <button
-                      key={entry.id}
-                      type="button"
-                      className="weakness-sprite-button"
-                      data-compact={compactCards}
-                      data-active={isActive}
-                      onClick={() => {
-                        setSelectedPokemonId(entry.id);
-                        if (isMobileViewport) {
-                          setIsMobileSheetOpen(true);
-                        }
-                      }}
-                      aria-pressed={isActive}
-                      aria-label={`Inspect ${formatPokemonName(entry.name)} weaknesses`}
-                    >
-                      <div className="weakness-sprite-frame">
-                        <PokemonSprite
-                          src={pokemonSpriteSrc(entry.sprite, entry.id)}
-                          alt=""
-                          size={compactCards ? 56 : 72}
-                          eager={absoluteIndex < eagerSpriteCount}
-                        />
-                      </div>
-                      <span className="weakness-sprite-name">{formatPokemonName(entry.name)}</span>
-                      <span className="weakness-sprite-meta">#{entry.id} · Gen {entry.generation}</span>
-                    </button>
-                  );
-                })}
-                {bottomSpacerHeight > 0 ? (
-                  <div
-                    className="weakness-sprite-spacer"
-                    style={{ height: `${bottomSpacerHeight}px` }}
-                    aria-hidden="true"
-                  />
-                ) : null}
+                {isGridWindowPending ? (
+                  Array.from({ length: skeletonTileCount }, (_, index) => (
+                    <div key={`weakness-skeleton-${index}`} className="weakness-skeleton-tile" aria-hidden="true">
+                      <div className="weakness-skeleton-sprite" />
+                      <div className="weakness-skeleton-line weakness-skeleton-line--tile" />
+                      <div className="weakness-skeleton-line weakness-skeleton-line--tiny" />
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    {topSpacerHeight > 0 ? (
+                      <div
+                        className="weakness-sprite-spacer"
+                        style={{ height: `${topSpacerHeight}px` }}
+                        aria-hidden="true"
+                      />
+                    ) : null}
+                    {visiblePokemon.map((entry, index) => {
+                      const isActive = entry.id === selectedPokemon?.id;
+                      const absoluteIndex = startIndex + index;
+                      return (
+                        <button
+                          key={entry.id}
+                          type="button"
+                          className="weakness-sprite-button"
+                          data-compact={compactCards}
+                          data-active={isActive}
+                          onClick={() => {
+                            setSelectedPokemonId(entry.id);
+                            if (isMobileViewport) {
+                              setIsMobileSheetOpen(true);
+                            }
+                          }}
+                          aria-pressed={isActive}
+                          aria-label={`Inspect ${formatPokemonName(entry.name)} weaknesses`}
+                        >
+                          <div className="weakness-sprite-frame">
+                            <PokemonSprite
+                              src={pokemonSpriteSrc(entry.sprite, entry.id)}
+                              alt=""
+                              size={compactCards ? 56 : 72}
+                              eager={absoluteIndex < eagerSpriteCount}
+                            />
+                          </div>
+                          <span className="weakness-sprite-name">{formatPokemonName(entry.name)}</span>
+                          <span className="weakness-sprite-meta">#{entry.id} · Gen {entry.generation}</span>
+                        </button>
+                      );
+                    })}
+                    {bottomSpacerHeight > 0 ? (
+                      <div
+                        className="weakness-sprite-spacer"
+                        style={{ height: `${bottomSpacerHeight}px` }}
+                        aria-hidden="true"
+                      />
+                    ) : null}
+                  </>
+                )}
               </div>
             </>
           ) : (

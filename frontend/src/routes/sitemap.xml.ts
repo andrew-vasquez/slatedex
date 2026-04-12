@@ -19,6 +19,9 @@ export const Route = createFileRoute("/sitemap/xml")({
         const urls = [
           SITE_URL,
           `${SITE_URL}/play`,
+          `${SITE_URL}/weaknesses`,
+          `${SITE_URL}/type-chart`,
+          `${SITE_URL}/updates`,
           `${SITE_URL}/privacy`,
           `${SITE_URL}/terms`,
           ...GENERATION_META.map((gen) => `${SITE_URL}/game/${getGenerationSlug(gen.generation)}`),

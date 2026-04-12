@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useId, useRef, useState } from "react";
-import { FiArrowRight } from "react-icons/fi";
+import { FiArrowRight, FiMessageSquare } from "react-icons/fi";
+import { useFeedback } from "@/components/feedback/FeedbackWidget";
 
 function ToolsGridIcon() {
   return (
@@ -20,6 +21,7 @@ function ToolsGridIcon() {
 }
 
 export default function DesktopToolsMenu() {
+  const { openFeedback } = useFeedback();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -94,6 +96,22 @@ export default function DesktopToolsMenu() {
             </span>
             <FiArrowRight size={15} aria-hidden="true" />
           </Link>
+
+          <button
+            type="button"
+            className="desktop-tools-menu-item"
+            role="menuitem"
+            onClick={() => {
+              setIsOpen(false);
+              openFeedback();
+            }}
+          >
+            <span>
+              <strong>Feedback</strong>
+              <small>Report bugs, request features, or share ideas.</small>
+            </span>
+            <FiMessageSquare size={15} aria-hidden="true" />
+          </button>
         </div>
       ) : null}
     </div>

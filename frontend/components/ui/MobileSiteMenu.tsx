@@ -1,7 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FiArrowRight, FiLogIn, FiLogOut, FiMenu, FiSettings, FiUser, FiX } from "react-icons/fi";
+import { FiArrowRight, FiLogIn, FiLogOut, FiMenu, FiMessageSquare, FiSettings, FiUser, FiX } from "react-icons/fi";
 import { ThemeToggleButton } from "@/components/auth/UserMenu";
+import { useFeedback } from "@/components/feedback/FeedbackWidget";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { signOut } from "@/lib/auth-client";
 
@@ -18,6 +19,7 @@ interface MobileSiteMenuProps {
 export default function MobileSiteMenu({ items }: MobileSiteMenuProps) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { user, isAuthenticated, isLoading, openAuthDialog } = useAuth();
+  const { openFeedback } = useFeedback();
   const [isOpen, setIsOpen] = useState(false);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const profileHref = user?.username ? `/u/${user.username}` : "/settings/profile";
@@ -157,6 +159,21 @@ export default function MobileSiteMenu({ items }: MobileSiteMenuProps) {
             </Link>
           )
         )}
+
+        <button
+          type="button"
+          className="site-mobile-nav-link site-mobile-nav-button"
+          onClick={() => {
+            setIsOpen(false);
+            openFeedback();
+          }}
+        >
+          <span>
+            <strong>Feedback</strong>
+            <small>Report bugs, request features, or share ideas</small>
+          </span>
+          <FiMessageSquare size={16} aria-hidden="true" />
+        </button>
 
         {isLoading ? null : isAuthenticated ? (
           <>
