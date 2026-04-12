@@ -1,4 +1,4 @@
-const DEFAULT_SITE_URL = "https://slatedex.com";
+const DEFAULT_SITE_URL = "https://www.slatedex.app";
 
 function normalizeUrl(value: string | undefined): string {
   if (!value) return DEFAULT_SITE_URL;

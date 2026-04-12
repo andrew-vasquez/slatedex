@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WeaknessesRouteImport } from './routes/weaknesses'
+import { Route as UpdatesRouteImport } from './routes/updates'
 import { Route as TypeChartRouteImport } from './routes/type-chart'
+import { Route as TunnelRouteImport } from './routes/tunnel'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -19,6 +21,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as UpdatesIndexRouteImport } from './routes/updates.index'
+import { Route as UpdatesSlugRouteImport } from './routes/updates.$slug'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as SitemapXmlRouteImport } from './routes/sitemap.xml'
 import { Route as RobotsTxtRouteImport } from './routes/robots.txt'
@@ -36,9 +40,19 @@ const WeaknessesRoute = WeaknessesRouteImport.update({
   path: '/weaknesses',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UpdatesRoute = UpdatesRouteImport.update({
+  id: '/updates',
+  path: '/updates',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TypeChartRoute = TypeChartRouteImport.update({
   id: '/type-chart',
   path: '/type-chart',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TunnelRoute = TunnelRouteImport.update({
+  id: '/tunnel',
+  path: '/tunnel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -79,6 +93,16 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const UpdatesIndexRoute = UpdatesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => UpdatesRoute,
+} as any)
+const UpdatesSlugRoute = UpdatesSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => UpdatesRoute,
 } as any)
 const UUsernameRoute = UUsernameRouteImport.update({
   id: '/u/$username',
@@ -147,7 +171,9 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/tunnel': typeof TunnelRoute
   '/type-chart': typeof TypeChartRoute
+  '/updates': typeof UpdatesRouteWithChildren
   '/weaknesses': typeof WeaknessesRoute
   '/settings': typeof AuthenticatedSettingsRouteWithChildren
   '/teams': typeof AuthenticatedTeamsRoute
@@ -157,6 +183,8 @@ export interface FileRoutesByFullPath {
   '/robots/txt': typeof RobotsTxtRoute
   '/sitemap/xml': typeof SitemapXmlRoute
   '/u/$username': typeof UUsernameRoute
+  '/updates/$slug': typeof UpdatesSlugRoute
+  '/updates/': typeof UpdatesIndexRoute
   '/settings/admin': typeof AuthenticatedSettingsAdminRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
@@ -169,6 +197,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/tunnel': typeof TunnelRoute
   '/type-chart': typeof TypeChartRoute
   '/weaknesses': typeof WeaknessesRoute
   '/teams': typeof AuthenticatedTeamsRoute
@@ -178,6 +207,8 @@ export interface FileRoutesByTo {
   '/robots/txt': typeof RobotsTxtRoute
   '/sitemap/xml': typeof SitemapXmlRoute
   '/u/$username': typeof UUsernameRoute
+  '/updates/$slug': typeof UpdatesSlugRoute
+  '/updates': typeof UpdatesIndexRoute
   '/settings/admin': typeof AuthenticatedSettingsAdminRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
@@ -192,7 +223,9 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/tunnel': typeof TunnelRoute
   '/type-chart': typeof TypeChartRoute
+  '/updates': typeof UpdatesRouteWithChildren
   '/weaknesses': typeof WeaknessesRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteWithChildren
   '/_authenticated/teams': typeof AuthenticatedTeamsRoute
@@ -202,6 +235,8 @@ export interface FileRoutesById {
   '/robots/txt': typeof RobotsTxtRoute
   '/sitemap/xml': typeof SitemapXmlRoute
   '/u/$username': typeof UUsernameRoute
+  '/updates/$slug': typeof UpdatesSlugRoute
+  '/updates/': typeof UpdatesIndexRoute
   '/_authenticated/settings/admin': typeof AuthenticatedSettingsAdminRoute
   '/_authenticated/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
@@ -216,7 +251,9 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/signup'
     | '/terms'
+    | '/tunnel'
     | '/type-chart'
+    | '/updates'
     | '/weaknesses'
     | '/settings'
     | '/teams'
@@ -226,6 +263,8 @@ export interface FileRouteTypes {
     | '/robots/txt'
     | '/sitemap/xml'
     | '/u/$username'
+    | '/updates/$slug'
+    | '/updates/'
     | '/settings/admin'
     | '/settings/profile'
     | '/settings/'
@@ -238,6 +277,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/signup'
     | '/terms'
+    | '/tunnel'
     | '/type-chart'
     | '/weaknesses'
     | '/teams'
@@ -247,6 +287,8 @@ export interface FileRouteTypes {
     | '/robots/txt'
     | '/sitemap/xml'
     | '/u/$username'
+    | '/updates/$slug'
+    | '/updates'
     | '/settings/admin'
     | '/settings/profile'
     | '/settings'
@@ -260,7 +302,9 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/signup'
     | '/terms'
+    | '/tunnel'
     | '/type-chart'
+    | '/updates'
     | '/weaknesses'
     | '/_authenticated/settings'
     | '/_authenticated/teams'
@@ -270,6 +314,8 @@ export interface FileRouteTypes {
     | '/robots/txt'
     | '/sitemap/xml'
     | '/u/$username'
+    | '/updates/$slug'
+    | '/updates/'
     | '/_authenticated/settings/admin'
     | '/_authenticated/settings/profile'
     | '/_authenticated/settings/'
@@ -284,7 +330,9 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   SignupRoute: typeof SignupRoute
   TermsRoute: typeof TermsRoute
+  TunnelRoute: typeof TunnelRoute
   TypeChartRoute: typeof TypeChartRoute
+  UpdatesRoute: typeof UpdatesRouteWithChildren
   WeaknessesRoute: typeof WeaknessesRoute
   ApiPokemonCaptureGuideRoute: typeof ApiPokemonCaptureGuideRoute
   BackendProxySplatRoute: typeof BackendProxySplatRoute
@@ -303,11 +351,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WeaknessesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/updates': {
+      id: '/updates'
+      path: '/updates'
+      fullPath: '/updates'
+      preLoaderRoute: typeof UpdatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/type-chart': {
       id: '/type-chart'
       path: '/type-chart'
       fullPath: '/type-chart'
       preLoaderRoute: typeof TypeChartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tunnel': {
+      id: '/tunnel'
+      path: '/tunnel'
+      fullPath: '/tunnel'
+      preLoaderRoute: typeof TunnelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -365,6 +427,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/updates/': {
+      id: '/updates/'
+      path: '/'
+      fullPath: '/updates/'
+      preLoaderRoute: typeof UpdatesIndexRouteImport
+      parentRoute: typeof UpdatesRoute
+    }
+    '/updates/$slug': {
+      id: '/updates/$slug'
+      path: '/$slug'
+      fullPath: '/updates/$slug'
+      preLoaderRoute: typeof UpdatesSlugRouteImport
+      parentRoute: typeof UpdatesRoute
     }
     '/u/$username': {
       id: '/u/$username'
@@ -477,6 +553,19 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
   AuthenticatedRouteChildren,
 )
 
+interface UpdatesRouteChildren {
+  UpdatesSlugRoute: typeof UpdatesSlugRoute
+  UpdatesIndexRoute: typeof UpdatesIndexRoute
+}
+
+const UpdatesRouteChildren: UpdatesRouteChildren = {
+  UpdatesSlugRoute: UpdatesSlugRoute,
+  UpdatesIndexRoute: UpdatesIndexRoute,
+}
+
+const UpdatesRouteWithChildren =
+  UpdatesRoute._addFileChildren(UpdatesRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
@@ -486,7 +575,9 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   SignupRoute: SignupRoute,
   TermsRoute: TermsRoute,
+  TunnelRoute: TunnelRoute,
   TypeChartRoute: TypeChartRoute,
+  UpdatesRoute: UpdatesRouteWithChildren,
   WeaknessesRoute: WeaknessesRoute,
   ApiPokemonCaptureGuideRoute: ApiPokemonCaptureGuideRoute,
   BackendProxySplatRoute: BackendProxySplatRoute,
@@ -500,10 +591,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

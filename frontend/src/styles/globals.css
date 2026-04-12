@@ -3792,6 +3792,8 @@ html[data-theme="light"] .landing-feature-card:hover {
 
 .weakness-browser-panel {
   min-height: 34rem;
+  display: flex;
+  flex-direction: column;
   padding: 0;
   overflow: hidden;
 }
@@ -4811,6 +4813,17 @@ html[data-theme="light"] .exclusive-badge::before {
 
   .weakness-tool-layout {
     grid-template-columns: minmax(0, 1fr) 25rem;
+  }
+
+  .weakness-browser-panel {
+    max-height: calc(100dvh - 6.1rem);
+  }
+
+  .weakness-sprite-grid {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    align-content: start;
   }
 
   .weakness-detail-column {

@@ -1,5 +1,6 @@
 import AppLink from "~/components/ui/AppLink";
 import Breadcrumb from "@/components/ui/Breadcrumb";
+import SiteFooter from "@/components/ui/SiteFooter";
 
 const LAST_UPDATED = "February 18, 2026";
 
@@ -155,17 +156,10 @@ export default function TermsPage() {
             </section>
           </div>
 
-          {/* Footer nav */}
-          <div className="mt-8 flex flex-wrap gap-3 border-t pt-6" style={{ borderColor: "var(--border)" }}>
-            <AppLink href="/" className="btn-secondary text-[0.72rem]">
-              Back to Team Builder
-            </AppLink>
-            <AppLink href="/privacy" className="btn-secondary text-[0.72rem]">
-              Privacy Policy
-            </AppLink>
-          </div>
         </div>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

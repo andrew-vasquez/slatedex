@@ -11,6 +11,7 @@ import { FALLBACK_POKEMON_SPRITE } from "@/lib/image";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { fetchTeamCountsByGame } from "@/lib/api";
 import AppHeader from "@/components/ui/AppHeader";
+import SiteFooter from "@/components/ui/SiteFooter";
 
 const SPRITE_IDS: Record<string, number> = {
   bulbasaur: 1,
@@ -701,6 +702,10 @@ const GameSelector = () => {
           )}
         </div>
       </main>
+
+      <div className="mt-10 sm:mt-14">
+        <SiteFooter />
+      </div>
     </div>
   );
 };

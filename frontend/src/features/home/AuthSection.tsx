@@ -13,6 +13,7 @@ export function LandingNav() {
           { href: "/play", label: "Launch Builder", description: "Choose a game and build a team" },
           { href: "/weaknesses", label: "Weakness Tool", description: "Check Pokemon weaknesses fast" },
           { href: "/type-chart", label: "Type Chart", description: "See type strengths and weaknesses" },
+          { href: "/updates", label: "Updates", description: "Follow devlogs and product updates" },
         ]}
       />
       <div className="hidden min-[820px]:flex min-[820px]:items-center min-[820px]:gap-3">

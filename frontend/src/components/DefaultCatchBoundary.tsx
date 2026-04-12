@@ -1,7 +1,13 @@
+import * as Sentry from "@sentry/tanstackstart-react";
 import type { ErrorComponentProps } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 export function DefaultCatchBoundary({ error, reset }: ErrorComponentProps) {
   const digest = typeof error === "object" && error && "digest" in error ? String(error.digest) : null;
+
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
 
   return (
     <div

@@ -2,6 +2,7 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import RoutePageSkeleton from "~/components/ui/RoutePageSkeleton";
 import FavoritePokemonDisplay from "~/features/public-profile/FavoritePokemonDisplay";
 import AppHeader from "@/components/ui/AppHeader";
+import SiteFooter from "@/components/ui/SiteFooter";
 import { normalizeAvatarUrl } from "@/lib/avatar";
 import { safeImageSrc } from "@/lib/image";
 import { getVersionLabel } from "@/lib/pokemon";
@@ -375,6 +376,8 @@ function PublicProfilePage() {
           </div>
         </section>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

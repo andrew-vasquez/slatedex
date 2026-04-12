@@ -1,6 +1,7 @@
 import { FiShield, FiZap, FiGrid, FiStar, FiTarget, FiActivity } from "react-icons/fi";
 import AppLink from "~/components/ui/AppLink";
-import { LandingNav, HeroAuthButtons, AuthCTASection, FooterAuthLinks } from "~/features/home/AuthSection";
+import SiteFooter from "@/components/ui/SiteFooter";
+import { LandingNav, HeroAuthButtons, AuthCTASection } from "~/features/home/AuthSection";
 import HeroTypewriter from "~/features/home/HeroTypewriter";
 import LiveMiniDemo from "~/features/home/LiveMiniDemo";
 import SlatedexBrand from "@/components/ui/SlatedexBrand";
@@ -223,34 +224,7 @@ export default function LandingPage() {
         <AuthCTASection />
       </main>
 
-      {/* ── Footer ────────────────────────────────────────── */}
-      <footer className="relative z-[1] border-t py-8" style={{ borderColor: "var(--border)" }}>
-        <div className="mx-auto max-w-screen-xl px-4 sm:px-6">
-          <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-between">
-            <AppLink
-              href="/"
-              className="font-display text-lg leading-none"
-              style={{ letterSpacing: "-0.02em", textDecoration: "none" }}
-              aria-label="Slatedex home"
-            >
-              <span style={{ color: "var(--text-primary)" }}>Slate</span>
-              <span style={{ color: "var(--accent)" }}>dex</span>
-            </AppLink>
-
-            <nav className="flex flex-wrap items-center justify-center gap-4 sm:gap-6" aria-label="Footer navigation">
-              <AppLink href="/weaknesses" className="landing-footer-link text-[0.72rem] font-medium">Weaknesses</AppLink>
-              <AppLink href="/play" className="landing-footer-link text-[0.72rem] font-medium">Builder</AppLink>
-              <AppLink href="/terms" className="landing-footer-link text-[0.72rem] font-medium">Terms</AppLink>
-              <AppLink href="/privacy" className="landing-footer-link text-[0.72rem] font-medium">Privacy</AppLink>
-              <FooterAuthLinks />
-            </nav>
-
-            <p className="text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
-              © {new Date().getFullYear()} Slatedex
-            </p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
