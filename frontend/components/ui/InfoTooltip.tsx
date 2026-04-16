@@ -28,12 +28,25 @@ export default function InfoTooltip({
   const [showPopover, setShowPopover] = useState(false);
   const [popoverRect, setPopoverRect] = useState<{ top: number; left: number } | null>(null);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLSpanElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(hover: none) and (pointer: coarse)");
     setIsTouchDevice(mq.matches);
+  }, []);
+
+  useEffect(() => {
+    const nextContainer = document.createElement("div");
+    nextContainer.dataset.portal = "info-tooltip";
+    document.body.appendChild(nextContainer);
+    setPortalContainer(nextContainer);
+
+    return () => {
+      setPortalContainer(null);
+      nextContainer.remove();
+    };
   }, []);
 
   const openPopover = useCallback(() => {
@@ -90,7 +103,7 @@ export default function InfoTooltip({
 
   const popover =
     showPopover &&
-    typeof document !== "undefined" &&
+    portalContainer &&
     createPortal(
       <>
         {isTouchDevice && (
@@ -131,7 +144,7 @@ export default function InfoTooltip({
           </p>
         </div>
       </>,
-      document.body
+      portalContainer
     );
 
   const handleFocus = useCallback(() => {
