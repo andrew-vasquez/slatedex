@@ -7,9 +7,7 @@ function normalizeApiBaseUrl(rawUrl: string | undefined): string {
 
   if (!trimmed) {
     if (process.env.NODE_ENV === "production") {
-      console.warn(
-        "NEXT_PUBLIC_API_URL is not set in production. Backend requests will fall back to localhost."
-      );
+      throw new Error("NEXT_PUBLIC_API_URL is required in production.");
     }
     return LOCAL_API_FALLBACK;
   }
