@@ -16,7 +16,7 @@ const DEMO_RESPONSES: Record<DemoMode, string> = {
   threats:
     "Primary pressure: Ice coverage and strong Rock priority. Keep Magnezone healthy, then pivot Rotom-Wash into Talonflame to keep momentum.",
   swaps:
-    "Two legal swaps: 1) Replace Talonflame with bulky Dragonite for better Ice tolerance. 2) Replace Breloom with Scizor to improve defensive pivots.",
+    "Two legal swaps: 1) Replace Dragonite with Talonflame for better Ice tolerance. 2) Replace Breloom with Scizor to improve defensive pivots.",
   analyze:
     "Team grade: A-. Speed curve is strong, hazard posture is stable, and defensive overlap is low. Biggest fix: add one cleaner answer to special Ice attackers.",
 };
