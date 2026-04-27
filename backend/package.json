@@ -1,6 +1,10 @@
 {
   "name": "slatedex-backend",
   "version": "0.6.0",
+  "packageManager": "bun@1.3.6",
+  "engines": {
+    "bun": "1.3.6"
+  },
   "scripts": {
     "dev": "bun run prisma:generate && bun run src/index.ts",
     "dev:hot": "bun run prisma:generate && bun run --hot src/index.ts",
