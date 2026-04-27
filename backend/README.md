@@ -30,7 +30,8 @@ Railway is a good fit for this backend as it exists today:
 - It binds to `PORT`, which Railway provides automatically.
 - Prisma uses direct Postgres connections cleanly in this runtime.
 - `GET /healthz` is available for health checks.
-- Build and start are driven by the Bun package scripts, which Railway can run under Railpack.
+- Build and start are driven by the Bun package scripts.
+- `Dockerfile` pins Bun to `1.3.6` so Railway does not fall back to an old Bun release that cannot read the current `bun.lock` format.
 
 ### Recommended Railway setup
 
@@ -45,7 +46,7 @@ Railway is a good fit for this backend as it exists today:
    Start command: `bun run start`
    Pre-deploy command (recommended): `bun run migrate:deploy`
 
-   Builder: Railpack
+   Builder: Dockerfile (recommended) or Railpack with Bun `1.3.6`
 
 4. Set the Railway health check path to `/healthz`.
 
