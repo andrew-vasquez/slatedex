@@ -6,7 +6,7 @@ interface PromptContext {
   gameId: number;
   selectedVersionId: string | null;
   filters: {
-    dexMode: "regional" | "national";
+    dexMode: "regional" | "national" | "all";
     versionFilterEnabled: boolean;
     regionalDexName: string | null;
     typeFilter: string[];
@@ -116,6 +116,12 @@ function buildConstraintInstruction(context: PromptContext): string {
   if (context.filters.dexMode === "regional") {
     rules.push(
       "User is in Regional Dex mode, so recommendations must stay in the selected game's regional dex scope."
+    );
+  }
+
+  if (context.filters.dexMode === "all") {
+    rules.push(
+      "User is in All Forms sandbox mode, so specific forms such as regional forms, Mega Evolutions, Primal forms, Gigantamax forms, and alternate forms may be recommended only when their exact names are present in context."
     );
   }
 

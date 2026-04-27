@@ -1,6 +1,13 @@
 import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import TeamBuilder from "~/features/game/TeamBuilder";
-import { getGenerationMeta, parseGenerationSlug } from "@/lib/pokemon";
+import {
+  NATIONAL_DEX_GAME,
+  NATIONAL_DEX_GAME_ID,
+  NATIONAL_DEX_GENERATION,
+  getGenerationMeta,
+  isNationalDexSlug,
+  parseGenerationSlug,
+} from "@/lib/pokemon";
 import { fetchGamePokemonPools } from "~/lib/pokemon-data-api";
 
 export const Route = createFileRoute("/game/$generation")({
@@ -10,6 +17,19 @@ export const Route = createFileRoute("/game/$generation")({
         to: "/game/$generation",
         params: { generation: `gen${params.generation}` },
       });
+    }
+
+    if (isNationalDexSlug(params.generation)) {
+      const initialPool = await fetchGamePokemonPools(NATIONAL_DEX_GENERATION, NATIONAL_DEX_GAME_ID);
+
+      return {
+        generation: NATIONAL_DEX_GENERATION,
+        gen: null,
+        isNationalDex: true,
+        initialPoolsByGame: {
+          [NATIONAL_DEX_GAME_ID]: initialPool,
+        },
+      };
     }
 
     const generation = parseGenerationSlug(params.generation);
@@ -32,6 +52,7 @@ export const Route = createFileRoute("/game/$generation")({
     return {
       generation,
       gen,
+      isNationalDex: false,
       initialPoolsByGame: {
         [initialGame.id]: initialPool,
       },
@@ -40,14 +61,31 @@ export const Route = createFileRoute("/game/$generation")({
   head: ({ loaderData }) => {
     if (!loaderData) return { meta: [] };
 
+    if (loaderData.isNationalDex) {
+      return {
+        meta: [
+          {
+            title: "National Dex Sandbox Team Builder | Slatedex",
+          },
+          {
+            name: "description",
+            content: "Build a sandbox Pokemon team with every Pokemon and supported form in Slatedex. Analyze coverage, defensive matchups, and smart picks.",
+          },
+        ],
+      };
+    }
+
+    const gen = loaderData.gen;
+    if (!gen) return { meta: [] };
+
     return {
       meta: [
         {
-          title: `Gen ${loaderData.gen.generation} ${loaderData.gen.primaryName} Team Builder | Slatedex`,
+          title: `Gen ${gen.generation} ${gen.primaryName} Team Builder | Slatedex`,
         },
         {
           name: "description",
-          content: `Build your Pokemon team for Generation ${loaderData.gen.generation} in the ${loaderData.gen.region} region with Slatedex. Analyze type coverage, defensive matchups, and smart picks.`,
+          content: `Build your Pokemon team for Generation ${gen.generation} in the ${gen.region} region with Slatedex. Analyze type coverage, defensive matchups, and smart picks.`,
         },
       ],
     };
@@ -56,15 +94,17 @@ export const Route = createFileRoute("/game/$generation")({
 });
 
 function GenerationPage() {
-  const { generation, gen, initialPoolsByGame } = Route.useLoaderData();
+  const { generation, gen, isNationalDex, initialPoolsByGame } = Route.useLoaderData();
+  const games = isNationalDex ? [NATIONAL_DEX_GAME] : (gen?.games ?? []);
 
   return (
     <div className="min-h-screen" style={{ background: "var(--surface-0)" }}>
       <TeamBuilder
-        key={`generation-${generation}`}
+        key={isNationalDex ? "national-dex" : `generation-${generation}`}
         generation={generation}
-        games={gen.games}
+        games={games}
         initialPoolsByGame={initialPoolsByGame}
+        builderMode={isNationalDex ? "national" : "game"}
       />
     </div>
   );

@@ -198,7 +198,7 @@ export function buildTeamContext(payload: TeamContextPayload, bossGuidance: Boss
   const dexMode = payload.filters?.dexMode ?? "national";
   const versionFilterEnabled = Boolean(payload.filters?.versionFilterEnabled);
   const typeFilter = payload.filters?.typeFilter ?? [];
-  const enforcePool = dexMode === "regional" || versionFilterEnabled;
+  const enforcePool = dexMode === "regional" || dexMode === "all" || versionFilterEnabled;
   const checkpoint = resolveCheckpoint({
     progression: payload.progression,
     bossGuidance,

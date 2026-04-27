@@ -1,5 +1,20 @@
 import type { Game, GenerationMeta } from "./types";
 
+export const NATIONAL_DEX_GAME_ID = 99;
+export const NATIONAL_DEX_GENERATION = 9;
+
+export const NATIONAL_DEX_GAME: Game = {
+  id: NATIONAL_DEX_GAME_ID,
+  name: "National Dex Sandbox",
+  generation: NATIONAL_DEX_GENERATION,
+  region: "All Pokémon",
+  versions: [{ id: "all", label: "All" }],
+  versionGroupCandidates: [],
+  regionalDexCandidates: [],
+  starters: ["bulbasaur", "charmander", "squirtle"],
+  legendaries: ["mewtwo", "rayquaza", "arceus"],
+};
+
 export const GENERATION_META: GenerationMeta[] = [
   {
     generation: 1,
@@ -306,4 +321,8 @@ export function getGenerationMeta(generation: number): GenerationMeta | undefine
 
 export function getGamesForGeneration(generation: number): Game[] {
   return getGenerationMeta(generation)?.games ?? [];
+}
+
+export function isNationalDexGame(generation: number, gameId: number): boolean {
+  return generation === NATIONAL_DEX_GENERATION && gameId === NATIONAL_DEX_GAME_ID;
 }

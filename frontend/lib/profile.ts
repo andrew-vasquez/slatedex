@@ -1,4 +1,4 @@
-import { ALL_GAMES } from "@/lib/pokemon";
+import { ALL_GAMES, NATIONAL_DEX_GAME_ID, getVersionLabel } from "@/lib/pokemon";
 
 export const USERNAME_REGEX = /^[a-z0-9](?:[a-z0-9_]{1,28}[a-z0-9])?$/;
 export const MAX_BIO_LENGTH = 240;
@@ -7,11 +7,14 @@ export const MAX_FAVORITE_POKEMON = 6;
 
 export const GAME_OPTIONS = ALL_GAMES.map((game) => ({
   id: game.id,
-  label: `Gen ${game.generation}: ${game.name}`,
+  label: game.id === NATIONAL_DEX_GAME_ID ? game.name : `Gen ${game.generation}: ${game.name}`,
 }));
 
 export const GAME_NAME_BY_ID = new Map<number, string>(
-  ALL_GAMES.map((game) => [game.id, `Gen ${game.generation}: ${game.name}`])
+  ALL_GAMES.map((game) => [
+    game.id,
+    game.id === NATIONAL_DEX_GAME_ID ? game.name : `Gen ${game.generation}: ${game.name}`,
+  ])
 );
 
 export type AvatarFrameKey =
@@ -59,6 +62,7 @@ const REGION_DECOR: Record<
   Alola: { emblem: "☼", accent: "#c2410c", soft: "rgba(194, 65, 12, 0.14)" },
   Galar: { emblem: "✶", accent: "#0369a1", soft: "rgba(3, 105, 161, 0.14)" },
   Paldea: { emblem: "✹", accent: "#be185d", soft: "rgba(190, 24, 93, 0.14)" },
+  "All Pokémon": { emblem: "✦", accent: "#0891b2", soft: "rgba(8, 145, 178, 0.14)" },
 };
 
 const GAME_BY_ID = new Map(ALL_GAMES.map((game) => [game.id, game]));
@@ -83,12 +87,21 @@ export function getGameDecoration(gameId: number): {
 
   const decor = REGION_DECOR[game.region] ?? REGION_DECOR.Kanto;
   return {
-    label: `Gen ${game.generation}: ${game.name}`,
+    label: game.id === NATIONAL_DEX_GAME_ID ? game.name : `Gen ${game.generation}: ${game.name}`,
     region: game.region,
     emblem: decor.emblem,
     accent: decor.accent,
     soft: decor.soft,
   };
+}
+
+export function getProfileTeamGameLabel(
+  generation: number,
+  gameId: number,
+  selectedVersionId?: string | null
+): string {
+  if (gameId === NATIONAL_DEX_GAME_ID) return "National Dex Sandbox";
+  return `Gen ${generation} · ${getVersionLabel(gameId, selectedVersionId ?? null)}`;
 }
 
 export function formatPokemonList(raw: string): string[] {

@@ -42,6 +42,15 @@ const ALL_STATS = [
   { key: "speed", label: "SPE", color: "#0891b2" },
 ] as const;
 
+function getFormKindLabel(pokemon: Pokemon): string | null {
+  if (!pokemon.formKind || pokemon.formKind === "base") return null;
+  if (pokemon.formKind === "mega") return "Mega";
+  if (pokemon.formKind === "primal") return "Primal";
+  if (pokemon.formKind === "gigantamax") return "Gmax";
+  if (pokemon.formKind === "regional") return "Regional";
+  return "Form";
+}
+
 const PokemonCard = ({
   pokemon,
   isDraggable: isDraggableProp = true,
@@ -112,6 +121,7 @@ const PokemonCard = ({
   }, []);
 
   const bst = pokemon.hp + pokemon.attack + pokemon.defense + pokemon.specialAttack + pokemon.specialDefense + pokemon.speed;
+  const formKindLabel = getFormKindLabel(pokemon);
 
   const peekPopover = showPeek && !isDragging && peekRect && typeof document !== "undefined" && createPortal(
     <div
@@ -140,8 +150,9 @@ const PokemonCard = ({
           );
         })}
       </div>
-      {(pokemon.isLegendary || pokemon.isMythical || pokemon.isStarterLine) && (
+      {(formKindLabel || pokemon.isLegendary || pokemon.isMythical || pokemon.isStarterLine) && (
         <div className="flex gap-1 mt-1.5">
+          {formKindLabel && <span className="peek-tag" style={{ background: "rgba(59,130,246,0.15)", color: "#60a5fa" }}>{formKindLabel}</span>}
           {pokemon.isLegendary && <span className="peek-tag" style={{ background: "rgba(234,179,8,0.15)", color: "#fbbf24" }}>Legendary</span>}
           {pokemon.isMythical && <span className="peek-tag" style={{ background: "rgba(168,85,247,0.15)", color: "#a855f7" }}>Mythical</span>}
           {pokemon.isStarterLine && <span className="peek-tag" style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e" }}>Starter</span>}
@@ -198,27 +209,27 @@ const PokemonCard = ({
         {...(shouldEnableDrag ? listeners : {})}
         {...(shouldEnableDrag ? attributes : {})}
         onClick={handleTap}
-        className={`relative flex h-full w-full flex-col items-center justify-center rounded-xl px-2 py-2.5 ${interactiveClass}`}
+        className={`relative flex h-full w-full min-w-0 flex-col items-center justify-start overflow-hidden rounded-xl px-2 py-2 ${interactiveClass}`}
       >
-        <div className="relative mb-1 h-12 w-12 sm:h-14 sm:w-14">
+        <div className="relative mb-0.5 h-10 w-10 shrink-0 sm:h-12 sm:w-12">
           <Image
             src={pokemonSpriteSrc(pokemon.sprite, pokemon.id)}
             alt={pokemon.name}
-            width={56}
-            height={56}
-            sizes="(min-width: 640px) 56px, 48px"
+            width={48}
+            height={48}
+            sizes="(min-width: 640px) 48px, 40px"
             loading="eager"
             unoptimized
             className="h-full w-full object-contain drop-shadow-md"
           />
         </div>
-        <h3 className="text-center text-[0.76rem] font-semibold leading-tight sm:text-sm" style={{ color: "var(--text-primary)" }}>
+        <h3 className="line-clamp-2 min-h-[2rem] max-w-full px-1 text-center text-[0.72rem] font-semibold leading-tight sm:min-h-[2.1rem] sm:text-[0.84rem]" style={{ color: "var(--text-primary)" }}>
           {pokemon.name}
         </h3>
         <p className="mt-0.5 font-mono text-[0.6rem] leading-none" style={{ color: "var(--text-muted)" }}>
           #{pokemon.id.toString().padStart(3, "0")}
         </p>
-        <div className="mt-1 flex flex-wrap justify-center gap-1">
+        <div className="mt-auto flex max-w-full flex-wrap justify-center gap-1 pb-0.5 pt-1">
           {pokemon.types.map((type: string) => (
             <PokemonTypeBadge key={type} pokemonType={type} size="xs">
               {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -282,6 +293,14 @@ const PokemonCard = ({
                 title={exclusivityText}
               >
                 EX
+              </span>
+            )}
+            {formKindLabel && (
+              <span
+                className="shrink-0 rounded px-1 py-px text-[0.5rem] font-bold uppercase tracking-wide"
+                style={{ background: "rgba(59,130,246,0.12)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.22)" }}
+              >
+                {formKindLabel}
               </span>
             )}
           </div>
@@ -356,6 +375,14 @@ const PokemonCard = ({
                 aria-label={exclusivityText}
               >
                 Exclusive
+              </span>
+            )}
+            {formKindLabel && (
+              <span
+                className="shrink-0 rounded-md px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.06em]"
+                style={{ background: "rgba(59,130,246,0.12)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.22)" }}
+              >
+                {formKindLabel}
               </span>
             )}
           </div>

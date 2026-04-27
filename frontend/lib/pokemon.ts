@@ -1,5 +1,20 @@
 import type { Game, GenerationMeta } from "@/lib/types";
 
+export const NATIONAL_DEX_GAME_ID = 99;
+export const NATIONAL_DEX_GENERATION = 9;
+
+export const NATIONAL_DEX_GAME: Game = {
+  id: NATIONAL_DEX_GAME_ID,
+  name: "National Dex Sandbox",
+  generation: NATIONAL_DEX_GENERATION,
+  region: "All Pokémon",
+  versions: [{ id: "all", label: "All" }],
+  versionGroupCandidates: [],
+  regionalDexCandidates: [],
+  starters: ["bulbasaur", "charmander", "squirtle"],
+  legendaries: ["mewtwo", "rayquaza", "arceus"],
+};
+
 /**
  * Pokemon Game metadata organized by generation.
  * Each generation may contain one or more games.
@@ -306,7 +321,7 @@ export const GENERATION_META: GenerationMeta[] = [
 ];
 
 /** Flat list of all games across all generations, for backward compatibility. */
-export const ALL_GAMES: Game[] = GENERATION_META.flatMap((gen) => gen.games);
+export const ALL_GAMES: Game[] = [...GENERATION_META.flatMap((gen) => gen.games), NATIONAL_DEX_GAME];
 
 /** URL slug for a generation (e.g. gen1, gen2, … gen9). */
 export function getGenerationSlug(generation: number): string {
@@ -319,6 +334,10 @@ export function parseGenerationSlug(slug: string): number | null {
   if (!match) return null;
   const n = Number.parseInt(match[1], 10);
   return Number.isInteger(n) && n >= 1 && n <= 9 ? n : null;
+}
+
+export function isNationalDexSlug(slug: string): boolean {
+  return slug?.toLowerCase() === "national" || slug?.toLowerCase() === "all";
 }
 
 /** @deprecated Use GENERATION_META or ALL_GAMES instead. */
@@ -343,6 +362,8 @@ export function getVersionLabel(
   gameId: number,
   selectedVersionId: string | null | undefined
 ): string {
+  if (gameId === NATIONAL_DEX_GAME_ID) return "National Dex Sandbox";
+
   const game = ALL_GAMES.find((g) => g.id === gameId);
   if (!game) return "Unknown Game";
 

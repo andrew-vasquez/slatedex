@@ -13,7 +13,7 @@ export interface TeamPokemonContext {
   evolutionLine?: string[];
 }
 
-export type DexMode = "regional" | "national";
+export type DexMode = "regional" | "national" | "all";
 export type BossStage = "gym" | "elite4" | "champion";
 
 export interface TeamContextPayload {

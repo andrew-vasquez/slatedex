@@ -282,7 +282,7 @@ export default function AiCoachPanel({
   }, [usageSnapshot]);
   const canSendChat = canUseAi && canSendChatByQuota;
   const canAnalyze = canUseAi && hasFullParty && canAnalyzeByQuota;
-  const showAllowedPool = dexMode === "regional" || versionFilterEnabled;
+  const showAllowedPool = dexMode === "regional" || dexMode === "all" || versionFilterEnabled;
 
   const pokemonNameLookup = useMemo(() => {
     const names = new Set<string>();

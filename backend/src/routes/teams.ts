@@ -12,6 +12,7 @@ type AuthEnv = {
 
 const MAX_TEAM_NAME_LENGTH = 80;
 const MAX_POKEMON_NAME_LENGTH = 48;
+const MAX_FORM_NAME_LENGTH = 80;
 const MAX_SPRITE_LENGTH = 500;
 const MAX_VERSION_ID_LENGTH = 64;
 const MAX_CHECKPOINT_BOSS_NAME_LENGTH = 80;
@@ -20,6 +21,7 @@ const MAX_TEAM_PAYLOAD_BYTES = 64_000;
 const MAX_TEAM_REQUEST_BODY_BYTES = 80_000;
 const ALLOWED_EXCLUSIVE_STATUSES = new Set(["exclusive", "shared", "unknown"]);
 const ALLOWED_CHECKPOINT_STAGES = new Set(["gym", "elite4", "champion"]);
+const ALLOWED_FORM_KINDS = new Set(["base", "regional", "mega", "primal", "gigantamax", "alternate"]);
 
 type TeamPokemonSlot = Record<string, unknown> | null;
 type TeamCreateData = Parameters<typeof prisma.team.create>[0]["data"];
@@ -103,6 +105,32 @@ function parsePokemonSlot(raw: unknown): TeamPokemonSlot | "invalid" {
     specialDefense,
     speed,
   };
+
+  if (candidate.baseSpeciesName !== undefined) {
+    if (typeof candidate.baseSpeciesName !== "string") return "invalid";
+    const baseSpeciesName = candidate.baseSpeciesName.trim();
+    if (!baseSpeciesName || baseSpeciesName.length > MAX_FORM_NAME_LENGTH) return "invalid";
+    slot.baseSpeciesName = baseSpeciesName;
+  }
+
+  if (candidate.formName !== undefined) {
+    if (typeof candidate.formName !== "string") return "invalid";
+    const formName = candidate.formName.trim();
+    if (!formName || formName.length > MAX_FORM_NAME_LENGTH) return "invalid";
+    slot.formName = formName;
+  }
+
+  if (candidate.formKind !== undefined) {
+    if (typeof candidate.formKind !== "string" || !ALLOWED_FORM_KINDS.has(candidate.formKind)) {
+      return "invalid";
+    }
+    slot.formKind = candidate.formKind;
+  }
+
+  if (candidate.isDefaultForm !== undefined) {
+    if (typeof candidate.isDefaultForm !== "boolean") return "invalid";
+    slot.isDefaultForm = candidate.isDefaultForm;
+  }
 
   if (candidate.sprite !== undefined) {
     if (typeof candidate.sprite !== "string") return "invalid";

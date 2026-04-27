@@ -3,6 +3,10 @@ export interface Pokemon {
   name: string;
   types: string[];
   generation: number;
+  baseSpeciesName?: string;
+  formName?: string;
+  formKind?: "base" | "regional" | "mega" | "primal" | "gigantamax" | "alternate";
+  isDefaultForm?: boolean;
   isFinalEvolution: boolean;
   hp: number;
   attack: number;
@@ -24,7 +28,7 @@ export interface Pokemon {
   evolutionLine?: string[];
 }
 
-export type DexMode = "regional" | "national";
+export type DexMode = "regional" | "national" | "all";
 export type CardDensity = "compact" | "comfortable";
 export type DragBehavior = "auto" | "on" | "off";
 
@@ -41,8 +45,10 @@ export interface BuilderSettings {
 export interface PokemonPools {
   national: Pokemon[];
   regional: Pokemon[];
+  allForms: Pokemon[];
   regionalResolved: boolean;
   regionalDexName: string | null;
+  allFormsResolved: boolean;
 }
 
 export interface PokemonWithEffectiveness extends Pokemon {

@@ -6,7 +6,7 @@ import AppImage from "~/components/ui/AppImage";
 import AppLink from "~/components/ui/AppLink";
 import { fetchTeams, deleteTeam } from "@/lib/api";
 import type { SavedTeam } from "@/lib/api";
-import { ALL_GAMES, GENERATION_META, getVersionLabel } from "@/lib/pokemon";
+import { ALL_GAMES, GENERATION_META, NATIONAL_DEX_GAME_ID, getVersionLabel } from "@/lib/pokemon";
 import { safeImageSrc } from "@/lib/image";
 import {
   getSelectedGameStorageKey,
@@ -28,11 +28,16 @@ const REGION_COLORS: Record<string, { accent: string; soft: string; edge: string
   Alola:  { accent: "#c2410c", soft: "rgba(194,65,12,0.12)",   edge: "rgba(194,65,12,0.26)"  },
   Galar:  { accent: "#0369a1", soft: "rgba(3,105,161,0.12)",   edge: "rgba(3,105,161,0.26)"  },
   Paldea: { accent: "#be185d", soft: "rgba(190,24,93,0.12)",   edge: "rgba(190,24,93,0.26)"  },
+  "All Pokémon": { accent: "#2563eb", soft: "rgba(37,99,235,0.12)", edge: "rgba(37,99,235,0.26)" },
 };
 
 function getGenerationLabel(generation: number): string {
   const meta = GENERATION_META.find((g) => g.generation === generation);
   return meta ? `Gen ${generation} · ${meta.region}` : `Gen ${generation}`;
+}
+
+function getTeamBuilderRouteParam(team: SavedTeam): string {
+  return team.gameId === NATIONAL_DEX_GAME_ID ? "national" : `gen${team.generation}`;
 }
 
 function formatDate(dateStr: string): string {
@@ -94,7 +99,7 @@ function TeamCard({
     } catch {}
     void navigate({
       to: "/game/$generation",
-      params: { generation: `gen${team.generation}` },
+      params: { generation: getTeamBuilderRouteParam(team) },
     });
   };
 
@@ -126,7 +131,7 @@ function TeamCard({
                 {region}
               </span>
               <span className="text-[0.62rem] font-medium" style={{ color: "var(--text-muted)" }}>
-                {getVersionLabel(team.gameId, team.selectedVersionId)} · {getGenerationLabel(team.generation)}
+                {getVersionLabel(team.gameId, team.selectedVersionId)} · {team.gameId === NATIONAL_DEX_GAME_ID ? "All Pokémon" : getGenerationLabel(team.generation)}
               </span>
             </div>
             <h3

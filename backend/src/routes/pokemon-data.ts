@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { getPokemonByGeneration, getPokemonPoolsForGame } from "../lib/pokemon-data/pokeapi";
-import { getGamesForGeneration } from "../lib/pokemon-data/pokemon";
+import { getGamesForGeneration, isNationalDexGame, NATIONAL_DEX_GAME } from "../lib/pokemon-data/pokemon";
 
 const pokemonData = new Hono();
 const CACHE_CONTROL_HEADER = "public, s-maxage=3600, stale-while-revalidate=86400";
@@ -37,7 +37,9 @@ pokemonData.get("/pokemon/pools", async (c) => {
     return c.json({ error: "generation and gameId query params are required integers." }, 400);
   }
 
-  const game = getGamesForGeneration(generation).find((entry) => entry.id === gameId);
+  const game = isNationalDexGame(generation, gameId)
+    ? NATIONAL_DEX_GAME
+    : getGamesForGeneration(generation).find((entry) => entry.id === gameId);
   if (!game) {
     return c.json({ error: "Game is not available for this generation." }, 404);
   }

@@ -18,6 +18,7 @@ interface PokemonSelectionProps {
   dexMode: DexMode;
   onDexModeChange: (mode: DexMode) => void;
   regionalAvailable: boolean;
+  allFormsAvailable?: boolean;
   dexNotice: string | null;
   generation: number;
   versions: { id: string; label: string }[];
@@ -25,6 +26,7 @@ interface PokemonSelectionProps {
   onVersionChange: (versionId: string) => void;
   versionFilterEnabled: boolean;
   onVersionFilterChange: (enabled: boolean) => void;
+  showGameVersionControls?: boolean;
   dragEnabled: boolean;
   games?: Game[];
   selectedGameId?: number;
@@ -49,6 +51,7 @@ const PokemonSelection = ({
   dexMode,
   onDexModeChange,
   regionalAvailable,
+  allFormsAvailable = false,
   dexNotice,
   generation,
   versions,
@@ -56,6 +59,7 @@ const PokemonSelection = ({
   onVersionChange,
   versionFilterEnabled,
   onVersionFilterChange,
+  showGameVersionControls = true,
   dragEnabled,
   games,
   selectedGameId,
@@ -438,11 +442,13 @@ const PokemonSelection = ({
 
             <div className="hidden flex-wrap gap-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.06em] sm:flex">
               <span className="rounded-md border px-2 py-0.5" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
-                Dex {dexMode === "regional" ? "Regional" : "National"}
+                Dex {dexMode === "regional" ? "Regional" : dexMode === "all" ? "All Forms" : "National"}
               </span>
-              <span className="rounded-md border px-2 py-0.5" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
-                {versionFilterEnabled ? "Version-only entries" : "All entries"}
-              </span>
+              {showGameVersionControls && (
+                <span className="rounded-md border px-2 py-0.5" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
+                  {versionFilterEnabled ? "Version-only entries" : "All entries"}
+                </span>
+              )}
               {activeTypeFilters.length > 0 ? (
                 <span className="rounded-md border px-2 py-0.5" style={{ borderColor: "rgba(218, 44, 67, 0.34)", color: "var(--accent)" }}>
                   Types {activeTypeFilters.slice(0, 2).map((type) => type.charAt(0).toUpperCase() + type.slice(1)).join(", ")}
@@ -451,7 +457,7 @@ const PokemonSelection = ({
               ) : null}
             </div>
 
-            {hasMultipleGames && (
+            {showGameVersionControls && hasMultipleGames && (
               <div>
                 <p className="mb-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
                   Game
@@ -495,7 +501,7 @@ const PokemonSelection = ({
               </div>
             )}
 
-            {versions.length > 0 && (
+            {showGameVersionControls && versions.length > 0 && (
               <div>
                 <p className="mb-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
                   Version
@@ -601,16 +607,16 @@ const PokemonSelection = ({
                     <div className="mb-1.5 flex items-center gap-1.5">
                       <InfoTooltip
                         label={<span className="text-[0.72rem] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>Dex Mode</span>}
-                        description="Regional: Pokémon in this game's regional Pokédex (what you can catch during the main story). National: full Pokédex for that generation."
+                        description="Regional: Pokémon in this game's regional Pokédex. National: full Pokédex for that generation. All Forms: every supported Pokémon form in the sandbox pool."
                       />
                     </div>
-                    <div className="inline-flex w-full rounded-xl border p-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+                    <div className={`grid w-full rounded-xl border p-1 ${allFormsAvailable ? "grid-cols-3" : "grid-cols-2"}`} style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
                       <button
                         type="button"
                         onClick={() => onDexModeChange("regional")}
                         disabled={!regionalAvailable}
                         aria-pressed={dexMode === "regional"}
-                        className="flex-1 min-h-[44px] rounded-lg px-2 py-2 text-[0.78rem] font-semibold uppercase tracking-[0.06em] disabled:pointer-events-none disabled:opacity-45"
+                        className="min-h-[44px] rounded-lg px-2 py-2 text-[0.78rem] font-semibold uppercase tracking-[0.06em] disabled:pointer-events-none disabled:opacity-45"
                         style={{
                           background: dexMode === "regional" ? "var(--accent-soft)" : "transparent",
                           color: dexMode === "regional" ? "var(--text-primary)" : "var(--text-muted)",
@@ -623,7 +629,7 @@ const PokemonSelection = ({
                         type="button"
                         onClick={() => onDexModeChange("national")}
                         aria-pressed={dexMode === "national"}
-                        className="flex-1 min-h-[44px] rounded-lg px-2 py-2 text-[0.78rem] font-semibold uppercase tracking-[0.06em]"
+                        className="min-h-[44px] rounded-lg px-2 py-2 text-[0.78rem] font-semibold uppercase tracking-[0.06em]"
                         style={{
                           background: dexMode === "national" ? "var(--accent-soft)" : "transparent",
                           color: dexMode === "national" ? "var(--text-primary)" : "var(--text-muted)",
@@ -632,6 +638,21 @@ const PokemonSelection = ({
                       >
                         National
                       </button>
+                      {allFormsAvailable && (
+                        <button
+                          type="button"
+                          onClick={() => onDexModeChange("all")}
+                          aria-pressed={dexMode === "all"}
+                          className="min-h-[44px] rounded-lg px-2 py-2 text-[0.78rem] font-semibold uppercase tracking-[0.06em]"
+                          style={{
+                            background: dexMode === "all" ? "var(--accent-soft)" : "transparent",
+                            color: dexMode === "all" ? "var(--text-primary)" : "var(--text-muted)",
+                            border: dexMode === "all" ? "1px solid rgba(218, 44, 67, 0.34)" : "1px solid transparent",
+                          }}
+                        >
+                          All Forms
+                        </button>
+                      )}
                     </div>
                   </div>
 

@@ -54,7 +54,10 @@ function normalizePayload(input: unknown): SharedTeamPayload | null {
     ? [...new Set(candidate.lockedSlots.filter((slot) => Number.isInteger(slot) && slot >= 0 && slot < 6))]
     : [];
 
-  const dexMode = candidate.dexMode === "regional" || candidate.dexMode === "national" ? candidate.dexMode : undefined;
+  const dexMode =
+    candidate.dexMode === "regional" || candidate.dexMode === "national" || candidate.dexMode === "all"
+      ? candidate.dexMode
+      : undefined;
   const checkpointStage =
     candidate.checkpointStage === "gym" ||
     candidate.checkpointStage === "elite4" ||
