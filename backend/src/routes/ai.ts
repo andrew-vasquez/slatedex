@@ -43,7 +43,7 @@ const MAX_RETAINED_MESSAGES = 50;
 const MAX_TEAM_PAYLOAD_BYTES = 64_000;
 const MAX_POKEMON_NAME_LENGTH = 48;
 const MAX_SPRITE_LENGTH = 500;
-const MAX_ALLOWED_POKEMON_NAMES = 1_200;
+const MAX_ALLOWED_POKEMON_NAMES = 2_000;
 const MAX_TYPE_FILTER_VALUES = 6;
 const MAX_CHECKPOINT_BOSS_NAME_LENGTH = 80;
 const MAX_CHECKPOINT_CATCHABLE_NAMES = 80;
@@ -51,7 +51,7 @@ const MAX_CHECKPOINT_BLOCKED_FINAL_NAMES = 240;
 const MAX_CHECKPOINT_EVOLUTION_FALLBACKS = 260;
 const MAX_EVOLUTION_LINE_LENGTH = 5;
 const ALLOWED_EXCLUSIVE_STATUSES = new Set(["exclusive", "shared", "unknown"]);
-const ALLOWED_DEX_MODES = new Set<DexMode>(["regional", "national"]);
+const ALLOWED_DEX_MODES = new Set<DexMode>(["regional", "national", "all"]);
 const MAX_ANALYTICS_ERROR_MESSAGE_LENGTH = 500;
 const MAX_AI_REQUEST_BODY_BYTES = 128_000;
 
@@ -379,7 +379,7 @@ function parseAllowedPokemonNames(raw: unknown): string[] | null | "invalid" {
     if (typeof value !== "string") return "invalid";
     const normalized = value.trim().toLowerCase();
     if (!normalized || normalized.length > MAX_POKEMON_NAME_LENGTH) return "invalid";
-    if (!/^[a-z0-9-]+$/.test(normalized)) return "invalid";
+    if (!/^[a-z0-9 -]+$/.test(normalized)) return "invalid";
     values.push(normalized);
   }
 

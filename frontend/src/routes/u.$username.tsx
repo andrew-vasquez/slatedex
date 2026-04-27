@@ -5,11 +5,11 @@ import AppHeader from "@/components/ui/AppHeader";
 import SiteFooter from "@/components/ui/SiteFooter";
 import { normalizeAvatarUrl } from "@/lib/avatar";
 import { safeImageSrc } from "@/lib/image";
-import { getVersionLabel } from "@/lib/pokemon";
 import {
   AVATAR_FRAME_OPTIONS,
   getAvatarFrameStyles,
   getGameDecoration,
+  getProfileTeamGameLabel,
   type AvatarFrameKey,
 } from "@/lib/profile";
 import { getPublicProfile } from "~/lib/profile-data.functions";
@@ -301,7 +301,7 @@ function PublicProfilePage() {
                       className="rounded-lg border px-3 py-2 text-sm"
                       style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
                     >
-                      Gen {summary.generation} • Game {summary.gameId} • {summary.teamCount} team
+                      {getGameDecoration(summary.gameId).label} • {summary.teamCount} team
                       {summary.teamCount > 1 ? "s" : ""}
                     </li>
                   ))}
@@ -331,7 +331,11 @@ function PublicProfilePage() {
                     {profile.favoriteTeam.name}
                   </p>
                   <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                    Gen {profile.favoriteTeam.generation} · {getVersionLabel(profile.favoriteTeam.gameId, profile.favoriteTeam.selectedVersionId)}
+                    {getProfileTeamGameLabel(
+                      profile.favoriteTeam.generation,
+                      profile.favoriteTeam.gameId,
+                      profile.favoriteTeam.selectedVersionId
+                    )}
                   </p>
                   <PokemonSpriteStrip team={profile.favoriteTeam} />
                 </div>
@@ -361,7 +365,7 @@ function PublicProfilePage() {
                         {team.name}
                       </p>
                       <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                        Gen {team.generation} · {getVersionLabel(team.gameId, team.selectedVersionId)}
+                        {getProfileTeamGameLabel(team.generation, team.gameId, team.selectedVersionId)}
                       </p>
                       <PokemonSpriteStrip team={team} />
                     </div>

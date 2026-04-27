@@ -110,13 +110,16 @@ interface TeamBuilderProps {
   generation: number;
   games: Game[];
   initialPoolsByGame: Record<number, PokemonPools>;
+  builderMode?: "game" | "national";
 }
 
 const EMPTY_POOLS: PokemonPools = {
   national: [],
   regional: [],
+  allForms: [],
   regionalResolved: false,
   regionalDexName: null,
+  allFormsResolved: false,
 };
 
 function createEmptyTeam(): (Pokemon | null)[] {
@@ -216,7 +219,7 @@ function isRecommendationRole(value: unknown): value is RecommendationRole {
   return value === "all" || value === "bulky" || value === "fast" || value === "physical" || value === "special";
 }
 
-const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps) => {
+const TeamBuilder = ({ generation, games, initialPoolsByGame, builderMode = "game" }: TeamBuilderProps) => {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const importedTokenRef = useRef<string | null>(null);
@@ -270,6 +273,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const [hasMountedCommandPalette, setHasMountedCommandPalette] = useState(false);
   const [shouldMountOnboardingTour, setShouldMountOnboardingTour] = useState(false);
   const [headerOffsetPx, setHeaderOffsetPx] = useState(0);
+  const isNationalDexBuilder = builderMode === "national";
 
   const pastTeamsRef = useRef<(Pokemon | null)[][]>([]);
   const futureTeamsRef = useRef<(Pokemon | null)[][]>([]);
@@ -487,6 +491,11 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   }, [emitHaptic, persistTeam, syncHistoryState, team]);
 
   useEffect(() => {
+    if (isNationalDexBuilder) {
+      setSelectedGameId(games[0].id);
+      return;
+    }
+
     try {
       const saved = localStorage.getItem(getSelectedGameStorageKey(generation));
       if (saved) {
@@ -504,6 +513,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   }, []); // Run only once on mount — generation and games never change during TeamBuilder's lifetime
 
   useEffect(() => {
+    if (isNationalDexBuilder) return;
+
     // Skip the first invocation — the reading effect above sets the correct initial game from
     // localStorage. Writing here on the first run (with the default game ID) would overwrite it.
     if (isFirstGameWriteRef.current) {
@@ -515,7 +526,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     } catch {
       // ignore
     }
-  }, [generation, selectedGameId]);
+  }, [generation, isNationalDexBuilder, selectedGameId]);
 
   useEffect(() => {
     try {
@@ -692,13 +703,30 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
 
   useEffect(() => {
     if (!isSelectedGamePoolReady) return;
+    if (isNationalDexBuilder) {
+      setDexMode(pokemonPools.allFormsResolved ? "all" : "national");
+      return;
+    }
+
     const preferred = preferredDexMode ?? settings.defaultDexMode;
     if (preferred === "regional" && !pokemonPools.regionalResolved) {
       setDexMode("national");
       return;
     }
+    if (preferred === "all" && !pokemonPools.allFormsResolved) {
+      setDexMode("national");
+      return;
+    }
     setDexMode(preferred);
-  }, [isSelectedGamePoolReady, pokemonPools.regionalResolved, preferredDexMode, selectedGame.id, settings.defaultDexMode]);
+  }, [
+    isNationalDexBuilder,
+    isSelectedGamePoolReady,
+    pokemonPools.allFormsResolved,
+    pokemonPools.regionalResolved,
+    preferredDexMode,
+    selectedGame.id,
+    settings.defaultDexMode,
+  ]);
 
   useEffect(() => {
     if (dragEnabled) return;
@@ -707,6 +735,11 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   }, [dragEnabled]);
 
   useEffect(() => {
+    if (isNationalDexBuilder) {
+      setSelectedVersionId(selectedGame.versions[0]?.id ?? "all");
+      return;
+    }
+
     const allowedVersionIds = new Set(selectedGame.versions.map((version) => version.id));
     const defaultVersionId = selectedGame.versions[0]?.id ?? "";
 
@@ -720,15 +753,20 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     } catch {
       setSelectedVersionId(defaultVersionId);
     }
-  }, [selectedGame.id, selectedGame.versions]);
+  }, [isNationalDexBuilder, selectedGame.id, selectedGame.versions]);
 
   useEffect(() => {
+    if (isNationalDexBuilder) {
+      setVersionFilterEnabled(false);
+      return;
+    }
+
     if (preferredVersionFilter === null) {
       setVersionFilterEnabled(settings.defaultVersionFilter);
       return;
     }
     setVersionFilterEnabled(preferredVersionFilter);
-  }, [preferredVersionFilter, selectedGame.id, settings.defaultVersionFilter]);
+  }, [isNationalDexBuilder, preferredVersionFilter, selectedGame.id, settings.defaultVersionFilter]);
 
   useEffect(() => {
     const storageKey = getLockedSlotsStorageKey(generation, selectedGame.id);
@@ -769,16 +807,18 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   }, [selectedGame.id, selectedVersionId]);
 
   useEffect(() => {
+    if (isNationalDexBuilder) return;
     setPreferredVersionFilter((previous) => (previous === versionFilterEnabled ? previous : versionFilterEnabled));
-  }, [versionFilterEnabled]);
+  }, [isNationalDexBuilder, versionFilterEnabled]);
 
   useEffect(() => {
+    if (isNationalDexBuilder) return;
     try {
       localStorage.setItem(getVersionFilterStorageKey(selectedGame.id), versionFilterEnabled ? "true" : "false");
     } catch {
       // ignore storage errors
     }
-  }, [selectedGame.id, versionFilterEnabled]);
+  }, [isNationalDexBuilder, selectedGame.id, versionFilterEnabled]);
 
   useEffect(() => {
     const storageKey = getAiConversationTeamStorageKey(generation, selectedGame.id);
@@ -957,7 +997,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
   const handleDexModeChange = useCallback(
     (nextMode: DexMode) => {
       if (!isSelectedGamePoolReady) {
-        setDexMode("national");
+        setDexMode(isNationalDexBuilder ? "all" : "national");
         return;
       }
 
@@ -965,19 +1005,34 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
         setDexMode("national");
         return;
       }
+      if (nextMode === "all" && !pokemonPools.allFormsResolved) {
+        setDexMode("national");
+        return;
+      }
 
       setDexMode(nextMode);
-      setPreferredDexMode(nextMode);
+      if (!isNationalDexBuilder) {
+        setPreferredDexMode(nextMode);
+      }
     },
-    [isSelectedGamePoolReady, pokemonPools.regionalResolved]
+    [isNationalDexBuilder, isSelectedGamePoolReady, pokemonPools.allFormsResolved, pokemonPools.regionalResolved]
   );
 
   const activePokemonPool = useMemo(
     () => {
       if (!isSelectedGamePoolReady) return [];
+      if (dexMode === "all" && pokemonPools.allFormsResolved) return pokemonPools.allForms;
       return dexMode === "regional" && pokemonPools.regionalResolved ? pokemonPools.regional : pokemonPools.national;
     },
-    [dexMode, isSelectedGamePoolReady, pokemonPools.national, pokemonPools.regional, pokemonPools.regionalResolved]
+    [
+      dexMode,
+      isSelectedGamePoolReady,
+      pokemonPools.allForms,
+      pokemonPools.allFormsResolved,
+      pokemonPools.national,
+      pokemonPools.regional,
+      pokemonPools.regionalResolved,
+    ]
   );
 
   const versionScopedPokemonPool = useMemo(() => {
@@ -1011,7 +1066,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
     } as React.CSSProperties;
   }, [versionColor, settings.versionTheming]);
   const aiAllowedPokemonNames = useMemo(() => {
-    if (dexMode !== "regional" && !versionFilterEnabled) return [];
+    if (dexMode !== "regional" && dexMode !== "all" && !versionFilterEnabled) return [];
     return versionScopedPokemonPool.map((pokemon) => pokemon.name.toLowerCase());
   }, [dexMode, versionFilterEnabled, versionScopedPokemonPool]);
   const filteredPokemon = useMemo(() => {
@@ -1556,7 +1611,8 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
       if (!pools) return null;
 
       const lookup = new Map<number, Pokemon>();
-      pools.national.forEach((pokemon) => {
+      const importPool = pools.allForms.length > 0 ? pools.allForms : pools.national;
+      importPool.forEach((pokemon) => {
         lookup.set(pokemon.id, pokemon);
       });
 
@@ -1704,6 +1760,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
         <TeamBuilderHeader
           game={selectedGame}
           generation={generation}
+          builderMode={builderMode}
           onBackToGameSelect={handleBackToGameSelect}
           onGameChange={handleGameChange}
           onShuffle={shuffleTeam}
@@ -1967,11 +2024,16 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                 dexMode={dexMode}
                 onDexModeChange={handleDexModeChange}
                 regionalAvailable={pokemonPools.regionalResolved}
+                allFormsAvailable={pokemonPools.allFormsResolved}
                 dexNotice={
                   selectedGamePoolError
                   ?? (!isSelectedGamePoolReady
                     ? "Loading Pokédex data for selected game..."
-                    : pokemonPools.regionalResolved
+                    : isNationalDexBuilder
+                      ? pokemonPools.allFormsResolved
+                        ? null
+                        : "All-form data unavailable; showing base National Dex."
+                      : pokemonPools.regionalResolved
                       ? null
                       : "Regional dex unavailable; switched to National.")
                 }
@@ -1981,6 +2043,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
                 onVersionChange={setSelectedVersionId}
                 versionFilterEnabled={versionFilterEnabled}
                 onVersionFilterChange={setVersionFilterEnabled}
+                showGameVersionControls={!isNationalDexBuilder}
                 dragEnabled={dragEnabled}
                 games={games}
                 selectedGameId={selectedGame.id}
@@ -2017,7 +2080,7 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           )}
 
           {/* ── Capture guide (desktop, below the grid) ─────────────── */}
-          {isDesktopScreen && (
+          {isDesktopScreen && !isNationalDexBuilder && (
             <section className="mt-4 hidden lg:block">
               <TeamCaptureGuide
                 team={team}
@@ -2158,8 +2221,14 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame }: TeamBuilderProps
           myTeam={team}
           generation={selectedGame.generation}
           gameId={selectedGame.id}
-          pokemonPool={dexMode === "regional" && pokemonPools.regional.length > 0 ? pokemonPools.regional : pokemonPools.national}
-          allPokemonPool={pokemonPools.national}
+          pokemonPool={
+            dexMode === "all" && pokemonPools.allForms.length > 0
+              ? pokemonPools.allForms
+              : dexMode === "regional" && pokemonPools.regional.length > 0
+                ? pokemonPools.regional
+                : pokemonPools.national
+          }
+          allPokemonPool={dexMode === "all" && pokemonPools.allForms.length > 0 ? pokemonPools.allForms : pokemonPools.national}
           teamCheckpoint={teamCheckpoint}
           onTeamCheckpointChange={setTeamCheckpoint}
         />

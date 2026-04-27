@@ -3,6 +3,10 @@ export interface Pokemon {
   name: string;
   types: string[];
   generation: number;
+  baseSpeciesName?: string;
+  formName?: string;
+  formKind?: "base" | "regional" | "mega" | "primal" | "gigantamax" | "alternate";
+  isDefaultForm?: boolean;
   isFinalEvolution: boolean;
   hp: number;
   attack: number;
@@ -25,8 +29,10 @@ export interface Pokemon {
 export interface PokemonPools {
   national: Pokemon[];
   regional: Pokemon[];
+  allForms: Pokemon[];
   regionalResolved: boolean;
   regionalDexName: string | null;
+  allFormsResolved: boolean;
 }
 
 export interface Game {

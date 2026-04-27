@@ -1,7 +1,7 @@
 import Pokedex from "pokedex-promise-v2";
 import type { Game, Pokemon, PokemonPools } from "./types";
 import { resolveVersionExclusivity } from "./versionExclusives";
-import { GENERATION_META } from "./pokemon";
+import { GENERATION_META, NATIONAL_DEX_GAME_ID } from "./pokemon";
 import { FALLBACK_POKEMON_SPRITE } from "./image";
 
 const pokedex = new Pokedex({
@@ -32,10 +32,56 @@ interface ResolvedRegionalDex {
   orderBySpecies: Map<string, number>;
 }
 
-const pokemonByGenerationCache = new Map<number, Promise<Pokemon[]>>();
+const pokemonByGenerationCache = new Map<string, Promise<Pokemon[]>>();
 const pokemonPoolsByGameCache = new Map<number, Promise<PokemonPools>>();
 
-async function fetchPokemonByGeneration(maxGeneration: number): Promise<Pokemon[]> {
+function titleCasePokemonName(rawName: string): string {
+  return rawName
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function getPokemonFormKind(rawPokemonName: string, isDefaultForm: boolean): Pokemon["formKind"] {
+  if (isDefaultForm) return "base";
+  const name = rawPokemonName.toLowerCase();
+  if (name.includes("-mega")) return "mega";
+  if (name.includes("-primal")) return "primal";
+  if (name.includes("-gmax")) return "gigantamax";
+  if (
+    name.includes("-alola") ||
+    name.includes("-galar") ||
+    name.includes("-hisui") ||
+    name.includes("-paldea")
+  ) {
+    return "regional";
+  }
+  return "alternate";
+}
+
+function getBestPokemonSprite(sprites: any): string {
+  return (
+    sprites?.front_default ||
+    sprites?.other?.home?.front_default ||
+    sprites?.other?.["official-artwork"]?.front_default ||
+    sprites?.versions?.["generation-vii"]?.icons?.front_default ||
+    sprites?.versions?.["generation-viii"]?.icons?.front_default ||
+    FALLBACK_POKEMON_SPRITE
+  );
+}
+
+function shouldIncludeFormVariety(speciesName: string, variety: any, includeForms: boolean): boolean {
+  if (!includeForms) return variety.is_default === true;
+  const varietyName = typeof variety?.pokemon?.name === "string" ? variety.pokemon.name : "";
+  if (varietyName === "pikachu-starter" || varietyName === "eevee-starter") return false;
+  if (speciesName === "koraidon" || speciesName === "miraidon") {
+    return variety.is_default === true;
+  }
+  return true;
+}
+
+async function fetchPokemonByGeneration(maxGeneration: number, includeForms = false): Promise<Pokemon[]> {
   const generationIds = Array.from({ length: maxGeneration }, (_, i) => i + 1);
   const generations: any[] = await Promise.all(generationIds.map((genId) => pokedex.getGenerationByName(genId)));
   const speciesList: { name: string; generation: number }[] = generations.flatMap((gen: any, i: number) =>
@@ -59,31 +105,53 @@ async function fetchPokemonByGeneration(maxGeneration: number): Promise<Pokemon[
     const results = await Promise.all(
       batch.map(async (species) => {
         try {
-          const [pokemonData, speciesData]: any[] = await Promise.all([
-            pokedex.getPokemonByName(species.name),
-            pokedex.getPokemonSpeciesByName(species.name),
-          ]);
+          const speciesData: any = await pokedex.getPokemonSpeciesByName(species.name);
+          const speciesVarieties = Array.isArray(speciesData.varieties) ? speciesData.varieties : [];
+          const varietyRefs = speciesVarieties.filter((variety: any) =>
+            shouldIncludeFormVariety(species.name, variety, includeForms)
+          );
+          const normalizedVarietyRefs =
+            varietyRefs.length > 0
+              ? varietyRefs
+              : [{ is_default: true, pokemon: { name: species.name } }];
 
-          return {
-            pokemon: mapPokemonData(
-              pokemonData,
-              species.generation,
-              maxGeneration,
-              Boolean(speciesData?.is_legendary),
-              Boolean(speciesData?.is_mythical)
-            ),
-            speciesName: species.name,
-            evolvesFrom: speciesData.evolves_from_species?.name ?? null,
-            isLegendary: Boolean(speciesData?.is_legendary),
-            isMythical: Boolean(speciesData?.is_mythical),
-          };
+          return Promise.all(
+            normalizedVarietyRefs.map(async (variety: any) => {
+              const pokemonData: any = await pokedex.getPokemonByName(variety.pokemon.name);
+              return {
+                pokemon: mapPokemonData(
+                  pokemonData,
+                  species.generation,
+                  maxGeneration,
+                  Boolean(speciesData?.is_legendary),
+                  Boolean(speciesData?.is_mythical),
+                  {
+                    speciesName: species.name,
+                    isDefaultForm: variety.is_default === true,
+                  }
+                ),
+                speciesName: species.name,
+                evolvesFrom: speciesData.evolves_from_species?.name ?? null,
+                isLegendary: Boolean(speciesData?.is_legendary),
+                isMythical: Boolean(speciesData?.is_mythical),
+              };
+            })
+          );
         } catch {
           return null;
         }
       })
     );
 
-    pokemonWithSpeciesData.push(...(results.filter(Boolean) as NonNullable<(typeof results)[number]>[]));
+    pokemonWithSpeciesData.push(
+      ...(results.filter(Boolean).flat() as Array<{
+        pokemon: Omit<Pokemon, "isFinalEvolution">;
+        speciesName: string;
+        evolvesFrom: string | null;
+        isLegendary: boolean;
+        isMythical: boolean;
+      }>)
+    );
   }
 
   const evolvesFromBySpecies = new Map<string, string | null>(
@@ -157,17 +225,21 @@ async function fetchPokemonByGeneration(maxGeneration: number): Promise<Pokemon[
   return allPokemon.sort((a, b) => a.id - b.id);
 }
 
-export async function getPokemonByGeneration(maxGeneration: number): Promise<Pokemon[]> {
-  const cached = pokemonByGenerationCache.get(maxGeneration);
+export async function getPokemonByGeneration(
+  maxGeneration: number,
+  options?: { includeForms?: boolean }
+): Promise<Pokemon[]> {
+  const cacheKey = `${maxGeneration}:${options?.includeForms ? "forms" : "base"}`;
+  const cached = pokemonByGenerationCache.get(cacheKey);
   if (cached) return cached;
 
-  const request = fetchPokemonByGeneration(maxGeneration);
-  pokemonByGenerationCache.set(maxGeneration, request);
+  const request = fetchPokemonByGeneration(maxGeneration, options?.includeForms === true);
+  pokemonByGenerationCache.set(cacheKey, request);
 
   try {
     return await request;
   } catch (error) {
-    pokemonByGenerationCache.delete(maxGeneration);
+    pokemonByGenerationCache.delete(cacheKey);
     throw error;
   }
 }
@@ -326,8 +398,10 @@ async function resolvePostgameDexForGame(game: Game): Promise<ResolvedRegionalDe
 }
 
 async function fetchPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
-  const [baseNational, regionalDex, preMainStoryDex, postgameDex] = await Promise.all([
+  const includeAllForms = game.id === NATIONAL_DEX_GAME_ID;
+  const [baseNational, allFormsBase, regionalDex, preMainStoryDex, postgameDex] = await Promise.all([
     getPokemonByGeneration(game.generation),
+    includeAllForms ? getPokemonByGeneration(game.generation, { includeForms: true }) : Promise.resolve(null),
     resolveRegionalDexForGame(game),
     resolvePreMainStoryDexForGame(game),
     resolvePostgameDexForGame(game),
@@ -344,7 +418,7 @@ async function fetchPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
       gameVersionIds,
       gameIndexVersionIds,
     });
-    const speciesName = pokemon.name.toLowerCase();
+    const speciesName = (pokemon.baseSpeciesName ?? pokemon.name).toLowerCase();
     const isOutsidePreMainStoryDex = preMainStorySpecies ? !preMainStorySpecies.has(speciesName) : false;
     const isExplicitPostgameDex = explicitPostgameSpecies?.has(speciesName) ?? false;
 
@@ -355,21 +429,30 @@ async function fetchPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
     };
   });
 
+  const allForms = (allFormsBase ?? []).map((pokemon) => {
+    const { gameIndexVersionIds, ...pokemonWithoutGameIndexVersionIds } = pokemon;
+    return pokemonWithoutGameIndexVersionIds;
+  });
+
   if (!regionalDex) {
     return {
       national,
       regional: [],
+      allForms,
       regionalResolved: false,
       regionalDexName: null,
+      allFormsResolved: allForms.length > 0,
     };
   }
 
   const starterOrder = new Map(game.starters.map((speciesName, index) => [speciesName.toLowerCase(), index]));
   const regional = national
-    .filter((pokemon) => regionalDex.speciesNames.has(pokemon.name.toLowerCase()))
+    .filter((pokemon) => regionalDex.speciesNames.has((pokemon.baseSpeciesName ?? pokemon.name).toLowerCase()))
     .sort((a, b) => {
-      const aStarterIndex = starterOrder.get(a.name.toLowerCase());
-      const bStarterIndex = starterOrder.get(b.name.toLowerCase());
+      const aSpeciesName = (a.baseSpeciesName ?? a.name).toLowerCase();
+      const bSpeciesName = (b.baseSpeciesName ?? b.name).toLowerCase();
+      const aStarterIndex = starterOrder.get(aSpeciesName);
+      const bStarterIndex = starterOrder.get(bSpeciesName);
       const aIsStarter = aStarterIndex !== undefined;
       const bIsStarter = bStarterIndex !== undefined;
 
@@ -378,8 +461,8 @@ async function fetchPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
         return aIsStarter ? -1 : 1;
       }
 
-      const aIndex = regionalDex.orderBySpecies.get(a.name.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
-      const bIndex = regionalDex.orderBySpecies.get(b.name.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
+      const aIndex = regionalDex.orderBySpecies.get(aSpeciesName) ?? Number.MAX_SAFE_INTEGER;
+      const bIndex = regionalDex.orderBySpecies.get(bSpeciesName) ?? Number.MAX_SAFE_INTEGER;
       if (aIndex !== bIndex) return aIndex - bIndex;
       return a.id - b.id;
     });
@@ -387,8 +470,10 @@ async function fetchPokemonPoolsForGame(game: Game): Promise<PokemonPools> {
   return {
     national,
     regional,
+    allForms,
     regionalResolved: regional.length > 0,
     regionalDexName: regional.length > 0 ? regionalDex.dexName : null,
+    allFormsResolved: allForms.length > 0,
   };
 }
 
@@ -412,7 +497,11 @@ function mapPokemonData(
   generation: number,
   rulesGeneration: number,
   isLegendary: boolean,
-  isMythical: boolean
+  isMythical: boolean,
+  formMetadata?: {
+    speciesName: string;
+    isDefaultForm: boolean;
+  }
 ): Omit<Pokemon, "isFinalEvolution"> {
   const stats: {
     hp?: number;
@@ -451,19 +540,26 @@ function mapPokemonData(
     return introducedIn <= rulesGeneration;
   });
   const finalTypes = generationFilteredTypes.length > 0 ? generationFilteredTypes : generationTypes;
+  const rawPokemonName = typeof pokemon.name === "string" ? pokemon.name : "";
+  const baseSpeciesName = formMetadata?.speciesName ?? rawPokemonName;
+  const isDefaultForm = formMetadata?.isDefaultForm ?? true;
 
   return {
     id: pokemon.id,
-    name: pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1),
+    name: titleCasePokemonName(rawPokemonName || baseSpeciesName),
     types: finalTypes,
     generation,
+    baseSpeciesName,
+    formName: isDefaultForm ? undefined : titleCasePokemonName(rawPokemonName),
+    formKind: getPokemonFormKind(rawPokemonName, isDefaultForm),
+    isDefaultForm,
     hp: stats.hp || 0,
     attack: stats.attack || 0,
     defense: stats.defense || 0,
     specialAttack: stats.specialAttack || 0,
     specialDefense: stats.specialDefense || 0,
     speed: stats.speed || 0,
-    sprite: pokemon.sprites.front_default || FALLBACK_POKEMON_SPRITE,
+    sprite: getBestPokemonSprite(pokemon.sprites),
     isLegendary,
     isMythical,
     gameIndexVersionIds: ((pokemon.game_indices ?? []) as Array<{ version?: { name?: string } }>)

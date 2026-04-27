@@ -8,6 +8,7 @@ import {
   getAvatarFrameStyles,
   GAME_OPTIONS,
   getGameDecoration,
+  getProfileTeamGameLabel,
   MAX_BIO_LENGTH,
   MAX_FAVORITE_GAMES,
   MAX_FAVORITE_POKEMON,
@@ -57,7 +58,7 @@ function TeamPreviewCard({
             {team.name}
           </p>
           <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-            Gen {team.generation} • Game {team.gameId}
+            {getProfileTeamGameLabel(team.generation, team.gameId, team.selectedVersionId)}
           </p>
         </div>
         <span

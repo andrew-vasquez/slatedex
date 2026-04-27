@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import Image from "~/components/ui/AppImage";
 import { startTransition, useEffect, useMemo, useState } from "react";
-import { GENERATION_META } from "@/lib/pokemon";
+import { GENERATION_META, NATIONAL_DEX_GAME_ID, NATIONAL_DEX_GENERATION } from "@/lib/pokemon";
 import { getCuratedExclusiveCount } from "@/lib/versionExclusives";
 import {
   LAST_VISITED_GENERATION_KEY,
@@ -16,7 +16,9 @@ import SiteFooter from "@/components/ui/SiteFooter";
 const SPRITE_IDS: Record<string, number> = {
   bulbasaur: 1,
   charmander: 4,
+  charizard: 6,
   squirtle: 7,
+  gengar: 94,
   mewtwo: 150,
   chikorita: 152,
   cyndaquil: 155,
@@ -29,6 +31,7 @@ const SPRITE_IDS: Record<string, number> = {
   groudon: 383,
   kyogre: 382,
   rayquaza: 384,
+  lucario: 448,
   turtwig: 387,
   chimchar: 390,
   piplup: 393,
@@ -90,7 +93,7 @@ const GameSelector = () => {
   const [lastVisitedGen, setLastVisitedGen] = useState<number | null>(null);
   const [lastVisitedGameId, setLastVisitedGameId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [pendingGeneration, setPendingGeneration] = useState<number | null>(null);
+  const [pendingBuilderLabel, setPendingBuilderLabel] = useState<string | null>(null);
   // Map of gameId → saved team count (only populated when authenticated)
   const [teamCountByGame, setTeamCountByGame] = useState<Record<number, number>>({});
 
@@ -158,19 +161,30 @@ const GameSelector = () => {
     } catch {}
 
     startTransition(() => {
-      setPendingGeneration(generation);
+      setPendingBuilderLabel(`Gen ${generation}`);
+    });
+  };
+
+  const handleNationalDexClick = () => {
+    try {
+      localStorage.setItem(getSelectedGameStorageKey(NATIONAL_DEX_GENERATION), String(NATIONAL_DEX_GAME_ID));
+      localStorage.setItem(LAST_VISITED_GENERATION_KEY, String(NATIONAL_DEX_GENERATION));
+    } catch {}
+
+    startTransition(() => {
+      setPendingBuilderLabel("National Dex Sandbox");
     });
   };
 
   useEffect(() => {
     if (!pendingLocation?.startsWith("/game/")) {
-      setPendingGeneration(null);
+      setPendingBuilderLabel(null);
     }
   }, [pendingLocation]);
 
   return (
     <div className="min-h-screen pb-16 sm:pb-24">
-      {pendingGeneration !== null && (
+      {pendingBuilderLabel !== null && (
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-[rgba(6,9,20,0.72)] backdrop-blur-sm">
           <div className="w-full max-w-xl rounded-3xl border px-5 py-5 shadow-2xl" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -179,7 +193,7 @@ const GameSelector = () => {
                   Loading Builder
                 </p>
                 <h3 className="font-display mt-1 text-xl" style={{ color: "var(--text-primary)" }}>
-                  Preparing Gen {pendingGeneration}
+                  Preparing {pendingBuilderLabel}
                 </h3>
               </div>
               <div className="h-10 w-10 animate-pulse rounded-2xl" style={{ background: "var(--accent-soft)", border: "1px solid var(--border)" }} />
@@ -288,6 +302,96 @@ const GameSelector = () => {
         className="mx-auto mt-7 max-w-screen-xl px-4 sm:mt-9 sm:px-6"
         role="main"
       >
+        <section className="mb-7" aria-labelledby="national-dex-heading">
+          <Link
+            to="/game/$generation"
+            params={{ generation: "national" }}
+            onClick={handleNationalDexClick}
+            className="group animate-fade-in-up relative block overflow-hidden rounded-2xl cursor-pointer"
+            aria-label="Open National Dex Sandbox"
+          >
+            <article
+              className="game-card-hover relative overflow-hidden rounded-2xl border p-4 sm:p-5"
+              style={{
+                borderColor: "rgba(59,130,246,0.3)",
+                background: "linear-gradient(135deg, rgba(59,130,246,0.16) 0%, var(--surface-1) 58%)",
+              }}
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <span
+                    className="text-[0.64rem] font-bold uppercase tracking-[0.16em]"
+                    style={{ color: "#93c5fd" }}
+                  >
+                    No game selected
+                  </span>
+                  <h2 id="national-dex-heading" className="font-display mt-1 text-2xl leading-tight sm:text-3xl" style={{ color: "var(--text-primary)" }}>
+                    National Dex Sandbox
+                  </h2>
+                  <p className="mt-1.5 max-w-2xl text-sm" style={{ color: "var(--text-secondary)" }}>
+                    Build with every Pokémon plus regional forms, Mega Evolutions, Primal forms, Gigantamax forms, and alternate forms.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {["All Pokémon", "All forms", "No version locks"].map((chip) => (
+                      <span
+                        key={chip}
+                        className="rounded-md border px-2 py-0.5 text-[0.66rem] font-semibold"
+                        style={{
+                          background: "rgba(59,130,246,0.12)",
+                          borderColor: "rgba(59,130,246,0.28)",
+                          color: "#bfdbfe",
+                        }}
+                      >
+                        {chip}
+                      </span>
+                    ))}
+                    {(teamCountByGame[NATIONAL_DEX_GAME_ID] ?? 0) > 0 && (
+                      <span
+                        className="rounded-md border px-2 py-0.5 text-[0.66rem] font-semibold"
+                        style={{
+                          background: "rgba(134,239,172,0.10)",
+                          borderColor: "rgba(134,239,172,0.3)",
+                          color: "#86efac",
+                        }}
+                      >
+                        {teamCountByGame[NATIONAL_DEX_GAME_ID]} saved
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2">
+                  {["rayquaza", "charizard", "gengar", "lucario"].map((name) => (
+                    <div
+                      key={name}
+                      className="flex h-12 w-12 items-center justify-center rounded-xl"
+                      style={{ background: "var(--surface-2)", border: "1px solid rgba(59,130,246,0.24)" }}
+                    >
+                      <Image
+                        src={getSpriteUrl(name)}
+                        alt=""
+                        width={40}
+                        height={40}
+                        sizes="40px"
+                        unoptimized
+                        className="h-10 w-10 object-contain transition-transform duration-300 group-hover:scale-110"
+                        aria-hidden="true"
+                      />
+                    </div>
+                  ))}
+                  <span
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full transition-transform duration-200 group-hover:translate-x-0.5"
+                    style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
+                    aria-hidden="true"
+                  >
+                    ›
+                  </span>
+                </div>
+              </div>
+            </article>
+          </Link>
+        </section>
+
         <div className="mb-5 flex items-center gap-3">
           <h2
             className="font-display text-lg font-semibold uppercase tracking-[0.08em]"

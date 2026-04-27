@@ -12,6 +12,7 @@ import DesktopToolsMenu from "@/components/ui/DesktopToolsMenu";
 interface TeamBuilderHeaderProps {
   game: Game;
   generation: number;
+  builderMode?: "game" | "national";
   onBackToGameSelect: () => void;
   onGameChange: (gameId: number) => void;
   onShuffle: () => void;
@@ -45,6 +46,7 @@ const getGenerationRegionInfo = (meta: (typeof GENERATION_META)[number]) => {
 const TeamBuilderHeader = ({
   game,
   generation,
+  builderMode = "game",
   onBackToGameSelect,
   onGameChange,
   onShuffle,
@@ -86,6 +88,7 @@ const TeamBuilderHeader = ({
   const generationRefDesktop = useRef<HTMLDivElement | null>(null);
   const generationMenuSearchRef = useRef<HTMLInputElement | null>(null);
   const currentGenerationMeta = GENERATION_META.find((meta) => meta.generation === generation);
+  const isNationalDexBuilder = builderMode === "national";
   const currentGenerationRegionInfo = currentGenerationMeta ? getGenerationRegionInfo(currentGenerationMeta) : null;
   const normalizedGenerationMenuQuery = generationMenuQuery.trim().toLowerCase();
   const filteredGenerationMeta = useMemo(() => {
@@ -316,7 +319,7 @@ const TeamBuilderHeader = ({
           Current run
         </p>
         <p className="mt-0.5 text-[0.68rem] font-semibold" style={{ color: "var(--text-secondary)" }}>
-          Gen {generation} · {game.name} · {game.region}
+          {isNationalDexBuilder ? `${game.name} · ${game.region}` : `Gen ${generation} · ${game.name} · ${game.region}`}
         </p>
 
         <div className="relative mt-2">
@@ -419,7 +422,7 @@ const TeamBuilderHeader = ({
                         aria-haspopup="menu"
                         aria-label="Switch generation"
                       >
-                        Gen {generation}
+                        {isNationalDexBuilder ? "All Pokémon" : `Gen ${generation}`}
                         {currentGenerationRegionInfo?.hasMultipleRegions && (
                           <span className="hidden min-[390px]:inline"> · {currentGenerationRegionInfo.regionCountLabel}</span>
                         )}
@@ -595,7 +598,7 @@ const TeamBuilderHeader = ({
                     aria-haspopup="menu"
                     aria-label="Switch generation"
                   >
-                    Gen {generation} · {currentGenerationRegionInfo?.regionsLabel ?? game.region}
+                    {isNationalDexBuilder ? "All Pokémon" : `Gen ${generation} · ${currentGenerationRegionInfo?.regionsLabel ?? game.region}`}
                     <FiChevronDown
                       size={12}
                       aria-hidden="true"
