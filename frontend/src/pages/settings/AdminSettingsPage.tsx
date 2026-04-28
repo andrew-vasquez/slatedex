@@ -81,9 +81,9 @@ function badgeStyles(badge: "Owner" | "Admin" | "Pro" | null) {
   }
   if (badge === "Admin") {
     return {
-      borderColor: "rgba(59,130,246,0.5)",
-      background: "rgba(59,130,246,0.18)",
-      color: "#93c5fd",
+      borderColor: "rgba(79,138,163,0.5)",
+      background: "rgba(79,138,163,0.18)",
+      color: "var(--accent-blue)",
     };
   }
   if (badge === "Pro") {

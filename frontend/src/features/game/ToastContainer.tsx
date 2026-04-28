@@ -16,7 +16,7 @@ const ICON_MAP = {
 const ACCENT_MAP = {
   success: { color: "#22c55e", bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.25)" },
   error: { color: "#ef4444", bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.25)" },
-  info: { color: "var(--accent-blue, #3b82f6)", bg: "rgba(59,130,246,0.12)", border: "rgba(59,130,246,0.25)" },
+  info: { color: "var(--accent-blue, #4f8aa3)", bg: "rgba(79,138,163,0.12)", border: "rgba(79,138,163,0.25)" },
 } as const;
 
 export default function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {

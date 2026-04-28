@@ -15,6 +15,24 @@ export type UpdateEntry = {
 
 export const updates: UpdateEntry[] = [
   {
+    slug: "sandbox-pokemon-team-builder",
+    title: "Sandbox Pokemon Team Builder",
+    summary: "Added a new sandbox Pokemon team builder.",
+    date: "2026-04-28",
+    readTime: "1 min read",
+    category: "Release note",
+    eyebrow: "New builder",
+    author: "Andrew Vasquez",
+    sections: [
+      {
+        title: "What changed",
+        paragraphs: [
+          "Added a new sandbox Pokemon team builder so players can build with every supported Pokemon and form without locking themselves to one game first.",
+        ],
+      },
+    ],
+  },
+  {
     slug: "devlog-001-building-slatedex-in-public",
     title: "Devlog 001: Building Slatedex in Public",
     summary:

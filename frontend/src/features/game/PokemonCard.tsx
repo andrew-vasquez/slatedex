@@ -37,7 +37,7 @@ const ALL_STATS = [
   { key: "hp", label: "HP", color: "#136f3a" },
   { key: "attack", label: "ATK", color: "#b4232c" },
   { key: "defense", label: "DEF", color: "#1d5fa4" },
-  { key: "specialAttack", label: "SPA", color: "#7c3aed" },
+  { key: "specialAttack", label: "SPA", color: "#7a4f72" },
   { key: "specialDefense", label: "SPD", color: "#d97706" },
   { key: "speed", label: "SPE", color: "#0891b2" },
 ] as const;
@@ -152,9 +152,9 @@ const PokemonCard = ({
       </div>
       {(formKindLabel || pokemon.isLegendary || pokemon.isMythical || pokemon.isStarterLine) && (
         <div className="flex gap-1 mt-1.5">
-          {formKindLabel && <span className="peek-tag" style={{ background: "rgba(59,130,246,0.15)", color: "#60a5fa" }}>{formKindLabel}</span>}
+          {formKindLabel && <span className="peek-tag" style={{ background: "rgba(79,138,163,0.15)", color: "var(--accent-blue)" }}>{formKindLabel}</span>}
           {pokemon.isLegendary && <span className="peek-tag" style={{ background: "rgba(234,179,8,0.15)", color: "#fbbf24" }}>Legendary</span>}
-          {pokemon.isMythical && <span className="peek-tag" style={{ background: "rgba(168,85,247,0.15)", color: "#a855f7" }}>Mythical</span>}
+          {pokemon.isMythical && <span className="peek-tag" style={{ background: "rgba(122,79,114,0.16)", color: "#c184b5" }}>Mythical</span>}
           {pokemon.isStarterLine && <span className="peek-tag" style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e" }}>Starter</span>}
         </div>
       )}
@@ -298,7 +298,7 @@ const PokemonCard = ({
             {formKindLabel && (
               <span
                 className="shrink-0 rounded px-1 py-px text-[0.5rem] font-bold uppercase tracking-wide"
-                style={{ background: "rgba(59,130,246,0.12)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.22)" }}
+                style={{ background: "rgba(79,138,163,0.12)", color: "var(--accent-blue)", border: "1px solid rgba(79,138,163,0.22)" }}
               >
                 {formKindLabel}
               </span>
@@ -311,7 +311,7 @@ const PokemonCard = ({
             type="button"
             onClick={(e) => { e.stopPropagation(); onInspect(pokemon); }}
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full opacity-0 transition-opacity duration-150 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
-            style={{ background: "rgba(59,130,246,0.12)", color: "#3b82f6", border: "1px solid rgba(59,130,246,0.25)" }}
+            style={{ background: "rgba(79,138,163,0.12)", color: "var(--accent-blue)", border: "1px solid rgba(79,138,163,0.25)" }}
             aria-label={`View details for ${pokemon.name}`}
           >
             <FiInfo size={9} />
@@ -380,7 +380,7 @@ const PokemonCard = ({
             {formKindLabel && (
               <span
                 className="shrink-0 rounded-md px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.06em]"
-                style={{ background: "rgba(59,130,246,0.12)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.22)" }}
+                style={{ background: "rgba(79,138,163,0.12)", color: "var(--accent-blue)", border: "1px solid rgba(79,138,163,0.22)" }}
               >
                 {formKindLabel}
               </span>
@@ -432,7 +432,7 @@ const PokemonCard = ({
               type="button"
               onClick={(e) => { e.stopPropagation(); onInspect(pokemon); }}
               className="flex h-7 w-7 items-center justify-center rounded-full transition-transform duration-200 hover:scale-110"
-              style={{ background: "rgba(59, 130, 246, 0.12)", color: "#3b82f6", border: "1px solid rgba(59, 130, 246, 0.25)" }}
+              style={{ background: "rgba(79, 138, 163, 0.12)", color: "var(--accent-blue)", border: "1px solid rgba(79, 138, 163, 0.25)" }}
               aria-label={`View details for ${pokemon.name}`}
             >
               <FiInfo size={12} />

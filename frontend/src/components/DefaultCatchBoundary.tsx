@@ -18,7 +18,7 @@ export function DefaultCatchBoundary({ error, reset }: ErrorComponentProps) {
         alignItems: "center",
         justifyContent: "center",
         background:
-          "radial-gradient(circle at 12% 14%, rgba(218,44,67,0.18), transparent 34%), radial-gradient(circle at 88% 20%, rgba(59,130,246,0.16), transparent 34%), linear-gradient(165deg, #050814 0%, #0a1020 46%, #050814 100%)",
+          "radial-gradient(circle at 12% 14%, rgba(218,44,67,0.18), transparent 34%), linear-gradient(165deg, #050814 0%, #0a1020 46%, #050814 100%)",
         color: "#e7ecff",
         padding: "1.5rem",
       }}

@@ -564,7 +564,7 @@ const PokemonSelection = ({
                       aria-pressed={versionFilterEnabled}
                       aria-label={versionFilterEnabled ? "Showing only Pokémon from selected version — click to show all" : "Showing all Pokémon — click to filter by version"}
                     >
-                      {versionFilterEnabled ? "Version Only ✓" : "Show All"}
+                      {versionFilterEnabled ? "Legal Pool" : "Show All"}
                     </button>
                     </div>
                   </div>
@@ -868,7 +868,7 @@ const PokemonSelection = ({
               { key: "hp", label: "HP", color: "#136f3a" },
               { key: "attack", label: "ATK", color: "#b4232c" },
               { key: "defense", label: "DEF", color: "#1d5fa4" },
-              { key: "specialAttack", label: "SPA", color: "#7c3aed" },
+              { key: "specialAttack", label: "SPA", color: "#7a4f72" },
               { key: "specialDefense", label: "SPD", color: "#d97706" },
               { key: "speed", label: "SPE", color: "#0891b2" },
             ] as const).map((stat) => {

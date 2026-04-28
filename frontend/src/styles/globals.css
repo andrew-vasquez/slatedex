@@ -253,6 +253,41 @@ html[data-theme="light"] .glass {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
+.team-health-strip {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-1) 42%, transparent);
+  padding: 0.78rem 0;
+}
+
+.team-health-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+}
+
+.team-health-metric {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.7rem;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.team-health-metric::before {
+  content: "";
+  width: 0.32rem;
+  height: 0.32rem;
+  margin-right: 0.42rem;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0.82;
+}
+
 html[data-theme="light"] .panel {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 12px 26px rgba(92, 67, 39, 0.09), 0 1px 0 rgba(92, 67, 39, 0.03);
 }
@@ -1162,9 +1197,9 @@ html[data-theme="light"] .smart-picks-toggle[data-state="on"] .smart-picks-toggl
 
 /* Lock/replace confirm pulse */
 @keyframes confirmPulse {
-  0% { box-shadow: 0 0 0 0 var(--pulse-color, rgba(59, 130, 246, 0.45)); }
-  50% { box-shadow: 0 0 0 6px var(--pulse-color, rgba(59, 130, 246, 0)); }
-  100% { box-shadow: 0 0 0 0 var(--pulse-color, rgba(59, 130, 246, 0)); }
+  0% { box-shadow: 0 0 0 0 var(--pulse-color, rgba(79, 138, 163, 0.45)); }
+  50% { box-shadow: 0 0 0 6px var(--pulse-color, rgba(79, 138, 163, 0)); }
+  100% { box-shadow: 0 0 0 0 var(--pulse-color, rgba(79, 138, 163, 0)); }
 }
 
 /* Number value change pop */
@@ -1223,15 +1258,15 @@ html[data-theme="light"] .smart-picks-toggle[data-state="on"] .smart-picks-toggl
 
 @keyframes slotSnap {
   0% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.42), 0 0 0 0 rgba(218, 44, 67, 0.2);
+    box-shadow: 0 0 0 0 rgba(79, 138, 163, 0.42), 0 0 0 0 rgba(218, 44, 67, 0.2);
     transform: scale(0.98);
   }
   45% {
-    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0), 0 0 0 14px rgba(218, 44, 67, 0);
+    box-shadow: 0 0 0 8px rgba(79, 138, 163, 0), 0 0 0 14px rgba(218, 44, 67, 0);
     transform: scale(1.03);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0), 0 0 0 0 rgba(218, 44, 67, 0);
+    box-shadow: 0 0 0 0 rgba(79, 138, 163, 0), 0 0 0 0 rgba(218, 44, 67, 0);
     transform: scale(1);
   }
 }
@@ -1243,15 +1278,15 @@ html[data-theme="light"] .smart-picks-toggle[data-state="on"] .smart-picks-toggl
 @keyframes coverageCellPulse {
   0% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.34);
+    box-shadow: 0 0 0 0 rgba(79, 138, 163, 0.34);
   }
   45% {
     transform: scale(1.08);
-    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
+    box-shadow: 0 0 0 6px rgba(79, 138, 163, 0);
   }
   100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    box-shadow: 0 0 0 0 rgba(79, 138, 163, 0);
   }
 }
 
@@ -2819,26 +2854,24 @@ html[data-motion="reduced"] *::after {
 .cookie-banner {
   position: fixed;
   left: 1rem;
-  right: 1rem;
+  right: auto;
   bottom: 1rem;
   z-index: 120;
+  width: min(31rem, calc(100vw - 2rem));
   border-radius: 16px;
   padding: 0.95rem;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 0.85rem;
-  align-items: flex-end;
 }
 
 .cookie-banner__content {
-  flex: 1 1 20rem;
-  min-width: 16rem;
+  min-width: 0;
 }
 
 .cookie-banner__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, auto));
+  justify-content: start;
   gap: 0.5rem;
 }
 
@@ -2936,6 +2969,7 @@ html[data-motion="reduced"] *::after {
     left: 0.75rem;
     right: 0.75rem;
     bottom: 0.75rem;
+    width: auto;
     padding: 0.8rem;
   }
 
@@ -2944,8 +2978,7 @@ html[data-motion="reduced"] *::after {
   }
 
   .cookie-banner__actions {
-    width: 100%;
-    justify-content: flex-start;
+    grid-template-columns: 1fr;
   }
 
   .cookie-preferences-trigger {
@@ -5201,7 +5234,7 @@ html[data-theme="light"] .exclusive-badge::before {
   right: 0;
   bottom: -0.2rem;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(218, 44, 67, 0.45), rgba(59, 130, 246, 0.45), transparent);
+  background: linear-gradient(90deg, transparent, rgba(218, 44, 67, 0.42), rgba(79, 138, 163, 0.36), transparent);
   transform: scaleX(0);
   transform-origin: center;
   transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);

@@ -110,7 +110,7 @@ const TeamSlot = ({
       `}
       style={{
         background: isReplaceTarget
-          ? "rgba(59, 130, 246, 0.12)"
+          ? "rgba(79, 138, 163, 0.12)"
           : isOver
             ? "var(--version-color-soft, rgba(218, 44, 67, 0.12))"
             : isEmpty && !shouldRenderContent
@@ -185,10 +185,10 @@ const TeamSlot = ({
           onClick={onToggleLock}
           className={`absolute left-1.5 top-1.5 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-sm transition-transform duration-150 active:scale-90 sm:h-7 sm:w-7 ${lockPulse ? "animate-confirm-pulse" : ""}`}
           style={{
-            background: isLocked ? "rgba(59, 130, 246, 0.16)" : "rgba(148, 163, 184, 0.12)",
-            borderColor: isLocked ? "rgba(59, 130, 246, 0.38)" : "var(--border)",
-            color: isLocked ? "#93c5fd" : "var(--text-muted)",
-            "--pulse-color": isLocked ? "rgba(59, 130, 246, 0.45)" : "rgba(148, 163, 184, 0.35)",
+            background: isLocked ? "rgba(79, 138, 163, 0.16)" : "rgba(148, 163, 184, 0.12)",
+            borderColor: isLocked ? "rgba(79, 138, 163, 0.38)" : "var(--border)",
+            color: isLocked ? "var(--accent-blue)" : "var(--text-muted)",
+            "--pulse-color": isLocked ? "rgba(79, 138, 163, 0.45)" : "rgba(148, 163, 184, 0.35)",
           } as React.CSSProperties}
           aria-label={isLocked ? "Unlock team slot" : "Lock team slot"}
         >
@@ -202,10 +202,10 @@ const TeamSlot = ({
           onClick={onSelectForReplace}
           className={`absolute bottom-1.5 left-1/2 z-20 -translate-x-1/2 inline-flex min-h-[32px] items-center rounded-full border px-3 text-[0.62rem] font-semibold uppercase tracking-[0.08em] ${replacePulse ? "animate-confirm-pulse" : ""}`}
           style={{
-            background: isReplaceTarget ? "rgba(59, 130, 246, 0.22)" : "var(--surface-1)",
-            borderColor: isReplaceTarget ? "rgba(59, 130, 246, 0.45)" : "var(--border)",
-            color: isReplaceTarget ? "#93c5fd" : "var(--text-muted)",
-            "--pulse-color": "rgba(59, 130, 246, 0.45)",
+            background: isReplaceTarget ? "rgba(79, 138, 163, 0.22)" : "var(--surface-1)",
+            borderColor: isReplaceTarget ? "rgba(79, 138, 163, 0.45)" : "var(--border)",
+            color: isReplaceTarget ? "var(--accent-blue)" : "var(--text-muted)",
+            "--pulse-color": "rgba(79, 138, 163, 0.45)",
           } as React.CSSProperties}
         >
           {isReplaceTarget ? "Targeted" : "Target"}
