@@ -22,13 +22,13 @@ const REGION_COLORS: Record<string, { accent: string; soft: string; edge: string
   Kanto:  { accent: "#dc2626", soft: "rgba(220,38,38,0.12)",   edge: "rgba(220,38,38,0.26)"  },
   Johto:  { accent: "#b45309", soft: "rgba(180,83,9,0.12)",    edge: "rgba(180,83,9,0.26)"   },
   Hoenn:  { accent: "#0f766e", soft: "rgba(15,118,110,0.12)",  edge: "rgba(15,118,110,0.26)" },
-  Sinnoh: { accent: "#2563eb", soft: "rgba(37,99,235,0.12)",   edge: "rgba(37,99,235,0.26)"  },
+  Sinnoh: { accent: "#2f6f88", soft: "rgba(47,111,136,0.12)",   edge: "rgba(47,111,136,0.26)"  },
   Unova:  { accent: "#6b4f3b", soft: "rgba(107,79,59,0.12)",   edge: "rgba(107,79,59,0.26)"  },
-  Kalos:  { accent: "#7c3aed", soft: "rgba(124,58,237,0.12)",  edge: "rgba(124,58,237,0.26)" },
+  Kalos:  { accent: "#7a4f72", soft: "rgba(122,79,114,0.12)",  edge: "rgba(122,79,114,0.26)" },
   Alola:  { accent: "#c2410c", soft: "rgba(194,65,12,0.12)",   edge: "rgba(194,65,12,0.26)"  },
   Galar:  { accent: "#0369a1", soft: "rgba(3,105,161,0.12)",   edge: "rgba(3,105,161,0.26)"  },
   Paldea: { accent: "#be185d", soft: "rgba(190,24,93,0.12)",   edge: "rgba(190,24,93,0.26)"  },
-  "All Pokémon": { accent: "#2563eb", soft: "rgba(37,99,235,0.12)", edge: "rgba(37,99,235,0.26)" },
+  "All Pokémon": { accent: "#2f6f88", soft: "rgba(47,111,136,0.12)", edge: "rgba(47,111,136,0.26)" },
 };
 
 function getGenerationLabel(generation: number): string {

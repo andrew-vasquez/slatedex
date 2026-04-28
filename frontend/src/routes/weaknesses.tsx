@@ -25,13 +25,6 @@ function WeaknessesPage() {
 
   return (
     <div className="landing-page-shell min-h-screen">
-      <div className="landing-page-blur-layer" aria-hidden="true" />
-      <div className="landing-page-atmosphere" aria-hidden="true">
-        <div className="landing-page-grid" />
-        <div className="landing-hero-orb landing-hero-orb-a" />
-        <div className="landing-hero-orb landing-hero-orb-b" />
-      </div>
-
       <WeaknessHeader />
 
       <main className="relative z-[1] mx-auto max-w-screen-xl px-4 py-8 sm:px-6 sm:py-10">

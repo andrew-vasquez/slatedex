@@ -74,9 +74,9 @@ const REGION_COLORS: Record<string, { accent: string; soft: string; edge: string
   Kanto:  { accent: "#dc2626", soft: "rgba(220,38,38,0.12)",   edge: "rgba(220,38,38,0.26)"  },
   Johto:  { accent: "#b45309", soft: "rgba(180,83,9,0.12)",    edge: "rgba(180,83,9,0.26)"   },
   Hoenn:  { accent: "#0f766e", soft: "rgba(15,118,110,0.12)",  edge: "rgba(15,118,110,0.26)" },
-  Sinnoh: { accent: "#2563eb", soft: "rgba(37,99,235,0.12)",   edge: "rgba(37,99,235,0.26)"  },
+  Sinnoh: { accent: "#2f6f88", soft: "rgba(47,111,136,0.12)",   edge: "rgba(47,111,136,0.26)"  },
   Unova:  { accent: "#6b4f3b", soft: "rgba(107,79,59,0.12)",   edge: "rgba(107,79,59,0.26)"  },
-  Kalos:  { accent: "#7c3aed", soft: "rgba(124,58,237,0.12)",  edge: "rgba(124,58,237,0.26)" },
+  Kalos:  { accent: "#7a4f72", soft: "rgba(122,79,114,0.12)",  edge: "rgba(122,79,114,0.26)" },
   Alola:  { accent: "#c2410c", soft: "rgba(194,65,12,0.12)",   edge: "rgba(194,65,12,0.26)"  },
   Galar:  { accent: "#0369a1", soft: "rgba(3,105,161,0.12)",   edge: "rgba(3,105,161,0.26)"  },
   Paldea: { accent: "#be185d", soft: "rgba(190,24,93,0.12)",   edge: "rgba(190,24,93,0.26)"  },
@@ -313,15 +313,15 @@ const GameSelector = () => {
             <article
               className="game-card-hover relative overflow-hidden rounded-2xl border p-4 sm:p-5"
               style={{
-                borderColor: "rgba(59,130,246,0.3)",
-                background: "linear-gradient(135deg, rgba(59,130,246,0.16) 0%, var(--surface-1) 58%)",
+                borderColor: "rgba(79,138,163,0.32)",
+                background: "linear-gradient(135deg, rgba(79,138,163,0.14) 0%, var(--surface-1) 58%)",
               }}
             >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <span
                     className="text-[0.64rem] font-bold uppercase tracking-[0.16em]"
-                    style={{ color: "#93c5fd" }}
+                    style={{ color: "var(--accent-blue)" }}
                   >
                     No game selected
                   </span>
@@ -337,9 +337,9 @@ const GameSelector = () => {
                         key={chip}
                         className="rounded-md border px-2 py-0.5 text-[0.66rem] font-semibold"
                         style={{
-                          background: "rgba(59,130,246,0.12)",
-                          borderColor: "rgba(59,130,246,0.28)",
-                          color: "#bfdbfe",
+                          background: "rgba(79,138,163,0.12)",
+                          borderColor: "rgba(79,138,163,0.28)",
+                          color: "var(--accent-blue)",
                         }}
                       >
                         {chip}
@@ -365,7 +365,7 @@ const GameSelector = () => {
                     <div
                       key={name}
                       className="flex h-12 w-12 items-center justify-center rounded-xl"
-                      style={{ background: "var(--surface-2)", border: "1px solid rgba(59,130,246,0.24)" }}
+                      style={{ background: "var(--surface-2)", border: "1px solid rgba(79,138,163,0.24)" }}
                     >
                       <Image
                         src={getSpriteUrl(name)}
@@ -451,7 +451,7 @@ const GameSelector = () => {
                     className={`grid gap-3 ${
                       gen.games.length === 2
                         ? "grid-cols-1 sm:grid-cols-2"
-                        : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                        : "grid-cols-1 sm:grid-cols-2"
                     }`}
                   >
                     {gen.games.map((game) => {
@@ -501,9 +501,9 @@ const GameSelector = () => {
                                   <span
                                     className="rounded-full border px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em]"
                                     style={{
-                                      borderColor: "rgba(59,130,246,0.35)",
-                                      background: "rgba(59,130,246,0.14)",
-                                      color: "#93c5fd",
+                                      borderColor: "rgba(79,138,163,0.35)",
+                                      background: "rgba(79,138,163,0.14)",
+                                      color: "var(--accent-blue)",
                                     }}
                                   >
                                     Recent
@@ -677,9 +677,9 @@ const GameSelector = () => {
                                   <span
                                     className="rounded-full border px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em]"
                                     style={{
-                                      borderColor: "rgba(59,130,246,0.35)",
-                                      background: "rgba(59,130,246,0.14)",
-                                      color: "#93c5fd",
+                                      borderColor: "rgba(79,138,163,0.35)",
+                                      background: "rgba(79,138,163,0.14)",
+                                      color: "var(--accent-blue)",
                                     }}
                                   >
                                     Recent

@@ -5,6 +5,7 @@ import { LandingNav, HeroAuthButtons, AuthCTASection } from "~/features/home/Aut
 import HeroTypewriter from "~/features/home/HeroTypewriter";
 import LiveMiniDemo from "~/features/home/LiveMiniDemo";
 import SlatedexBrand from "@/components/ui/SlatedexBrand";
+import { updates } from "~/lib/updates";
 
 const FEATURES = [
   {
@@ -52,6 +53,7 @@ const STATS = [
   "Smart picks engine",
 ];
 const SOCIAL_PROOF = ["50k+ teams built", "8k+ coach analyses/week", "Used across all 9 gens"];
+const LATEST_UPDATE = updates[0];
 
 export default function LandingPage() {
   return (
@@ -141,6 +143,37 @@ export default function LandingPage() {
 
               <div className="lg:block">
                 <LiveMiniDemo />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Recent Update ─────────────────────────────────── */}
+        <section className="pb-8 sm:pb-10" aria-labelledby="recent-update-heading">
+          <div className="mx-auto max-w-screen-xl px-4 sm:px-6">
+            <div className="panel mx-auto flex max-w-4xl flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+              <div className="min-w-0">
+                <p
+                  id="recent-update-heading"
+                  className="text-[0.62rem] font-semibold uppercase tracking-[0.22em]"
+                  style={{ color: "var(--accent)" }}
+                >
+                  Recent update
+                </p>
+                <h2 className="font-display mt-2 text-xl sm:text-2xl" style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
+                  {LATEST_UPDATE.title}
+                </h2>
+                <p className="mt-1.5 max-w-2xl text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                  {LATEST_UPDATE.summary}
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                <AppLink href="/game/national" className="landing-cta-primary inline-flex items-center rounded-xl px-4 py-2 text-sm font-semibold">
+                  Open sandbox
+                </AppLink>
+                <AppLink href={`/updates/${LATEST_UPDATE.slug}`} className="landing-cta-secondary inline-flex items-center rounded-xl border px-4 py-2 text-sm font-semibold">
+                  Read update
+                </AppLink>
               </div>
             </div>
           </div>

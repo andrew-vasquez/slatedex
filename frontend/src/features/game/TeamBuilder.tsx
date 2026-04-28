@@ -1789,39 +1789,37 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame, builderMode = "gam
               opacity: isSelectedGameLoading ? 0.72 : 1,
             }}
           >
-          <section className="panel-soft mb-3 border px-3 py-2.5 sm:mb-4 sm:px-4 sm:py-3.5" style={{ borderColor: "var(--border)" }} aria-label="Team health summary">
-            <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2.5">
+          <section className="team-health-strip mb-3 sm:mb-4" aria-label="Team health summary">
+            <div className="flex flex-col items-start justify-between gap-2 min-[760px]:flex-row min-[760px]:items-center min-[760px]:gap-3">
               <div>
                 <p className="text-xs sm:text-[0.62rem] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
                   Team Health
                 </p>
-                <p className="text-[0.92rem] leading-snug sm:text-[0.76rem]" style={{ color: "var(--text-secondary)" }}>
-                  Quick read on overlap, speed curve, and hazard posture.
+                <p className="text-[0.9rem] leading-snug sm:text-[0.76rem]" style={{ color: "var(--text-secondary)" }}>
+                  {hasTeam ? "Overlap, speed curve, and hazards at a glance." : "Add one Pokemon to start the health readout."}
                 </p>
               </div>
               {hasTeam ? (
-                <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
+                <div className="team-health-metrics">
                   <InfoTooltip
-                    label={<span className="rounded-full border px-2.5 py-1.5 text-[0.78rem] leading-none sm:text-[0.64rem] font-semibold inline-flex items-center gap-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>Type overlap: {teamHealth.overlappingTypes}</span>}
+                    label={<span className="team-health-metric">Overlap {teamHealth.overlappingTypes}</span>}
                     description="Number of types shared by multiple team members. High overlap can leave gaps in coverage."
                   />
                   <InfoTooltip
-                    label={<span className="rounded-full border px-2.5 py-1.5 text-[0.78rem] leading-none sm:text-[0.64rem] font-semibold inline-flex items-center gap-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>Speed: {teamHealth.speedCurveLabel} ({teamHealth.averageSpeed} avg)</span>}
+                    label={<span className="team-health-metric">Speed {teamHealth.speedCurveLabel} · {teamHealth.averageSpeed}</span>}
                     description="Your team's speed distribution. Balanced curves help with matchup flexibility."
                   />
                   <InfoTooltip
-                    label={<span className="rounded-full border px-2.5 py-1.5 text-[0.78rem] leading-none sm:text-[0.64rem] font-semibold inline-flex items-center gap-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>Fast mons: {teamHealth.fastCount}</span>}
+                    label={<span className="team-health-metric">Fast {teamHealth.fastCount}</span>}
                     description="Pokémon with Speed above 100. Useful for outspeeding threats."
                   />
                   <InfoTooltip
-                    label={<span className="rounded-full border px-2.5 py-1.5 text-[0.78rem] leading-none sm:text-[0.64rem] font-semibold inline-flex items-center gap-1" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-secondary)" }}>Hazards: {teamHealth.hazardPlanLabel}</span>}
+                    label={<span className="team-health-metric">Hazards {teamHealth.hazardPlanLabel}</span>}
                     description="Whether your team can set or remove entry hazards (Stealth Rock, Spikes, etc.)."
                   />
                 </div>
               ) : (
-                <span className="rounded-full border px-2.5 py-1.5 text-xs sm:text-[0.64rem] font-semibold" style={{ borderColor: "var(--border)", background: "var(--surface-1)", color: "var(--text-muted)" }}>
-                  Add at least one Pokemon to compute health
-                </span>
+                null
               )}
             </div>
           </section>
@@ -1916,9 +1914,9 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame, builderMode = "gam
                     onClick={() => { setReplaceMode((prev) => !prev); setReplaceTargetSlot(null); }}
                     className="btn-secondary action-btn w-full"
                     style={{
-                      borderColor: replaceMode ? "rgba(59, 130, 246, 0.34)" : "var(--border)",
-                      background: replaceMode ? "rgba(59, 130, 246, 0.14)" : undefined,
-                      color: replaceMode ? "#93c5fd" : undefined,
+                      borderColor: replaceMode ? "rgba(79, 138, 163, 0.34)" : "var(--border)",
+                      background: replaceMode ? "rgba(79, 138, 163, 0.14)" : undefined,
+                      color: replaceMode ? "var(--accent-blue)" : undefined,
                     }}
                   >
                     <FiRepeat size={13} />
@@ -1984,9 +1982,9 @@ const TeamBuilder = ({ generation, games, initialPoolsByGame, builderMode = "gam
                       onClick={() => { setReplaceMode((prev) => !prev); setReplaceTargetSlot(null); }}
                       className="btn-secondary action-btn col-span-2 min-h-[44px] w-full"
                       style={{
-                        borderColor: replaceMode ? "rgba(59, 130, 246, 0.34)" : "var(--border)",
-                        background: replaceMode ? "rgba(59, 130, 246, 0.14)" : undefined,
-                        color: replaceMode ? "#93c5fd" : undefined,
+                        borderColor: replaceMode ? "rgba(79, 138, 163, 0.34)" : "var(--border)",
+                        background: replaceMode ? "rgba(79, 138, 163, 0.14)" : undefined,
+                        color: replaceMode ? "var(--accent-blue)" : undefined,
                       }}
                     >
                       <FiRepeat size={13} />

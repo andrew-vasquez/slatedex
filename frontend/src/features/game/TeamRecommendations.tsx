@@ -232,9 +232,9 @@ const TeamRecommendations = ({
         <div
           className="mt-2 rounded-xl border px-3 py-2 text-[0.72rem] leading-relaxed"
           style={{
-            borderColor: replaceTargetLabel ? "rgba(59, 130, 246, 0.28)" : "var(--border)",
-            background: replaceTargetLabel ? "rgba(59, 130, 246, 0.1)" : "var(--surface-2)",
-            color: replaceTargetLabel ? "#bfdbfe" : "var(--text-muted)",
+            borderColor: replaceTargetLabel ? "rgba(79, 138, 163, 0.28)" : "var(--border)",
+            background: replaceTargetLabel ? "rgba(79, 138, 163, 0.1)" : "var(--surface-2)",
+            color: replaceTargetLabel ? "var(--accent-blue)" : "var(--text-muted)",
           }}
         >
           {targetedReplaceStatus}

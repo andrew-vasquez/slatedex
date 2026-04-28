@@ -152,7 +152,7 @@ function PublicProfilePage() {
     profile.badge === "Owner"
       ? { borderColor: "rgba(218,44,67,0.5)", background: "rgba(218,44,67,0.18)", color: "#fda4af" }
       : profile.badge === "Admin"
-        ? { borderColor: "rgba(59,130,246,0.5)", background: "rgba(59,130,246,0.18)", color: "#93c5fd" }
+        ? { borderColor: "rgba(79,138,163,0.5)", background: "rgba(79,138,163,0.18)", color: "var(--accent-blue)" }
         : profile.badge === "Pro"
           ? { borderColor: "rgba(16,185,129,0.5)", background: "rgba(16,185,129,0.18)", color: "#6ee7b7" }
           : null;
@@ -179,7 +179,7 @@ function PublicProfilePage() {
           style={{
             borderColor: "var(--border)",
             background:
-              "radial-gradient(circle at 10% 10%, rgba(218, 44, 67, 0.18), transparent 45%), radial-gradient(circle at 90% 20%, rgba(59, 130, 246, 0.18), transparent 40%), var(--surface-1)",
+              "radial-gradient(circle at 10% 10%, rgba(218, 44, 67, 0.15), transparent 45%), var(--surface-1)",
           }}
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -324,7 +324,7 @@ function PublicProfilePage() {
                   className="mt-3 rounded-2xl border p-3"
                   style={{
                     borderColor: "rgba(218, 44, 67, 0.45)",
-                    background: "linear-gradient(135deg, rgba(218, 44, 67, 0.12), rgba(59, 130, 246, 0.08))",
+                    background: "linear-gradient(135deg, rgba(218, 44, 67, 0.12), rgba(79, 138, 163, 0.08))",
                   }}
                 >
                   <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>

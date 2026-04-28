@@ -36,7 +36,7 @@ const GameSwitchDialog = ({ isOpen, targetGameName, onKeepTeam, onStartFresh, on
         <div className="flex items-start gap-3">
           <div
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-            style={{ background: "var(--accent-blue-soft)", border: "1px solid rgba(59, 130, 246, 0.24)", color: "var(--accent-blue)" }}
+            style={{ background: "var(--accent-blue-soft)", border: "1px solid rgba(79, 138, 163, 0.24)", color: "var(--accent-blue)" }}
           >
             <FiRepeat size={16} aria-hidden="true" />
           </div>
@@ -65,7 +65,7 @@ const GameSwitchDialog = ({ isOpen, targetGameName, onKeepTeam, onStartFresh, on
             style={{
               background: "var(--accent-blue)",
               color: "#fff",
-              border: "1px solid rgba(59, 130, 246, 0.5)",
+              border: "1px solid rgba(79, 138, 163, 0.5)",
               transition: "transform 0.2s ease, filter 0.2s ease",
             }}
           >
